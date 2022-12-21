@@ -7,8 +7,8 @@ type SteppedSpanProps = {
 const SteppedSpan: FunctionComponent<SteppedSpanProps> = ({children}: SteppedSpanProps) => {
     return <div className="stepped">
 
-    {children.split('').map((char: string) => {
-        return <span>
+    {children.split('').map((char: string, index) => {
+        return <span key={index}>
             {char}
         </span>
     })}

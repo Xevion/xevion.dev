@@ -1,10 +1,9 @@
 import {type NextPage} from "next";
 import Head from "next/head";
-
-import {trpc} from "../utils/trpc";
 import Image from "next/image";
 import {ArrowLongRightIcon} from "@heroicons/react/24/outline";
 import SteppedSpan from "../components/SteppedSpan";
+import React from "react";
 
 interface Project {
     title: string;
@@ -20,7 +19,7 @@ const Home: NextPage = () => {
             description: <>
                 Phototag is a <b>powerful</b> and <b>efficient</b> tool that helps
                 you <b>quickly</b> and <b>easily</b> describe your photos with
-                tags. Using Google's advanced Vision API, Phototag can automatically generate tags for your photos,
+                tags. Using Google&apos;s advanced Vision API, Phototag can automatically generate tags for your photos,
                 making it faster and easier to organize and search for your images.
             </>
         },
