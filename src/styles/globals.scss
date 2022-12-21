@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  @apply font-manrope;
+}
+
+.item {
+  @apply w-full aspect-[5/3] h-[12rem] sm:h-[14rem] md:h-[16rem] relative pointer-events-auto cursor-pointer overflow-hidden transition-all rounded;
+  > img {
+    @apply rounded transition-all;
+  }
+
+  .elements {
+    @apply hidden transition-all delay-100;
+  }
+
+  &:hover {
+    .elements {
+      @apply grid;
+    }
+
+    > img {
+      @apply blur-2xl;
+    }
+  }
+}
+
+.stepped {
+  @apply text-white text-8xl;
+  font-family: monospace;
+
+  > span {
+    @apply transition-colors delay-300;
+
+    &:hover {
+      @apply text-black bg-white;
+      transition-delay: 0s;
+    }
+  }
+}
