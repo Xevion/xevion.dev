@@ -12,7 +12,7 @@ html, body {
 }
 
 .item {
-  @apply w-full aspect-[5/3] h-[12rem] sm:h-[14rem] md:h-[16rem] relative pointer-events-auto cursor-pointer overflow-hidden transition-all rounded;
+  @apply w-full aspect-[7/2] sm:aspect-[5/3] sm:h-[14rem] md:h-[16rem] relative pointer-events-auto cursor-pointer overflow-hidden transition-all rounded;
   > img {
     @apply rounded transition-all;
   }
@@ -21,7 +21,7 @@ html, body {
     @apply hidden transition-all delay-100;
   }
 
-  &:hover {
+  &:hover, &:focus, &:focus-within {
     .elements {
       @apply grid;
     }
@@ -39,7 +39,7 @@ html, body {
   > span {
     @apply transition-colors delay-300;
 
-    &:hover {
+    &:hover, &:focus-within, &:focus {
       @apply text-black bg-white;
       transition-delay: 0s;
     }
