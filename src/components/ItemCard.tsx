@@ -1,6 +1,8 @@
 import Image from "next/image";
 import {ArrowLongRightIcon} from "@heroicons/react/24/outline";
-import React from "react";
+import React, {useRef} from "react";
+import {useOnClickOutside, useToggle} from "usehooks-ts";
+import {classNames, isHoverable} from "../utils/helpers";
 
 type ItemCardProps = {
     banner: string;
@@ -9,7 +11,15 @@ type ItemCardProps = {
 }
 
 const ItemCard = ({banner, title, description}: ItemCardProps) => {
-    return <div className="item">
+    const itemRef = useRef<HTMLDivElement>(null);
+    const [active, toggleActive, setActive] = useToggle()
+
+    useOnClickOutside(itemRef, () => {
+        setActive(false);
+    })
+
+    return <div onClick={() => {if (!isHoverable()) toggleActive();}}
+                ref={itemRef} className={classNames("item", active ? "active" : null)}>
         <Image fill src={banner}
                alt={`Banner for ${title}`}
                style={{objectFit: "cover"}}
