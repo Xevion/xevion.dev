@@ -1,13 +1,15 @@
 import {GetStaticPropsContext, type NextPage} from "next";
 import Head from "next/head";
-import React from "react";
+import React, {useEffect} from "react";
 import ItemCard from "../components/ItemCard";
 import {getPlaiceholder} from "plaiceholder";
+import {useBreakpointValue} from "../utils/helpers";
 
 interface Project {
     title: string;
     banner: string;
-    description: string;
+    longDescription: string;
+    shortDescription: string;
 }
 
 type ProjectWithBlur = Project & { bannerBlur: string };
@@ -22,14 +24,15 @@ export async function getStaticProps(context: GetStaticPropsContext) {
         {
             title: "Phototag",
             banner: "/phototag.png",
-            description: `Phototag is a **powerful** and **efficient** tool that helps you **quickly** and **easily** describe your photos with
-                tags. Using Google&apos;s advanced Vision API, Phototag can automatically generate tags for your photos,
-                making it faster and easier to organize and search for your images.`
+            longDescription: `Using Google's Vision API and supporting metadata formats on Windows, Phototag makes it easy to quickly add rich, descriptive tags to your photos, saving you time and effort.`,
+            shortDescription: "Effortlessly add rich & descriptive tags to your photos with Phototag."
         },
         {
             title: "Paths",
             banner: "/paths.png",
-            description: ""
+            shortDescription: "Discover the power of graph traversal algorithms with my interactive application.",
+            longDescription: `Discover the power of graph traversal algorithms with my interactive Unity application!
+             Easily generate and edit graphs, create mazes, and experiment with different algorithm configurations to find the most efficient path.`
         }
     ].map(async project => {
         const {base64} = await getPlaiceholder(project.banner, {size: 16});
@@ -47,6 +50,13 @@ export async function getStaticProps(context: GetStaticPropsContext) {
 }
 
 const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
+    const useLong = useBreakpointValue("sm", true, false);
+
+    // use-tailwind-breakpoint
+    useEffect(() => {
+        typeof window !== "undefined" ? window.dispatchEvent(new Event("resize")) : null;
+    }, []);
+
     return (
         <>
             <Head>
@@ -60,7 +70,8 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                     <div className="flex h-full m-1 flex-col justify-start gap-y-4">
                         {
                             projects.map((project, index) =>
-                                <ItemCard key={index} {...project} />
+                                <ItemCard key={index} {...project}
+                                          description={useLong ? project.longDescription : project.shortDescription}/>
                             )
                         }
                     </div>
