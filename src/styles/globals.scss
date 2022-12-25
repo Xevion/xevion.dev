@@ -18,7 +18,7 @@ html, body {
   }
 
   .elements {
-    @apply hidden transition-all delay-100;
+    @apply hidden opacity-0 transition-all delay-100;
     > * {
       z-index: 30;
       min-height: 0;
@@ -27,7 +27,7 @@ html, body {
 
   &:hover, &.active {
     .elements {
-      @apply grid;
+      @apply grid opacity-100;
     }
 
     > img {
@@ -52,7 +52,6 @@ html, body {
 
 .icon-grid {
   direction: rtl;
-  grid-auto-flow: column;
 
   > svg {
     width: 75%;
