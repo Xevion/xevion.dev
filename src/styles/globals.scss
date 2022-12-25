@@ -57,6 +57,6 @@ html, body {
   > svg {
     width: 75%;
     height: 75%;
-    @apply transition-transform drop-shadow-md hover:scale-[120%] text-zinc-200 hover:text-zinc-50 m-auto aspect-square;
+    @apply transition-transform drop-shadow-md hover:scale-[120%] opacity-80 hover:opacity-100 text-white m-auto aspect-square;
   }
 }
