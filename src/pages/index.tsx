@@ -1,33 +1,52 @@
-import {type NextPage} from "next";
+import {GetStaticPropsContext, type NextPage} from "next";
 import Head from "next/head";
 import React from "react";
 import ItemCard from "../components/ItemCard";
+import {getPlaiceholder} from "plaiceholder";
 
 interface Project {
     title: string;
     banner: string;
-    description: React.ReactNode;
+    description: string;
 }
 
-const Home: NextPage = () => {
-    const projects: Project[] = [
+type ProjectWithBlur = Project & { bannerBlur: string };
+
+
+type HomeStaticProps = {
+    projects: ProjectWithBlur[];
+}
+
+export async function getStaticProps(context: GetStaticPropsContext) {
+    const projects = [
         {
             title: "Phototag",
             banner: "/phototag.png",
-            description: <>
-                Phototag is a <b>powerful</b> and <b>efficient</b> tool that helps
-                you <b>quickly</b> and <b>easily</b> describe your photos with
+            description: `Phototag is a **powerful** and **efficient** tool that helps you **quickly** and **easily** describe your photos with
                 tags. Using Google&apos;s advanced Vision API, Phototag can automatically generate tags for your photos,
-                making it faster and easier to organize and search for your images.
-            </>
+                making it faster and easier to organize and search for your images.`
         },
         {
             title: "Paths",
             banner: "/paths.png",
             description: ""
         }
-    ]
+    ].map(async project => {
+        const {base64} = await getPlaiceholder(project.banner, {size: 16});
+        return {
+            ...project,
+            bannerBlur: base64
+        };
+    })
 
+    return {
+        props: {
+            projects: await Promise.all(projects)
+        }
+    }
+}
+
+const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
     return (
         <>
             <Head>
