@@ -26,6 +26,8 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
         setActive(false);
     })
 
+    // TODO: Add mobile-only button when tapped showing button link for project page
+
     return <div ref={itemRef}
                 className={classNames("item", active ? "active" : null)}
                 onClick={() => {
@@ -45,14 +47,14 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
 
                 <div className="text-2xl sm:text-2xl md:text-3xl font-semibold">{title}</div>
                 <div className="mt-0 md:mt-1.5 text-xl sm:text-lg md:text-xl overflow-hidden ">
-                    <ReactMarkdown children={description}/>
+                    <ReactMarkdown>{description}</ReactMarkdown>
                 </div>
             </Link>
             {(links?.length ?? 0) > 0 ?
                 <div className="col-span-3 lg:col-span-4 w-full flex justify-end max-h-full md:py-5">
                     <div className="grid grid-cols-2 grid-rows-2 p-2 md:gap-3 aspect-square icon-grid">
                         {links!.map(({icon, location, newTab}) =>
-                            <Link href={location} target={(newTab ?? true) ? "_blank" : "_self"}
+                            <Link key={location} href={location} target={(newTab ?? true) ? "_blank" : "_self"}
                                   onClick={stopPropagation}>
                                 {LinkIcons[icon]!({})}
                             </Link>)}
