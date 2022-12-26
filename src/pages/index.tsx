@@ -14,19 +14,19 @@ export type Project = {
     longDescription: string;
     shortDescription: string;
     links?: LinkIcon[];
+    location: string;
 }
 
-export type LinkIconType = "github" | "external" | "link";
 
-export const LinkIcons: Record<LinkIconType, IconType> = {
+export const LinkIcons: Record<string, IconType> = {
     github: AiFillGithub,
     external: RxOpenInNewWindow,
     link: AiOutlineLink
 }
-
 export type LinkIcon = {
-    icon: LinkIconType;
+    icon: keyof typeof LinkIcons;
     location: string;
+    newTab?: boolean;
 }
 
 type ProjectWithBlur = Project & { bannerBlur: string };
@@ -41,6 +41,7 @@ export async function getStaticProps(context: GetStaticPropsContext) {
         {
             title: "Phototag",
             banner: "/phototag.png",
+            location: "/phototag",
             longDescription: `Using Google's Vision API and supporting metadata formats on Windows, Phototag makes it easy to quickly add rich, descriptive tags to your photos, saving you time and effort.`,
             shortDescription: "Effortlessly add rich & descriptive tags to your photos with Phototag.",
             links: [
@@ -57,13 +58,14 @@ export async function getStaticProps(context: GetStaticPropsContext) {
         {
             title: "Paths",
             banner: "/paths.png",
+            location: "/paths",
             shortDescription: "Discover the power of graph traversal algorithms with my interactive application.",
             longDescription: `Discover the power of graph traversal algorithms with my interactive Unity application!
              Easily generate and edit graphs, create mazes, and experiment with different algorithm configurations to find the most efficient path.`,
             links: [
                 {
                     icon: "github",
-                    location: "https://github.com/Xevion/Paths"
+                    location: "https://github.com/Xevion/Paths",
                 }
             ]
         }

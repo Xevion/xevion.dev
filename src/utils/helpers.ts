@@ -6,6 +6,14 @@ export function classNames(...classes: (string | null | undefined)[]) {
     return classes.filter(Boolean).join(" ");
 }
 
+/**
+ * A handler that simply calls the `stopPropagation` method on an event.
+ * @param event The event to prevent propagation on.
+ */
+export const stopPropagation = (event: Event) => {
+    event.stopPropagation();
+};
+
 const isClient = (): boolean => {
     return typeof window !== "undefined";
 }
