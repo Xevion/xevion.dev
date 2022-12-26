@@ -102,7 +102,7 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
             <main
                 className="flex py-3 min-h-screen flex-row md:items-center justify-center bg-zinc-900 text-zinc-50">
                 <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
-                    <div className="flex h-full m-1 flex-col justify-start gap-y-4">
+                    <div className="flex h-full m-1 flex-col justify-start gap-y-1">
                         {
                             projects.map((project, index) =>
                                 <ItemCard key={index} {...project}
