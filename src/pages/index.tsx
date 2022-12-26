@@ -4,12 +4,29 @@ import React, {useEffect} from "react";
 import ItemCard from "../components/ItemCard";
 import {getPlaiceholder} from "plaiceholder";
 import {useBreakpointValue} from "../utils/helpers";
+import {IconType} from "react-icons";
+import {AiFillGithub, AiOutlineLink} from "react-icons/ai";
+import {RxOpenInNewWindow} from "react-icons/rx";
 
-interface Project {
+export type Project = {
     title: string;
     banner: string;
     longDescription: string;
     shortDescription: string;
+    links?: LinkIcon[];
+}
+
+export type LinkIconType = "github" | "external" | "link";
+
+export const LinkIcons: Record<LinkIconType, IconType> = {
+    github: AiFillGithub,
+    external: RxOpenInNewWindow,
+    link: AiOutlineLink
+}
+
+export type LinkIcon = {
+    icon: LinkIconType;
+    location: string;
 }
 
 type ProjectWithBlur = Project & { bannerBlur: string };
@@ -20,31 +37,47 @@ type HomeStaticProps = {
 }
 
 export async function getStaticProps(context: GetStaticPropsContext) {
-    const projects = [
+    const projects: Project[] = [
         {
             title: "Phototag",
             banner: "/phototag.png",
             longDescription: `Using Google's Vision API and supporting metadata formats on Windows, Phototag makes it easy to quickly add rich, descriptive tags to your photos, saving you time and effort.`,
-            shortDescription: "Effortlessly add rich & descriptive tags to your photos with Phototag."
+            shortDescription: "Effortlessly add rich & descriptive tags to your photos with Phototag.",
+            links: [
+                {
+                    icon: "github",
+                    location: "https://github.com/Xevion/phototag"
+                },
+                {
+                    icon: "external",
+                    location: "https://github.com/Xevion/phototag"
+                }
+            ]
         },
         {
             title: "Paths",
             banner: "/paths.png",
             shortDescription: "Discover the power of graph traversal algorithms with my interactive application.",
             longDescription: `Discover the power of graph traversal algorithms with my interactive Unity application!
-             Easily generate and edit graphs, create mazes, and experiment with different algorithm configurations to find the most efficient path.`
+             Easily generate and edit graphs, create mazes, and experiment with different algorithm configurations to find the most efficient path.`,
+            links: [
+                {
+                    icon: "github",
+                    location: "https://github.com/Xevion/Paths"
+                }
+            ]
         }
-    ].map(async project => {
-        const {base64} = await getPlaiceholder(project.banner, {size: 16});
-        return {
-            ...project,
-            bannerBlur: base64
-        };
-    })
+    ];
 
     return {
         props: {
-            projects: await Promise.all(projects)
+            projects: await Promise.all(projects.map(async project => {
+                const {base64} = await getPlaiceholder(project.banner, {size: 16});
+                return {
+                    ...project,
+                    bannerBlur: base64
+                };
+            }))
         }
     }
 }
