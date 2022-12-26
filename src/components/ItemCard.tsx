@@ -71,12 +71,13 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
             </div>
 
         </div>
-        {active ?
-            <Link ref={mobileButtonRef} href={{pathname: location}}
-                  className=" bg-zinc-800 rounded border border-zinc-900 shadow w-full h-9 p-2 flex items-center justify-center">
-                Learn More
-            </Link>
-            : null}
+        <Link ref={mobileButtonRef} href={{pathname: location}}
+              className={classNames(
+                  "transition-all bg-zinc-800 rounded border border-zinc-900 shadow w-full flex items-center justify-center",
+                  active ? "opacity-100 h-9 p-2" : "opacity-0 h-0 p-0"
+              )}>
+            Learn More
+        </Link>
     </>
 }
 
