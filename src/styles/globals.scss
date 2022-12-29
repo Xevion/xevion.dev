@@ -60,3 +60,10 @@ html, body {
     @apply transition-transform drop-shadow-md hover:scale-[120%] opacity-80 hover:opacity-100 text-white m-auto aspect-square;
   }
 }
+
+.description {
+  hyphens: auto;
+  @screen md {
+    hyphens: none;
+  }
+}

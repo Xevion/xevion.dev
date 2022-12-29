@@ -55,12 +55,11 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
                     className="col-span-12 sm:col-span-9 lg:col-span-8 max-h-full overflow-hidden drop-shadow-2xl pb-2 md:p-1 pl-2">
                     <Link href={{pathname: location}}
                           className="text-lg sm:text-2xl md:text-3xl font-semibold">{title}</Link>
-                    <div className="mt-0 md:mt-1.5 text-base sm:text-xl md:text-xl overflow-hidden"
+                    <div className="description mt-0 md:mt-1.5 text-base sm:text-xl md:text-xl overflow-hidden"
                          onClick={(e) => {
                              e.stopPropagation();
                              navigate();
-                         }}
-                         style={{hyphens: "auto"}}>
+                         }}>
                         <ReactMarkdown>{description}</ReactMarkdown>
                     </div>
                 </div>
