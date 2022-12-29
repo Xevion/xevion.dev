@@ -65,7 +65,7 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
                 </div>
                 {(links?.length ?? 0) > 0 ?
                     <div
-                        className="hidden sm:block col-span-3 lg:col-span-4 w-full flex justify-end max-h-full md:py-5">
+                        className="hidden sm:flex col-span-3 lg:col-span-4 w-full justify-end max-h-full md:py-5">
                         <div className="grid grid-cols-2 grid-rows-2 p-2 md:gap-3 aspect-square icon-grid">
                             {links!.map(({icon, location, newTab}) =>
                                 <Link key={location} href={location} target={(newTab ?? true) ? "_blank" : "_self"}
