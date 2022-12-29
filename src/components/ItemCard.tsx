@@ -1,6 +1,6 @@
 import React, {useRef} from "react";
 import {useOnClickOutside, useToggle} from "usehooks-ts";
-import {classNames, isHoverable, stopPropagation} from "../utils/helpers";
+import {classNames, isHoverable} from "../utils/helpers";
 import DependentImage from "./DependentImage";
 import ReactMarkdown from 'react-markdown'
 
@@ -40,7 +40,11 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
     return <>
         <div ref={itemRef}
              className={classNames("item [&:not(:first-child)]:mt-3", active ? "active" : null)}
-             onClick={navigate}>
+             onClick={() => {
+                 console.log('Overall div!')
+                 navigate();
+             }
+             }>
             <DependentImage fill src={banner} blurDataURL={bannerBlur}
                             className={(loaded) => classNames("object-cover", loaded ? null : "blur-xl")}
                             placeholder="blur"
@@ -52,7 +56,10 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
                     <Link href={{pathname: location}}
                           className="text-lg sm:text-2xl md:text-3xl font-semibold">{title}</Link>
                     <div className="mt-0 md:mt-1.5 text-base sm:text-xl md:text-xl overflow-hidden"
-                         onClick={navigate}
+                         onClick={(e) => {
+                             e.stopPropagation();
+                             navigate();
+                         }}
                          style={{hyphens: "auto"}}>
                         <ReactMarkdown>{description}</ReactMarkdown>
                     </div>
@@ -63,7 +70,7 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
                         <div className="grid grid-cols-2 grid-rows-2 p-2 md:gap-3 aspect-square icon-grid">
                             {links!.map(({icon, location, newTab}) =>
                                 <Link key={location} href={location} target={(newTab ?? true) ? "_blank" : "_self"}
-                                      onClick={stopPropagation}>
+                                      onClick={e => e.stopPropagation()}>
                                     {LinkIcons[icon]!({})}
                                 </Link>)}
                         </div>
@@ -71,7 +78,7 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
             </div>
 
         </div>
-        <Link ref={mobileButtonRef} href={{pathname: location}}
+        <Link aria-disabled={!active} ref={mobileButtonRef} href={active ? {pathname: location} : {}}
               className={classNames(
                   "transition-all bg-zinc-800 rounded border border-zinc-900 shadow w-full flex items-center justify-center",
                   active ? "opacity-100 h-9 p-2" : "opacity-0 h-0 p-0"

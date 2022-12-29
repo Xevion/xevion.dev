@@ -51,7 +51,7 @@ export async function getStaticProps(context: GetStaticPropsContext) {
                 },
                 {
                     icon: "external",
-                    location: "https://github.com/Xevion/phototag"
+                    location: "https://phototag.xevion.dev"
                 }
             ]
         },
