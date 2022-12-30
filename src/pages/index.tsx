@@ -16,6 +16,23 @@ type HomeStaticProps = {
 export async function getStaticProps() {
     const projects: Project[] = [
         {
+            title: "Portal",
+            banner: "/portal.jpeg",
+            location: "/portal",
+            longDescription: "An advanced membership & event management system for my university's premier computer science organization.",
+            shortDescription: "Advanced membership & event management system for students",
+            links: [
+                {
+                    icon: "github",
+                    location: "https://github.com/UTSA-ACM/Portal"
+                },
+                {
+                    icon: "external",
+                    location: "https://portal.acmutsa.org/"
+                }
+            ]
+        },
+        {
             title: "Phototag",
             banner: "/phototag.png",
             location: "/phototag",
@@ -79,7 +96,8 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
             <main className="bg-zinc-900 text-zinc-50">
                 <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
                     <div className="top-0 p-3 absolute w-full flex justify-end">
-                        <span className="leading-3 bg-yellow-300 rounded-md text-black font-bold font-inter p-2">WIP</span>
+                        <span
+                            className="leading-3 bg-yellow-300 rounded-md text-black font-bold font-inter p-2">WIP</span>
                     </div>
 
                     <div className="w-full flex flex-col items-center h-40">
