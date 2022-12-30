@@ -58,9 +58,9 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({children}: WrapperProps) =
                     <Disclosure.Panel className="sm:hidden">
                         <div className="space-y-1 px-2 pt-2 pb-3">
                             {navigation.map((item) => (
-                                <Link href={item.href}>
+                                <Link key={item.name} href={item.href}>
                                     <Disclosure.Button
-                                        key={item.name}
+
                                         as="a"
                                         className={classNames(
                                             item.current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',

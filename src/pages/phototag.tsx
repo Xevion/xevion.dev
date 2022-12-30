@@ -32,7 +32,7 @@ const PhototagPage: NextPage = () => {
 
                         <p>Phototag is a powerful tool that helps you quickly and easily add rich, descriptive tags to
                             your
-                            photos. Using Google's Vision API, Phototag automatically generates tags based on the visual
+                            photos. Using Google&apos;s Vision API, Phototag automatically generates tags based on the visual
                             content
                             of your photos, making it easier than ever to organize and find your photos.</p>
                         <p>
@@ -40,7 +40,7 @@ const PhototagPage: NextPage = () => {
                             Phototag
                             into
                             your existing
-                            workflow on Windows. Whether you're a professional photographer or a casual snapshot taker,
+                            workflow on Windows. Whether you&apos;re a professional photographer or a casual snapshot taker,
                             Phototag
                             is the perfect tool for adding clarity and context to your photos.
                         </p>
