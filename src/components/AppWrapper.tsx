@@ -11,7 +11,7 @@ const navigation = [
 ]
 
 type WrapperProps = {
-    children: ReactNode | ReactNode[];
+    children?: ReactNode | ReactNode[] | null;
 };
 
 const AppWrapper: FunctionComponent<WrapperProps> = ({children}: WrapperProps) => {
