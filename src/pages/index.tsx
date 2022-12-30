@@ -78,14 +78,18 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
             </Head>
             <main className="bg-zinc-900 text-zinc-50">
                 <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
+                    <div className="top-0 p-3 absolute w-full flex justify-end">
+                        <span className="leading-3 bg-yellow-300 rounded-md text-black font-bold font-inter p-2">WIP</span>
+                    </div>
+
                     <div className="w-full flex flex-col items-center h-40">
-                        <div className="text-5xl pb-3">Hi. I&apos;m Ryan Walters.</div>
+                        <div className="text-4xl sm:text-5xl pb-3">Hi. I&apos;m Ryan Walters.</div>
                         <div className="text-lg text-zinc-200">Full Stack Software Developer</div>
                     </div>
                 </div>
 
                 <div
-                    className="flex py-3 min-h-screen flex-row md:items-center justify-center">
+                    className="flex py-12 sm:py-8 min-h-screen flex-row md:items-center justify-center">
                     <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
                         <div className="flex h-full m-1 flex-col justify-start gap-y-1">
                             {
