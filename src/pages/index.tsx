@@ -99,16 +99,25 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                 <meta name="description" content="My personal website."/>
                 <link rel="icon" href="/favicon.ico"/>
             </Head>
-            <main
-                className="flex py-3 min-h-screen flex-row md:items-center justify-center bg-zinc-900 text-zinc-50">
-                <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
-                    <div className="flex h-full m-1 flex-col justify-start gap-y-1">
-                        {
-                            projects.map((project, index) =>
-                                <ItemCard key={index} {...project}
-                                          description={useLong ? project.longDescription : project.shortDescription}/>
-                            )
-                        }
+            <main className="bg-zinc-900 text-zinc-50">
+                <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
+                    <div className="w-full flex flex-col items-center h-40">
+                        <div className="text-5xl pb-3">Hi. I'm Ryan Walters.</div>
+                        <div className="text-lg text-zinc-200">Full Stack Software Developer</div>
+                    </div>
+                </div>
+
+                <div
+                    className="flex py-3 min-h-screen flex-row md:items-center justify-center">
+                    <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
+                        <div className="flex h-full m-1 flex-col justify-start gap-y-1">
+                            {
+                                projects.map((project, index) =>
+                                    <ItemCard key={index} {...project}
+                                              description={useLong ? project.longDescription : project.shortDescription}/>
+                                )
+                            }
+                        </div>
                     </div>
                 </div>
             </main>
