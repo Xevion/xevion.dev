@@ -1,33 +1,10 @@
-import {GetStaticPropsContext, type NextPage} from "next";
+import {type NextPage} from "next";
 import Head from "next/head";
 import React, {useEffect} from "react";
 import ItemCard from "../components/ItemCard";
 import {getPlaiceholder} from "plaiceholder";
 import {useBreakpointValue} from "../utils/helpers";
-import {IconType} from "react-icons";
-import {AiFillGithub, AiOutlineLink} from "react-icons/ai";
-import {RxOpenInNewWindow} from "react-icons/rx";
-
-export type Project = {
-    title: string;
-    banner: string;
-    longDescription: string;
-    shortDescription: string;
-    links?: LinkIcon[];
-    location: string;
-}
-
-
-export const LinkIcons: Record<string, IconType> = {
-    github: AiFillGithub,
-    external: RxOpenInNewWindow,
-    link: AiOutlineLink
-}
-export type LinkIcon = {
-    icon: keyof typeof LinkIcons;
-    location: string;
-    newTab?: boolean;
-}
+import type {Project} from "../utils/types";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
@@ -36,7 +13,7 @@ type HomeStaticProps = {
     projects: ProjectWithBlur[];
 }
 
-export async function getStaticProps(context: GetStaticPropsContext) {
+export async function getStaticProps() {
     const projects: Project[] = [
         {
             title: "Phototag",

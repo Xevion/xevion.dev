@@ -5,8 +5,8 @@ import DependentImage from "./DependentImage";
 import ReactMarkdown from 'react-markdown'
 
 import Link from "next/link";
-import {LinkIcon, LinkIcons} from "../pages";
 import {useRouter} from "next/router";
+import {type LinkIcon, LinkIcons} from "../utils/types";
 
 type ItemCardProps = {
     banner: string;
@@ -70,7 +70,7 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
                             {links!.map(({icon, location, newTab}) =>
                                 <Link key={location} href={location} target={(newTab ?? true) ? "_blank" : "_self"}
                                       onClick={e => e.stopPropagation()}>
-                                    {LinkIcons[icon]!({})}
+                                    {LinkIcons[icon]?.({})}
                                 </Link>)}
                         </div>
                     </div> : null}
