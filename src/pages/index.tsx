@@ -102,7 +102,7 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
             <main className="bg-zinc-900 text-zinc-50">
                 <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
                     <div className="w-full flex flex-col items-center h-40">
-                        <div className="text-5xl pb-3">Hi. I'm Ryan Walters.</div>
+                        <div className="text-5xl pb-3">Hi. I&apos;m Ryan Walters.</div>
                         <div className="text-lg text-zinc-200">Full Stack Software Developer</div>
                     </div>
                 </div>
