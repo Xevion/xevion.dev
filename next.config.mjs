@@ -7,11 +7,16 @@
 
 /** @type {import("next").NextConfig} */
 const config = {
-  reactStrictMode: true,
-  swcMinify: true,
-  i18n: {
-    locales: ["en"],
-    defaultLocale: "en",
-  },
+    reactStrictMode: true,
+    swcMinify: true,
+    i18n: {
+        locales: ["en"],
+        defaultLocale: "en",
+    },
+    async redirects() {
+        return [
+            {source: '/resume', destination: '/resume.pdf', permanent: false}
+        ]
+    }
 };
 export default config;
