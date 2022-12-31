@@ -3,7 +3,7 @@ import AppWrapper from "../components/AppWrapper";
 import WorkInProgress from "../components/WorkInProgress";
 
 const ProjectsPage: NextPage = () => {
-    return <AppWrapper>
+    return <AppWrapper current='projects'>
         <WorkInProgress/>
     </AppWrapper>;
 }

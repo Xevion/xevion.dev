@@ -4,17 +4,18 @@ import {HiBars3, HiXMark} from "react-icons/hi2";
 import {classNames} from "../utils/helpers";
 import Link from "next/link";
 
-const navigation = [
-    {name: 'Home', href: '/', current: true},
-    {name: 'Projects', href: '/projects', current: false},
-    {name: 'Contact', href: '/contact', current: false},
+const navigation: { id: string, name: string, href: string }[] = [
+    {id: 'home', name: 'Home', href: '/',},
+    {id: 'projects', name: 'Projects', href: '/projects'},
+    {id: 'contact', name: 'Contact', href: '/contact'},
 ]
 
 type WrapperProps = {
+    current?: string;
     children?: ReactNode | ReactNode[] | null;
 };
 
-const AppWrapper: FunctionComponent<WrapperProps> = ({children}: WrapperProps) => {
+const AppWrapper: FunctionComponent<WrapperProps> = ({current, children}: WrapperProps) => {
     return <div className="min-h-screen bg-zinc-800 text-zinc-50">
         <Disclosure as="nav" className="bg-zinc-900">
             {({open}) => (
@@ -41,10 +42,10 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({children}: WrapperProps) =
                                                 key={item.name}
                                                 href={item.href}
                                                 className={classNames(
-                                                    item.current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',
-                                                    'px-3 py-2 rounded-md text-sm font-medium'
+                                                    item.id == current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',
+                                                    'px-3 py-2 rounded-md text-sm font-medium text-lg'
                                                 )}
-                                                aria-current={item.current ? 'page' : undefined}
+                                                aria-current={item.id == current ? 'page' : undefined}
                                             >
                                                 {item.name}
                                             </Link>
@@ -63,10 +64,10 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({children}: WrapperProps) =
 
                                         as="a"
                                         className={classNames(
-                                            item.current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',
+                                            item.id == current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',
                                             'block px-3 py-2 rounded-md text-base font-medium'
                                         )}
-                                        aria-current={item.current ? 'page' : undefined}
+                                        aria-current={item.id == current ? 'page' : undefined}
                                     >
                                         {item.name}
                                     </Disclosure.Button>

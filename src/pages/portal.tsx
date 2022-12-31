@@ -59,7 +59,7 @@ const PhototagPage: NextPage = () => {
                             <li>Cutting Edge - the latest technology</li>
                         </ul>
                         <h3>Screenshots</h3>
-                        <div className="relative space-y-3">
+                        <div className="relative space-y-8">
                             {images.map(([src, description]) => {
                                     return <div key={src} className="flex flex-col justify-center w-full">
                                         <Image fill sizes="100vw" src={src} alt=""
