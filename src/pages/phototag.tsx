@@ -12,7 +12,7 @@ const PhototagPage: NextPage = () => {
         </Head>
         <AppWrapper>
 
-            <div className="bg-zinc-900 text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
+            <div className="bg-zinc-850 text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
                 <div className="relative my-10 p-3 px-6 w-full max-w-screen-md">
                     <div className="pb-2 flex justify-between">
                         <div className="text-2xl font-semibold">
@@ -29,20 +29,17 @@ const PhototagPage: NextPage = () => {
                                className="!relative pointer-events-none min-h-[10rem] rounded-md object-cover"/>
                     </div>
                     <div className="mt-3 w-full prose prose-invert prose-lg">
-
-                        <p>Phototag is a powerful tool that helps you quickly and easily add rich, descriptive tags to
-                            your
-                            photos. Using Google&apos;s Vision API, Phototag automatically generates tags based on the visual
-                            content
-                            of your photos, making it easier than ever to organize and find your photos.</p>
+                        <p>
+                            Phototag is a powerful tool that helps you quickly and easily add rich, descriptive tags to
+                            your photos. Using Google&apos;s Vision API, Phototag automatically generates tags based on
+                            the visual content of your photos, making it easier than ever to organize and find your
+                            photos.
+                        </p>
                         <p>
                             With support for IPTC metadata and Adobe XMP Sidecar files, you can easily integrate
-                            Phototag
-                            into
-                            your existing
-                            workflow on Windows. Whether you&apos;re a professional photographer or a casual snapshot taker,
-                            Phototag
-                            is the perfect tool for adding clarity and context to your photos.
+                            Phototag into your existing workflow on Windows. Whether you&apos;re a professional
+                            photographer or a casual snapshot taker, Phototag is the perfect tool for adding clarity and
+                            context to your photos.
                         </p>
                         <ul className="md:columns-2">
                             <li>Simple, but configurable</li>

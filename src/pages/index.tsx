@@ -17,7 +17,7 @@ export async function getStaticProps() {
     const projects: Project[] = [
         {
             title: "Portal",
-            banner: "/portal.jpeg",
+            banner: "/banner.jpeg",
             location: "/portal",
             longDescription: "An advanced membership & event management system for my university's premier computer science organization.",
             shortDescription: "Advanced membership & event management system for students",
