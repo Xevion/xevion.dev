@@ -3,7 +3,7 @@ import type {FunctionComponent} from "react";
 const WorkInProgress: FunctionComponent = () => {
     return <div className="w-full my-10 flex justify-center">
         <div
-            className="bg-zinc-850 border border-zinc-700 rounded-md max-w-[23rem] sm:max-w-[25rem] mx-3 w-full p-5 flex flex-col items-center justify-center">
+            className="bg-zinc-850 border border-zinc-700 rounded-md max-w-[23rem] sm:max-w-[25rem] lg:max-w-[30rem] mx-3 w-full p-5 flex flex-col items-center justify-center">
             <span className="bg-gradient-to-r from-orange-500 via-fuchsia-600 to-cyan-500 text-transparent font-semibold bg-clip-text text-3xl sm:text-4xl pb-2 text-center">
                 Work In Progress
             </span>
