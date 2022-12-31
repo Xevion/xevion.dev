@@ -5,6 +5,7 @@ import ItemCard from "../components/ItemCard";
 import {getPlaiceholder} from "plaiceholder";
 import {useBreakpointValue} from "../utils/helpers";
 import type {Project} from "../utils/types";
+import Link from "next/link";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
@@ -78,6 +79,11 @@ export async function getStaticProps() {
     }
 }
 
+const buttons = [
+    {text: "GitHub", href: "https://github.com/Xevion"},
+    {text: "Contact", href: "/contact"}
+]
+
 const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
     const useLong = useBreakpointValue("sm", true, false);
 
@@ -99,13 +105,20 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                         <span
                             className="leading-3 bg-yellow-300 rounded-md text-black font-bold font-inter p-2">WIP</span>
                     </div>
-
                     <div className="w-full flex flex-col items-center h-40">
                         <div className="text-4xl sm:text-5xl pb-3">Hi. I&apos;m Ryan Walters.</div>
                         <div className="text-lg text-zinc-200">Full Stack Software Developer</div>
+                        <div className="w-full flex justify-center py-2 space-x-2">
+                            {buttons.map(({text, href}) =>
+                                <Link href={href} key={href}>
+                                    <div className="p-2 rounded-sm bg-zinc-900 hover:bg-zinc-800">
+                                        {text}
+                                    </div>
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
-
                 <div
                     className="flex py-12 sm:py-8 min-h-screen flex-row md:items-center justify-center">
                     <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
