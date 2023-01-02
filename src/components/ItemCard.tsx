@@ -40,11 +40,7 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
     return <>
         <div ref={itemRef}
              className={classNames("item [&:not(:first-child)]:mt-3", active ? "active" : null)}
-             onClick={() => {
-                 console.log('Overall div!')
-                 navigate();
-             }
-             }>
+             onClick={navigate}>
             <DependentImage fill src={banner} blurDataURL={bannerBlur}
                             className={(loaded) => classNames("object-cover", loaded ? null : "blur-xl")}
                             placeholder="blur"
