@@ -1,4 +1,4 @@
-import {FunctionComponent, ReactNode} from "react";
+import type {FunctionComponent, ReactNode} from "react";
 import {Disclosure} from '@headlessui/react'
 import {HiBars3, HiXMark} from "react-icons/hi2";
 import {classNames} from "../utils/helpers";
@@ -6,7 +6,7 @@ import Link from "next/link";
 
 const navigation: { id: string, name: string, href: string }[] = [
     {id: 'home', name: 'Home', href: '/',},
-    {id: 'projects', name: 'Projects', href: '/projects'},
+    {id: 'projects', name: 'Projects', href: '/#projects'}, // TODO: Switch this back to /projects once proper page is made
     {id: 'contact', name: 'Contact', href: '/contact'},
 ]
 
@@ -16,7 +16,7 @@ type WrapperProps = {
 };
 
 const AppWrapper: FunctionComponent<WrapperProps> = ({current, children}: WrapperProps) => {
-    return <div className="min-h-screen bg-zinc-800 text-zinc-50">
+    return <div className="min-h-screen bg-zinc-850 text-zinc-50">
         <Disclosure as="nav" className="bg-zinc-900">
             {({open}) => (
                 <>

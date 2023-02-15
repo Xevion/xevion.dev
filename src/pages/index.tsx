@@ -119,7 +119,7 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                         </div>
                     </div>
                 </div>
-                <div
+                <div id="projects"
                     className="flex py-12 sm:py-8 min-h-screen flex-row md:items-center justify-center">
                     <div className="h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%] mx-auto">
                         <div className="flex h-full m-1 flex-col justify-start gap-y-1">
