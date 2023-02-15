@@ -81,7 +81,8 @@ export async function getStaticProps() {
 
 const buttons = [
     {text: "GitHub", href: "https://github.com/Xevion"},
-    {text: "Contact", href: "/contact"}
+    {text: "Contact", href: "/contact"},
+    {text: "Resume", href: "/resume"}
 ]
 
 const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
@@ -99,7 +100,7 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                 <meta name="description" content="My personal website."/>
                 <link rel="icon" href="/favicon.ico"/>
             </Head>
-            <main className="bg-zinc-900 text-zinc-50">
+            <main className="bg-zinc-900 text-zinc-50 overflow-x-hidden">
                 <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
                     <div className="top-0 p-3 absolute w-full flex justify-end">
                         <span

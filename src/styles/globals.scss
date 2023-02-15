@@ -67,3 +67,7 @@ html, body {
     hyphens: none;
   }
 }
+
+body {
+  @apply h-full
+}
