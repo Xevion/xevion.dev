@@ -44,8 +44,8 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({current, children, hideNav
                                                 key={item.name}
                                                 href={item.href}
                                                 className={classNames(
-                                                    item.id == current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-700 hover:text-white',
-                                                    'px-3 py-2 rounded-md text-sm font-medium text-lg'
+                                                    item.id == current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-800/60 hover:text-white',
+                                                    'px-2.5 py-1 rounded-md text-sm font-medium text-lg'
                                                 )}
                                                 aria-current={item.id == current ? 'page' : undefined}
                                             >

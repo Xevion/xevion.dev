@@ -3,7 +3,7 @@ import AppWrapper from "../components/AppWrapper";
 import {BsDiscord, BsGithub} from "react-icons/bs";
 import {AiFillMail} from "react-icons/ai";
 import Link from "next/link";
-import {IconType} from "react-icons";
+import type {IconType} from "react-icons";
 import Tippy from "@tippyjs/react";
 import 'tippy.js/dist/tippy.css';
 
@@ -27,7 +27,7 @@ const ContactPage: NextPage = () => {
     return <AppWrapper current='contact'>
         <div className="w-full my-10 flex flex-col items-center">
             <div
-                className="bg-zinc-800 border border-zinc-700 rounded-md max-w-[23rem] sm:max-w-[25rem] lg:max-w-[30rem] mx-3 w-full p-5 flex flex-col">
+                className="bg-zinc-800/50 border border-zinc-800 rounded-md max-w-[23rem] sm:max-w-[25rem] lg:max-w-[30rem] mx-3 w-full p-5 flex flex-col">
                 <div className="flex justify-center gap-x-5 text-center">
                     {socials.map(({icon: Icon, href, hint, hideHint}, index) => {
                         const inner = <Icon className="w-8 h-8"/>;
