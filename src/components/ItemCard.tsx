@@ -10,6 +10,7 @@ import {type LinkIcon, LinkIcons} from "../utils/types";
 
 type ItemCardProps = {
     banner: string;
+    bannerSettings?: { quality: number};
     bannerBlur: string;
     title: string;
     description: string;
@@ -17,7 +18,7 @@ type ItemCardProps = {
     location: string;
 }
 
-const ItemCard = ({banner, bannerBlur, title, description, links, location}: ItemCardProps) => {
+const ItemCard = ({banner, bannerBlur, title, description, links, location, bannerSettings}: ItemCardProps) => {
     const itemRef = useRef<HTMLDivElement>(null);
     const mobileButtonRef = useRef<HTMLAnchorElement>(null);
     const [active, toggleActive, setActive] = useToggle()
@@ -41,7 +42,9 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location}: Ite
         <div ref={itemRef}
              className={classNames("item [&:not(:first-child)]:mt-3", active ? "active" : null)}
              onClick={navigate}>
-            <DependentImage fill src={banner} blurDataURL={bannerBlur}
+            <DependentImage fill src={banner}
+                            quality={bannerSettings?.quality ?? 75}
+                            blurDataURL={bannerBlur}
                             className={(loaded) => classNames("object-cover", loaded ? null : "blur-xl")}
                             placeholder="blur"
                             alt={`Banner for ${title}`}

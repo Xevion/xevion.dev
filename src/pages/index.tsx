@@ -63,6 +63,24 @@ export async function getStaticProps() {
                     location: "https://github.com/Xevion/Paths",
                 }
             ]
+        },
+        {
+            title: "Grain",
+            banner: "/grain.jpeg",
+            bannerSettings: {quality: 100},
+            location: "/grain",
+            shortDescription: "An experimental React app to generate beautiful backgrounds with noise filters.",
+            longDescription: "Quickly generate beautiful backgrounds with noise filters. Built with React, hosted on Vercel, and rendered using simple SVG noise filters (just HTML & CSS).",
+            links: [
+                {
+                    icon: 'external',
+                    location: "https://grain.xevion.dev"
+                },
+                {
+                    icon: "github",
+                    location: "https://github.com/Xevion/grain"
+                }
+            ]
         }
     ];
 

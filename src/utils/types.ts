@@ -1,10 +1,11 @@
-import {IconType} from "react-icons";
+import type {IconType} from "react-icons";
 import {AiFillGithub, AiOutlineLink} from "react-icons/ai";
 import {RxOpenInNewWindow} from "react-icons/rx";
 
 export type Project = {
     title: string;
     banner: string;
+    bannerSettings?: {quality: number;}
     longDescription: string;
     shortDescription: string;
     links?: LinkIcon[];
