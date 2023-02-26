@@ -20,8 +20,7 @@ const GrainPage: NextPage = () => {
             <title>Grain | Xevion.dev</title>
         </Head>
         <AppWrapper>
-
-            <div className="bg-zinc-850 text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
+            <div className="text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
                 <div className="relative my-10 p-3 px-6 w-full max-w-screen-md">
                     <div className="pb-2 flex justify-between">
                         <div className="text-3xl font-semibold">
@@ -44,7 +43,7 @@ const GrainPage: NextPage = () => {
                     </div>
                     <div className="mt-3 w-full prose prose-invert prose-lg">
                         <p>
-                            After seeing an interesting Instagram post with beautiful noise patterns & gradients, I decided to
+                            After seeing an online post with beautiful noise patterns & gradients, I decided to
                             try and recreate it. The result was Grain, a simple web app that generates beautiful noise.
                             Under the hood, this app uses multiple layers of SVGs that automatically rescale with the browsers viewport.
                             That way, the noise is always crisp and clear, no matter the screen size.

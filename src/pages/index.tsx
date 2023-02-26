@@ -6,6 +6,7 @@ import {getPlaiceholder} from "plaiceholder";
 import {useBreakpointValue} from "../utils/helpers";
 import type {Project} from "../utils/types";
 import Link from "next/link";
+import AppWrapper from "../components/AppWrapper";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
@@ -118,8 +119,8 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                 <meta name="description" content="My personal website."/>
                 <link rel="icon" href="/favicon.ico"/>
             </Head>
-            <main className="bg-zinc-900 text-zinc-50 overflow-x-hidden">
-                <div className="flex justify-center items-center bg-zinc-850 h-screen w-screen overflow-hidden">
+            <AppWrapper hideNavigation={true} className="overflow-x-hidden">
+            <div className="flex justify-center items-center h-screen w-screen overflow-hidden">
                     <div className="top-0 p-3 absolute w-full flex justify-end">
                         <span
                             className="leading-3 bg-yellow-300 rounded-md text-black font-bold font-inter p-2">WIP</span>
@@ -151,7 +152,7 @@ const Home: NextPage<HomeStaticProps> = ({projects}: HomeStaticProps) => {
                         </div>
                     </div>
                 </div>
-            </main>
+            </AppWrapper>
         </>
     );
 };

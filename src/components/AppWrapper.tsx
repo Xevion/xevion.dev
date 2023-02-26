@@ -11,13 +11,15 @@ const navigation: { id: string, name: string, href: string }[] = [
 ]
 
 type WrapperProps = {
+    className?: string;
+    hideNavigation?: boolean;
     current?: string;
     children?: ReactNode | ReactNode[] | null;
 };
 
-const AppWrapper: FunctionComponent<WrapperProps> = ({current, children}: WrapperProps) => {
-    return <div className="min-h-screen bg-zinc-850 text-zinc-50">
-        <Disclosure as="nav" className="bg-zinc-900">
+const AppWrapper: FunctionComponent<WrapperProps> = ({current, children, hideNavigation, className}: WrapperProps) => {
+    return <main className="min-h-screen bg-gradient-to-tl from-zinc-900 via-zinc-400/10 to-zinc-900 text-zinc-50">
+        {!hideNavigation ? <Disclosure as="nav">
             {({open}) => (
                 <>
                     <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -77,9 +79,9 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({current, children}: Wrappe
                     </Disclosure.Panel>
                 </>
             )}
-        </Disclosure>
+        </Disclosure> : null}
         {children}
-    </div>
+    </main>
 }
 
 export default AppWrapper;
