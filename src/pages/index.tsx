@@ -66,7 +66,7 @@ export async function getStaticProps() {
         },
         {
             title: "Grain",
-            banner: "/grain.jpeg",
+            banner: "/grain/banner.jpeg",
             bannerSettings: {quality: 100},
             location: "/grain",
             shortDescription: "An experimental React app to generate beautiful backgrounds with noise filters.",
