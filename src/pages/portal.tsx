@@ -20,14 +20,13 @@ const images: [string, string | ReactNode][] = [
     ["/portal/status.png", "Members can check their progress towards becoming full members & view what events they attended."],
 ]
 
-const PhototagPage: NextPage = () => {
+const PortalPage: NextPage = () => {
     return <>
         <Head>
             <title>Portal | Xevion.dev</title>
         </Head>
         <AppWrapper>
-
-            <div className="bg-zinc-850 text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
+            <div className="w-full overflow-auto h-full min-h-screen flex justify-center">
                 <div className="relative my-10 p-3 px-6 w-full max-w-screen-md">
                     <div className="pb-2 flex justify-between">
                         <div className="text-3xl font-semibold">
@@ -78,4 +77,4 @@ const PhototagPage: NextPage = () => {
     </>
 }
 
-export default PhototagPage;
+export default PortalPage;

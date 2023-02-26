@@ -20,7 +20,7 @@ const GrainPage: NextPage = () => {
             <title>Grain | Xevion.dev</title>
         </Head>
         <AppWrapper>
-            <div className="text-zinc-50 w-full overflow-auto h-full min-h-screen flex justify-center">
+            <div className="w-full overflow-auto h-full min-h-screen flex justify-center">
                 <div className="relative my-10 p-3 px-6 w-full max-w-screen-md">
                     <div className="pb-2 flex justify-between">
                         <div className="text-3xl font-semibold">
