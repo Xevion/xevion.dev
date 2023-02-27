@@ -9,7 +9,6 @@ module.exports = {
               }
             },
             fontFamily: {
-                manrope: ["\"Manrope\"", "sans-serif"],
                 inter: ["\"Inter\"", "sans-serif"],
                 roboto: ["\"Roboto\"", "sans-serif"],
                 mono: ["\"Roboto Mono\"", "monospace"],
