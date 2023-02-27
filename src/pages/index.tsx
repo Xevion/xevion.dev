@@ -47,11 +47,7 @@ export async function getStaticProps() {
         {
           icon: "github",
           location: "https://github.com/Xevion/phototag",
-        },
-        {
-          icon: "external",
-          location: "https://phototag.xevion.dev",
-        },
+        }
       ],
     },
     {
