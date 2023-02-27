@@ -1,15 +1,19 @@
-import {type AppType} from "next/app";
+import { type AppType } from "next/app";
 
-import {trpc} from "../utils/trpc";
+import { trpc } from "../utils/trpc";
 
 import "../styles/globals.scss";
-import {Analytics} from "@vercel/analytics/react";
-
-const MyApp: AppType = ({Component, pageProps}) => {
-    return <>
+import { Analytics } from "@vercel/analytics/react";
+import { Provider } from "react-wrap-balancer";
+const MyApp: AppType = ({ Component, pageProps }) => {
+  return (
+    <>
+      <Provider>
         <Component {...pageProps} />
-        <Analytics/>
-    </>;
+      </Provider>
+      <Analytics />
+    </>
+  );
 };
 
 export default trpc.withTRPC(MyApp);

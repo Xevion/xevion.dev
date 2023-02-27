@@ -3,6 +3,7 @@ import {useOnClickOutside, useToggle} from "usehooks-ts";
 import {classNames, isHoverable} from "../utils/helpers";
 import DependentImage from "./DependentImage";
 import ReactMarkdown from 'react-markdown'
+import Balancer from "react-wrap-balancer";
 
 import Link from "next/link";
 import {useRouter} from "next/router";
@@ -59,7 +60,9 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location, bann
                              e.stopPropagation();
                              navigate();
                          }}>
-                        <ReactMarkdown>{description}</ReactMarkdown>
+                        <Balancer>
+                            <ReactMarkdown>{description}</ReactMarkdown>
+                        </Balancer>
                     </div>
                 </div>
                 {(links?.length ?? 0) > 0 ?
