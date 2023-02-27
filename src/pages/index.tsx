@@ -147,12 +147,12 @@ const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
                 ))}
               </ul>
             </nav>
-            <div className="cursor-default select-none py-10 font-hanken text-4xl font-black tracking-widest sm:text-9xl">
+            <div className="cursor-default select-none py-10 font-hanken font-black tracking-widest text-8xl sm:text-9xl">
               XEVION
             </div>
-            <div className="text-sm text-zinc-500 text-center">
+            <div className="px-4 text-base sm:text-sm text-zinc-500 text-center">
               <Balancer>
-                Building software at <Link href="">Black Pearl Technology</Link> during my undergrad. <br/>
+                Building software at <span className="text-zinc-400">Black Pearl Technology</span> during my undergrad. <br/>
                 Always open to new opportunities.
               </Balancer>
             </div>
