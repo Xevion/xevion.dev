@@ -25,6 +25,7 @@
     "react-dom": "18.2.0",
     "react-icons": "^4.7.1",
     "react-markdown": "^8.0.4",
+    "react-ogp": "^0.0.3",
     "react-wrap-balancer": "^0.4.0",
     "sass": "^1.56.2",
     "sharp": "^0.31.3",
