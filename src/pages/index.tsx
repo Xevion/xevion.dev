@@ -106,6 +106,7 @@ export async function getStaticProps() {
 
 const buttons = [
   { text: "GitHub", href: "https://github.com/Xevion" },
+  {text: "Projects", href: "/projects"},
   { text: "Contact", href: "/contact" },
   { text: "Resume", href: "/resume" },
 ];
