@@ -18,7 +18,7 @@ type WrapperProps = {
 };
 
 const AppWrapper: FunctionComponent<WrapperProps> = ({current, children, hideNavigation, className}: WrapperProps) => {
-    return <main className="min-h-screen bg-gradient-to-tl from-zinc-900 via-zinc-400/10 to-zinc-900 text-zinc-50">
+    return <main className={classNames("body-gradient min-h-screen text-zinc-50", className)}>
         {!hideNavigation ? <Disclosure as="nav">
             {({open}) => (
                 <>
@@ -38,14 +38,14 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({current, children, hideNav
                             </div>
                             <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
                                 <div className="hidden sm:ml-6 sm:block">
-                                    <div className="flex space-x-4">
+                                    <div className="flex space-x-4 text-lg font-roboto  ">
                                         {navigation.map((item) => (
                                             <Link
                                                 key={item.name}
                                                 href={item.href}
                                                 className={classNames(
                                                     item.id == current ? 'bg-zinc-900 text-white' : 'text-gray-300 hover:bg-zinc-800/60 hover:text-white',
-                                                    'px-2.5 py-1 rounded-md text-sm font-medium text-lg'
+                                                    'px-2.5 py-1 rounded-md'
                                                 )}
                                                 aria-current={item.id == current ? 'page' : undefined}
                                             >

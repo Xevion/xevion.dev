@@ -53,8 +53,8 @@ const ItemCard = ({banner, bannerBlur, title, description, links, location, bann
                 <div
                     className="col-span-12 sm:col-span-9 lg:col-span-8 max-h-full overflow-hidden drop-shadow-2xl pb-2 md:p-1 pl-2">
                     <Link href={{pathname: location}}
-                          className="text-lg sm:text-2xl md:text-3xl font-semibold">{title}</Link>
-                    <div className="description mt-0 md:mt-1.5 text-base sm:text-xl md:text-xl overflow-hidden"
+                          className="text-lg sm:text-2xl md:text-3xl font-semibold font-roboto">{title}</Link>
+                    <div className="description mt-0 md:mt-1.5 text-base sm:text-xl md:text-xl font-light overflow-hidden"
                          onClick={(e) => {
                              e.stopPropagation();
                              navigate();
