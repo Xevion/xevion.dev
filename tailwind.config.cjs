@@ -10,13 +10,12 @@ module.exports = {
             },
             fontFamily: {
                 manrope: ["\"Manrope\"", "sans-serif"],
-                opensans: ["\"Open Sans\"", "sans-serif"],
                 inter: ["\"Inter\"", "sans-serif"],
+                roboto: ["\"Roboto\"", "sans-serif"],
                 mono: ["\"Roboto Mono\"", "monospace"],
-                raleway: ["\"Raleway\"", "sans-serif"],
-                roboto: ["\"Roboto\""],
+                hanken: ["\"Hanken Grotesk\"", "sans-serif"],
             },
         },
     },
-    plugins: [require('@tailwindcss/typography')],
+plugins: [require('@tailwindcss/typography')],
 };
