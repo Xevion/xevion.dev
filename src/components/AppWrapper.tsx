@@ -6,7 +6,7 @@ import Link from "next/link";
 
 const navigation: { id: string, name: string, href: string }[] = [
     {id: 'home', name: 'Home', href: '/',},
-    {id: 'projects', name: 'Projects', href: '/#projects'}, // TODO: Switch this back to /projects once proper page is made
+    {id: 'projects', name: 'Projects', href: '/projects'},
     {id: 'contact', name: 'Contact', href: '/contact'},
 ]
 
