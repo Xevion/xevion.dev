@@ -19,6 +19,12 @@ const ProjectsPage: NextPage = () => {
             icon: RiMagicLine
         },
         {
+            name: "Runnerspace",
+            description: "Hackathon MySpace Clone",
+            url: "https://runnerspace.xevion.dev",
+            icon: RiMagicLine
+        },
+        {
             name: "v6 Place",
             description: "Paint Images with IPv6 Addresses",
             url: "https://github.com/Xevion/v6-place",
@@ -69,13 +75,13 @@ const ProjectsPage: NextPage = () => {
         {
             name: "rdap",
             description: "Javascript RDAP Client",
-            url: "https://github.com/Xevion/rdap",
+            url: "https://rdap.xevion.dev",
             icon: MdOutlineDns
         },
         {
             name: "icons",
             description: "Dynamic React-Icons Loading",
-            url: "https://github.com/Xevion/icons",
+            url: "https://icons.xevion.dev",
             icon: FaReact
         },
         {
