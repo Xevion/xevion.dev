@@ -7,6 +7,7 @@ import AppWrapper from "../components/AppWrapper";
 import type {ReactNode} from "react";
 
 const images: [string, string | ReactNode][] = [
+    ["/portal/home.png", "The home page."],
     ["/portal/events.png", <> A page listing all current events. <br/> Initial data is cached for performance, but
         becomes
         dynamic when filtered.</>],
@@ -33,7 +34,7 @@ const PortalPage: NextPage = () => {
                             Portal
                         </div>
                         <div className="flex items-center justify-end space-x-1.5">
-                            <Link href="https://github.com/UTSA-ACM/Portal" target="_blank">
+                            <Link href="https://github.com/acmutsa/Portal" target="_blank">
                                 <BsGithub className="w-6 h-6 hover:text-zinc-200"/>
                             </Link>
                         </div>

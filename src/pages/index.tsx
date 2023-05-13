@@ -28,7 +28,7 @@ export async function getStaticProps() {
       links: [
         {
           icon: "github",
-          location: "https://github.com/UTSA-ACM/Portal",
+          location: "https://github.com/acmutsa/Portal",
         },
         {
           icon: "external",
