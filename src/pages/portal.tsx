@@ -7,7 +7,7 @@ import AppWrapper from "../components/AppWrapper";
 import type {ReactNode} from "react";
 
 const images: [string, string | ReactNode][] = [
-    ["/portal/home.png", "The home page."],
+    ["/portal/home.jpeg", "The home page."],
     ["/portal/events.png", <> A page listing all current events. <br/> Initial data is cached for performance, but
         becomes
         dynamic when filtered.</>],
