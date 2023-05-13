@@ -1,12 +1,14 @@
 import {type NextPage} from "next";
 import AppWrapper from "../components/AppWrapper";
 import {RiMagicLine} from "react-icons/ri";
-import {BiHash, BiNetworkChart} from "react-icons/bi";
+import {BiBus, BiHash, BiNetworkChart} from "react-icons/bi";
 import Link from "next/link";
 import {IconType} from "react-icons";
 import {HiOutlineRss} from "react-icons/hi";
-import {GiPathDistance} from "react-icons/gi";
-import {MdOutlineGrain} from "react-icons/md";
+import {GiHummingbird, GiPathDistance} from "react-icons/gi";
+import {MdOutlineGrain, MdOutlineDns, MdOutlineLeaderboard} from "react-icons/md";
+import {FiLayers} from "react-icons/fi";
+import {FaReact} from "react-icons/fa";
 
 const ProjectsPage: NextPage = () => {
     const projects: { name: string, description: string, url?: string, icon: IconType }[] = [
@@ -45,10 +47,46 @@ const ProjectsPage: NextPage = () => {
             description: "Pretty SVG-based Noise",
             url: "https://grain.xevion.dev",
             icon: MdOutlineGrain
+        },
+        {
+            name: "The Office",
+            description: "View Quotes from The Office",
+            url: "https://the-office.xevion.dev",
+            icon: FiLayers
+        },
+        {
+            name: "Boids",
+            description: "Flocking Simulation",
+            url: "https://github.com/Xevion/Boids",
+            icon: GiHummingbird
+        },
+        {
+            name: "bus-reminder",
+            description: "Last Bus Departure Reminder",
+            url: "http://github.com/Xevion/bus-reminder",
+            icon: BiBus
+        },
+        {
+            name: "rdap",
+            description: "Javascript RDAP Client",
+            url: "https://github.com/Xevion/rdap",
+            icon: MdOutlineDns
+        },
+        {
+            name: "icons",
+            description: "Dynamic React-Icons Loading",
+            url: "https://github.com/Xevion/icons",
+            icon: FaReact
+        },
+        {
+            name: "trivia",
+            description: "Trivia Leaderboard in Flask",
+            url: "http://github.com/Xevion/trivia",
+            icon: MdOutlineLeaderboard
         }
     ]
     return <AppWrapper current='projects'>
-        <div className="mt-20 grid grid-cols-3 gap-20 h-full py-2 max-w-500 w-max mx-auto flex ">
+        <div className="mt-20 grid grid-cols-3 gap-x-20 gap-y-10 h-full py-2 max-w-500 w-max mx-auto flex ">
             {projects.map(({name, description, url, icon: Icon}) => <Link
                 key={name}
                 className="relative flex flex-shrink items-center opacity-75 hover:opacity-100 transition-opacity"
