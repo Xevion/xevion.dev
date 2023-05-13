@@ -31,7 +31,7 @@ const ProjectsPage: NextPage = () => {
         {
             name: "Paths",
             description: "Graph Traversal Algorithms",
-            url: "/paths",
+            url: "https://github.com/Xevion/Paths",
             icon: GiPathDistance
         },
         {
@@ -51,7 +51,7 @@ const ProjectsPage: NextPage = () => {
         <div className="mt-20 grid grid-cols-3 gap-20 h-full py-2 max-w-500 w-max mx-auto flex ">
             {projects.map(({name, description, url, icon: Icon}) => <Link
                 key={name}
-                className="relative flex flex-shrink items-center opacity-50 hover:opacity-100 transition-opacity"
+                className="relative flex flex-shrink items-center opacity-75 hover:opacity-100 transition-opacity"
                 href={url ?? ""}
                 target="_blank"
                 rel="noreferrer"
@@ -61,7 +61,7 @@ const ProjectsPage: NextPage = () => {
                 </div>
                 <div className="flex-auto">
                     <div className="text-normal">{name}</div>
-                    <div className="text-sm opacity-60 font-normal">{description}</div>
+                    <div className="text-sm opacity-70 font-normal">{description}</div>
                 </div>
             </Link>)}
         </div>
