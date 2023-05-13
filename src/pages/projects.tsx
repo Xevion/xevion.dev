@@ -87,7 +87,7 @@ const ProjectsPage: NextPage = () => {
         },
         {
             name: "trivia",
-            description: "Trivia Leaderboard in Flask",
+            description: "CLI + Flask Leaderboard",
             url: "http://github.com/Xevion/trivia",
             icon: MdOutlineLeaderboard
         },

@@ -145,8 +145,8 @@ const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
                 ))}
               </ul>
             </nav>
-            <div className="cursor-default select-none py-10 font-hanken font-black tracking-widest text-8xl sm:text-9xl">
-              XEVION
+            <div className="cursor-default uppercase select-none py-10 font-hanken font-black tracking-widest text-6xl min-[300px]:text-7xl min-[500px]:text-8xl sm:text-9x lg:text-10xl">
+              Xevion
             </div>
             <div className="px-4 text-base sm:text-sm text-zinc-500 text-center">
               <Balancer>
