@@ -86,7 +86,7 @@ const ProjectsPage: NextPage = () => {
         }
     ]
     return <AppWrapper current='projects'>
-        <div className="mt-20 grid grid-cols-3 gap-x-20 gap-y-10 h-full py-2 max-w-500 w-max mx-auto flex ">
+        <div className="mt-20 grid grid-cols-3 gap-x-20 gap-y-14 h-full py-2 max-w-500 w-max mx-auto flex ">
             {projects.map(({name, description, url, icon: Icon}) => <Link
                 key={name}
                 className="relative flex flex-shrink items-center opacity-75 hover:opacity-100 transition-opacity"
