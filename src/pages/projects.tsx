@@ -9,6 +9,7 @@ import {GiHummingbird, GiPathDistance} from "react-icons/gi";
 import {MdOutlineGrain, MdOutlineDns, MdOutlineLeaderboard} from "react-icons/md";
 import {FiLayers} from "react-icons/fi";
 import {FaReact} from "react-icons/fa";
+import {SiPowershell} from "react-icons/si";
 
 const ProjectsPage: NextPage = () => {
     const projects: { name: string, description: string, url?: string, icon: IconType }[] = [
@@ -89,6 +90,12 @@ const ProjectsPage: NextPage = () => {
             description: "Trivia Leaderboard in Flask",
             url: "http://github.com/Xevion/trivia",
             icon: MdOutlineLeaderboard
+        },
+        {
+            name: "Powershell",
+            description: "Scripts & Guides",
+            url: "https://powershell.xevion.dev",
+            icon: SiPowershell
         }
     ]
     return <AppWrapper current='projects'>
