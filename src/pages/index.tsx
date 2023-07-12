@@ -150,7 +150,7 @@ const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
             </div>
             <div className="px-4 text-base sm:text-sm text-zinc-500 text-center">
               <Balancer>
-                Building software at <span className="text-zinc-400">Black Pearl Technology</span> during my undergrad. <br/>
+                Currently interning at <span className="text-zinc-400">USAA</span> in Software Development, beginning contractor roles soon. <br/>
                 Always open to new opportunities.
               </Balancer>
             </div>
