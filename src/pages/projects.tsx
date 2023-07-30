@@ -4,12 +4,14 @@ import {RiMagicLine} from "react-icons/ri";
 import {BiBus, BiHash, BiNetworkChart} from "react-icons/bi";
 import Link from "next/link";
 import {IconType} from "react-icons";
+import {PiPlantBold} from "react-icons/pi";
 import {HiOutlineRss} from "react-icons/hi";
 import {GiHummingbird, GiPathDistance} from "react-icons/gi";
 import {MdOutlineGrain, MdOutlineDns, MdOutlineLeaderboard} from "react-icons/md";
 import {FiLayers} from "react-icons/fi";
 import {FaReact} from "react-icons/fa";
 import {SiPowershell} from "react-icons/si";
+import {RxTimer} from "react-icons/rx";
 
 const ProjectsPage: NextPage = () => {
     const projects: { name: string, description: string, url?: string, icon: IconType }[] = [
@@ -54,6 +56,18 @@ const ProjectsPage: NextPage = () => {
             description: "Pretty SVG-based Noise",
             url: "https://grain.xevion.dev",
             icon: MdOutlineGrain
+        },
+        {
+            name: "Hydroponics Expanded",
+            description: "A RimWorld Mod for Hydroponics",
+            url: "https://github.com/Xevion/RimWorld-Hydroponics-Expanded",
+            icon: PiPlantBold
+        },
+        {
+            name: "Time Banner",
+            description: "A Rust Webserver for on-the-fly PNG Timestamps",
+            url: "https://github.com/Xevion/time-banner",
+            icon: RxTimer
         },
         {
             name: "The Office",
