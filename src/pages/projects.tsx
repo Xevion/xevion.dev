@@ -65,7 +65,7 @@ const ProjectsPage: NextPage = () => {
         },
         {
             name: "Time Banner",
-            description: "A Rust Webserver for on-the-fly PNG Timestamps",
+            description: "Instant PNG Timestamps in Rust",
             url: "https://github.com/Xevion/time-banner",
             icon: RxTimer
         },
