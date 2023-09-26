@@ -47,7 +47,7 @@ export async function getStaticProps() {
         {
           icon: "github",
           location: "https://github.com/Xevion/phototag",
-        }
+        },
       ],
     },
     {
@@ -145,13 +145,13 @@ const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
                 ))}
               </ul>
             </nav>
-            <div className="cursor-default uppercase select-none py-10 font-hanken font-black tracking-widest text-6xl min-[300px]:text-7xl min-[500px]:text-8xl sm:text-9x lg:text-10xl">
+            <div className="sm:text-9x cursor-default select-none py-10 font-hanken text-6xl font-black uppercase tracking-widest min-[300px]:text-7xl min-[500px]:text-8xl lg:text-10xl">
               Xevion
             </div>
-            <div className="px-4 text-base sm:text-sm text-zinc-500 text-center">
+            <div className="px-4 text-center text-base text-zinc-500 sm:text-sm">
               <Balancer>
-                Currently interning at <span className="text-zinc-400">USAA</span> in Software Development, beginning contractor roles soon. <br/>
-                Always open to new opportunities.
+                Beginning contractor roles soon. <br /> Always open to new
+                opportunities.
               </Balancer>
             </div>
           </div>
