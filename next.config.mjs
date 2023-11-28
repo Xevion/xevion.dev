@@ -27,7 +27,7 @@ const v2_redirects = [
   "/2021/02/25/project-facelift-new-and-old",
   "/2022/03/29/runnerspace-built-in-under-30-hours",
   "/2022/07/16/restricted-memory-and-data-framing-tricks",
-  "/drafts/presenting-to-humans",
+  "/drafts/2022-09-19-presenting-to-humans/",
   "/photography",
 ].map((url) => {
   // If the URL starts with /2, redirect to the new blog. Otherwise, redirect to the old v2 blog to maintain URLs.
