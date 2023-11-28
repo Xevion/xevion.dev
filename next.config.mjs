@@ -30,6 +30,7 @@ const v2_redirects = [
   "/drafts/presenting-to-humans",
   "/photography",
 ].map((url) => {
+  // If the URL starts with /2, redirect to the new blog. Otherwise, redirect to the old v2 blog to maintain URLs.
   if (url.startsWith("/2"))
     return {
       source: url,
