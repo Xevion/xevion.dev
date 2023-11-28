@@ -46,6 +46,12 @@ const ProjectsPage: NextPage = () => {
             icon: GiPathDistance
         },
         {
+            name: "undefined behaviors",
+            description: "Astro-based Blog",
+            url: "https://undefined.behavio.rs",
+            icon: HiOutlineRss
+        },
+        {
             name: "v2.xevion.dev",
             description: "Jekyll-based Blog",
             url: "https://v2.xevion.dev",
