@@ -2,7 +2,6 @@ import { readSingleton } from "@directus/sdk";
 import { type NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
-import { getPlaiceholder } from "plaiceholder";
 import { useEffect } from "react";
 import Balancer from "react-wrap-balancer";
 import AppWrapper from "../components/AppWrapper";
@@ -11,11 +10,9 @@ import directus from "../utils/directus";
 import { useBreakpointValue } from "../utils/helpers";
 import type { Project } from "../utils/types";
 
-type ProjectWithBlur = Project & { bannerBlur: string };
-
 type Props = {
   tagline: string;
-  projects: ProjectWithBlur[];
+  projects: Project[];
 };
 
 export async function getServerSideProps(): Promise<{ props: Props }> {
@@ -95,17 +92,7 @@ export async function getServerSideProps(): Promise<{ props: Props }> {
   return {
     props: {
       tagline: metadata.tagline,
-      projects: await Promise.all(
-        projects.map(async (project) => {
-          const { base64 } = await getPlaiceholder(project.banner, {
-            size: 16,
-          });
-          return {
-            ...project,
-            bannerBlur: base64,
-          };
-        })
-      ),
+      projects,
     },
   };
 }

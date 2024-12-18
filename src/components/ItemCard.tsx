@@ -12,7 +12,6 @@ import { type LinkIcon, LinkIcons } from "../utils/types";
 type ItemCardProps = {
   banner: string;
   bannerSettings?: { quality: number };
-  bannerBlur: string;
   title: string;
   description: string;
   links?: LinkIcon[];
@@ -21,7 +20,6 @@ type ItemCardProps = {
 
 const ItemCard = ({
   banner,
-  bannerBlur,
   title,
   description,
   links,
@@ -64,11 +62,9 @@ const ItemCard = ({
           fill
           src={banner}
           quality={bannerSettings?.quality ?? 75}
-          blurDataURL={bannerBlur}
           className={(loaded) =>
             classNames("object-cover", loaded ? null : "blur-xl")
           }
-          placeholder="blur"
           alt={`Banner for ${title}`}
         />
         <div className="elements m-2 grid h-full grid-cols-12 px-1 sm:px-4">
