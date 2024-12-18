@@ -35,7 +35,7 @@ const v2_redirects = [
     return {
       source: url,
       destination: `https://undefined.behavio.rs/posts${url.slice(
-        nthIndex(url, "/", 4)
+        nthIndex(url, "/", 4),
       )}`,
       permanent: false,
     };

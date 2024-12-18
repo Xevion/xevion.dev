@@ -104,7 +104,7 @@ export async function getStaticProps() {
             ...project,
             bannerBlur: base64,
           };
-        })
+        }),
       ),
     },
   };
@@ -145,7 +145,7 @@ const Home: NextPage<HomeStaticProps> = ({
                 {buttons.map(({ text, href }) => (
                   <Link
                     key={href}
-                    className="text-sm  text-zinc-500 duration-500 hover:text-zinc-300"
+                    className="text-sm text-zinc-500 duration-500 hover:text-zinc-300"
                     href={href}
                   >
                     {text}
