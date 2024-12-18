@@ -1,15 +1,15 @@
+import { readItems } from "@directus/sdk";
 import { type NextPage } from "next";
 import Head from "next/head";
-import React, { useEffect } from "react";
-import ItemCard from "../components/ItemCard";
-import { getPlaiceholder } from "plaiceholder";
-import { useBreakpointValue } from "../utils/helpers";
-import type { Project } from "../utils/types";
 import Link from "next/link";
+import { getPlaiceholder } from "plaiceholder";
+import { useEffect } from "react";
 import Balancer from "react-wrap-balancer";
 import AppWrapper from "../components/AppWrapper";
+import ItemCard from "../components/ItemCard";
 import directus from "../utils/directus";
-import { readItems } from "@directus/sdk";
+import { useBreakpointValue } from "../utils/helpers";
+import type { Project } from "../utils/types";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
@@ -94,7 +94,7 @@ export async function getStaticProps() {
 
   return {
     props: {
-      tagline: metadata.tagline,
+      tagline: metadata[0]!.tagline,
       projects: await Promise.all(
         projects.map(async (project) => {
           const { base64 } = await getPlaiceholder(project.banner, {
@@ -126,9 +126,8 @@ const Home: NextPage<HomeStaticProps> = ({
 
   // use-tailwind-breakpoint
   useEffect(() => {
-    typeof window !== "undefined"
-      ? window.dispatchEvent(new Event("resize"))
-      : null;
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event("resize"));
   }, []);
 
   return (

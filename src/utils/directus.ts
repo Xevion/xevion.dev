@@ -1,12 +1,12 @@
 import { createDirectus, rest } from "@directus/sdk";
 
-export type Schema = {
+export interface Schema {
   metadata: Metadata[];
-};
+}
 
-export type Metadata = {
+export interface Metadata {
   tagline: string;
-};
+}
 
 const directus = createDirectus<Schema>("https://api.xevion.dev").with(rest());
 
