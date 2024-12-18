@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@directus/sdk": "^18.0.3",
     "@headlessui/react": "^1.7.7",
     "@kodingdotninja/use-tailwind-breakpoint": "^0.0.5",
     "@tailwindcss/typography": "^0.5.8",

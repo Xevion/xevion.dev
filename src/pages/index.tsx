@@ -8,14 +8,19 @@ import type { Project } from "../utils/types";
 import Link from "next/link";
 import Balancer from "react-wrap-balancer";
 import AppWrapper from "../components/AppWrapper";
+import directus from "../utils/directus";
+import { readItems } from "@directus/sdk";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
 type HomeStaticProps = {
+  tagline: string;
   projects: ProjectWithBlur[];
 };
 
 export async function getStaticProps() {
+  const metadata = await directus.request(readItems("metadata"));
+
   const projects: Project[] = [
     {
       title: "Portal",
@@ -89,6 +94,7 @@ export async function getStaticProps() {
 
   return {
     props: {
+      tagline: metadata.tagline,
       projects: await Promise.all(
         projects.map(async (project) => {
           const { base64 } = await getPlaiceholder(project.banner, {
@@ -112,7 +118,10 @@ const buttons = [
   { text: "Resume", href: "/resume" },
 ];
 
-const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
+const Home: NextPage<HomeStaticProps> = ({
+  tagline,
+  projects,
+}: HomeStaticProps) => {
   const useLong = useBreakpointValue("sm", true, false);
 
   // use-tailwind-breakpoint
@@ -149,10 +158,7 @@ const Home: NextPage<HomeStaticProps> = ({ projects }: HomeStaticProps) => {
               Xevion
             </div>
             <div className="px-4 text-center text-base text-zinc-500 sm:text-sm">
-              <Balancer>
-                Beginning contractor roles soon. <br /> Always open to new
-                opportunities.
-              </Balancer>
+              <Balancer>{tagline}</Balancer>
             </div>
           </div>
         </div>
