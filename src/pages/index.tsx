@@ -1,4 +1,4 @@
-import { readItems } from "@directus/sdk";
+import { readSingleton } from "@directus/sdk";
 import { type NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -19,7 +19,7 @@ type HomeStaticProps = {
 };
 
 export async function getStaticProps() {
-  const metadata = await directus.request(readItems("metadata"));
+  const metadata = await directus.request(readSingleton("metadata"));
 
   const projects: Project[] = [
     {
@@ -94,7 +94,7 @@ export async function getStaticProps() {
 
   return {
     props: {
-      tagline: metadata[0]!.tagline,
+      tagline: metadata.tagline,
       projects: await Promise.all(
         projects.map(async (project) => {
           const { base64 } = await getPlaiceholder(project.banner, {
@@ -104,7 +104,7 @@ export async function getStaticProps() {
             ...project,
             bannerBlur: base64,
           };
-        }),
+        })
       ),
     },
   };

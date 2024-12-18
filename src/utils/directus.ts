@@ -1,7 +1,7 @@
 import { createDirectus, rest } from "@directus/sdk";
 
 export interface Schema {
-  metadata: Metadata[];
+  metadata: Metadata;
 }
 
 export interface Metadata {
