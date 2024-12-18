@@ -35,7 +35,7 @@ const v2_redirects = [
     return {
       source: url,
       destination: `https://undefined.behavio.rs/posts${url.slice(
-        nthIndex(url, "/", 4),
+        nthIndex(url, "/", 4)
       )}`,
       permanent: false,
     };
@@ -50,10 +50,6 @@ const v2_redirects = [
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
-  i18n: {
-    locales: ["en"],
-    defaultLocale: "en",
-  },
   async redirects() {
     // Source cannot end with / slash
     return [

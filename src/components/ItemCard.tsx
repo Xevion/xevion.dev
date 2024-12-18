@@ -33,6 +33,7 @@ const ItemCard = ({
   const [active, toggleActive, setActive] = useToggle();
   const router = useRouter();
 
+  // @ts-expect-error Some kind of regression in usehooks-ts causes the useOnClickOutside hook to not accept 'null' types 
   useOnClickOutside(itemRef, (event) => {
     if (
       mobileButtonRef.current != null &&
