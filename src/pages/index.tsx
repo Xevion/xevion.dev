@@ -13,12 +13,12 @@ import type { Project } from "../utils/types";
 
 type ProjectWithBlur = Project & { bannerBlur: string };
 
-type HomeStaticProps = {
+type Props = {
   tagline: string;
   projects: ProjectWithBlur[];
 };
 
-export async function getStaticProps() {
+export async function getServerSideProps(): Promise<{ props: Props }> {
   const metadata = await directus.request(readSingleton("metadata"));
 
   const projects: Project[] = [
@@ -118,10 +118,7 @@ const buttons = [
   { text: "Resume", href: "/resume" },
 ];
 
-const Home: NextPage<HomeStaticProps> = ({
-  tagline,
-  projects,
-}: HomeStaticProps) => {
+const Home: NextPage<Props> = ({ tagline, projects }: Props) => {
   const useLong = useBreakpointValue("sm", true, false);
 
   // use-tailwind-breakpoint
