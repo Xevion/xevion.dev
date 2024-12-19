@@ -21,7 +21,7 @@ const DependentImage = (props: DependentImageProps) => {
       {...props}
       className={renderedClassName}
       alt="no"
-      onLoadingComplete={() => {
+      onLoad={() => {
         setLoaded(true);
       }}
     />
