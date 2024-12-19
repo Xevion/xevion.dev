@@ -1,3 +1,20 @@
 {
-  "cSpell.words": ["plaiceholder"]
+  "cSpell.words": [
+    "azabani",
+    "CLIENTVAR",
+    "directus",
+    "hanken",
+    "headlessui",
+    "Hoverable",
+    "IPTC",
+    "kodingdotninja",
+    "Phototag",
+    "plaiceholder",
+    "runnerspace",
+    "SERVERVAR",
+    "turbopack",
+    "usehooks"
+  ],
+  "spellright.language": ["en"],
+  "spellright.documentTypes": ["markdown", "latex", "plaintext", "typescript"]
 }
