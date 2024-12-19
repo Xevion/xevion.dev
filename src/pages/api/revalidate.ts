@@ -7,7 +7,7 @@ import { env } from "@/env/server.mjs";
 async function getURLs(
   type: string,
   key: string | number,
-  payload: Map<string, unknown>,
+  payload: Record<string, unknown>,
 ): Promise<string[] | null> {
   if (type == "project_link" || type == "project_technology") {
     console.error({
@@ -50,8 +50,8 @@ async function getURLs(
 const requestSchema = z.object({
   type: z.string(),
   keys: z.array(z.string().or(z.number().int())).min(1),
-  source: z.map(z.string(), z.any()),
-  payload: z.map(z.string(), z.any()),
+  source: z.record(z.string(), z.any()),
+  payload: z.record(z.string(), z.any()),
 });
 
 export default async function handler(
