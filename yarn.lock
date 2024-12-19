@@ -310,10 +310,10 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@kodingdotninja/use-tailwind-breakpoint@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@kodingdotninja/use-tailwind-breakpoint/-/use-tailwind-breakpoint-0.0.5.tgz#f3319448c33572e2e810700e6f2c4e219cf3b54a"
-  integrity sha512-7h52zL+l+14u9diyjVcGoS5NRIwrc6euIGlHDwtJXlrR3h31RNyTrOfimy7PJTvS4fFdNgbzyrNcGfhj3sDRfQ==
+"@kodingdotninja/use-tailwind-breakpoint@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@kodingdotninja/use-tailwind-breakpoint/-/use-tailwind-breakpoint-1.0.0.tgz#2ccc01812fc911cf8228b264a82a2849eefe1cde"
+  integrity sha512-UVN3Au5qBg7H7tkLxInvbozpigout08AWj6wQORtvAO/F67Gb3sAayuOgppHZTjMuQPAUbVL+TWMLwivuIxWtw==
 
 "@next/env@15.1.1":
   version "15.1.1"
