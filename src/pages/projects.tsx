@@ -129,7 +129,7 @@ const ProjectsPage: NextPage = () => {
   ];
   return (
     <AppWrapper current="projects">
-      <div className="max-w-500 mx-auto mt-20 flex grid h-full w-max grid-cols-1 gap-x-20 gap-y-14 py-2 md:grid-cols-2 lg:grid-cols-3">
+      <div className="max-w-500 mx-auto mt-20 grid h-full w-max grid-cols-1 gap-x-20 gap-y-14 py-2 md:grid-cols-2 lg:grid-cols-3">
         {projects.map(({ name, description, url, icon: Icon }) => (
           <Link
             key={name}
