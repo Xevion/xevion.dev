@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import create from "@kodingdotninja/use-tailwind-breakpoint";
 import resolveConfig from "tailwindcss/resolveConfig";
-import tailwindConfig from "./../../tailwind.config.cjs";
+import tailwindConfig from "@/../tailwind.config.cjs";
 
 export function classNames(...classes: (string | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");

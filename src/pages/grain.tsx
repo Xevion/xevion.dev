@@ -4,7 +4,7 @@ import Image from "next/image";
 import { BsGithub } from "react-icons/bs";
 import { RxOpenInNewWindow } from "react-icons/rx";
 import Link from "next/link";
-import AppWrapper from "../components/AppWrapper";
+import AppWrapper from "@/components/AppWrapper";
 import type { ReactNode } from "react";
 
 type Screenshot = [string, null | string | ReactNode];

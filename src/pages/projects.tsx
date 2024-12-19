@@ -1,5 +1,5 @@
 import { type NextPage } from "next";
-import AppWrapper from "../components/AppWrapper";
+import AppWrapper from "@/components/AppWrapper";
 import { RiMagicLine } from "react-icons/ri";
 import { BiBus, BiHash, BiNetworkChart } from "react-icons/bi";
 import Link from "next/link";

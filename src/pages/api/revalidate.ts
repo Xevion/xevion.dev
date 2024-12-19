@@ -1,8 +1,8 @@
 import { readItem, readItems } from "@directus/sdk";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-import directus from "../../utils/directus";
-import { env } from "../../env/server.mjs";
+import directus from "@/utils/directus";
+import { env } from "@/env/server.mjs";
 
 async function getURLs(
   type: string,

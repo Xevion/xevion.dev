@@ -1,7 +1,7 @@
 import type { FunctionComponent, ReactNode } from "react";
 import { Disclosure } from "@headlessui/react";
 import { HiBars3, HiXMark } from "react-icons/hi2";
-import { classNames } from "../utils/helpers";
+import { classNames } from "@/utils/helpers";
 import Link from "next/link";
 
 const navigation: { id: string; name: string; href: string }[] = [

@@ -3,7 +3,7 @@ import Head from "next/head";
 import Image from "next/image";
 import { BsGithub } from "react-icons/bs";
 import Link from "next/link";
-import AppWrapper from "../components/AppWrapper";
+import AppWrapper from "@/components/AppWrapper";
 
 const PhototagPage: NextPage = () => {
   return (

@@ -1,5 +1,5 @@
 import { type NextPage } from "next";
-import AppWrapper from "../components/AppWrapper";
+import AppWrapper from "@/components/AppWrapper";
 import { BsDiscord, BsGithub } from "react-icons/bs";
 import { AiFillMail } from "react-icons/ai";
 import Link from "next/link";

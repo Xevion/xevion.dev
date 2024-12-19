@@ -1,13 +1,13 @@
 import React, { useRef } from "react";
 import { useOnClickOutside, useToggle } from "usehooks-ts";
-import { classNames, isHoverable } from "../utils/helpers";
-import DependentImage from "./DependentImage";
+import { classNames, isHoverable } from "@/utils/helpers";
 import ReactMarkdown from "react-markdown";
 import Balancer from "react-wrap-balancer";
 
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { type LinkIcon, LinkIcons } from "../utils/types";
+import { type LinkIcon, LinkIcons } from "@/utils/types";
+import DependentImage from "@/components/DependentImage";
 
 type ItemCardProps = {
   banner: string;
@@ -31,7 +31,7 @@ const ItemCard = ({
   const [active, toggleActive, setActive] = useToggle();
   const router = useRouter();
 
-  // @ts-expect-error Some kind of regression in usehooks-ts causes the useOnClickOutside hook to not accept 'null' types 
+  // @ts-expect-error Some kind of regression in usehooks-ts causes the useOnClickOutside hook to not accept 'null' types
   useOnClickOutside(itemRef, (event) => {
     if (
       mobileButtonRef.current != null &&

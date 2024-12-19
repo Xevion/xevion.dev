@@ -4,11 +4,11 @@ import Head from "next/head";
 import Link from "next/link";
 import { useEffect } from "react";
 import Balancer from "react-wrap-balancer";
-import AppWrapper from "../components/AppWrapper";
-import ItemCard from "../components/ItemCard";
-import directus from "../utils/directus";
-import { useBreakpointValue } from "../utils/helpers";
-import type { Project } from "../utils/types";
+import AppWrapper from "@/components/AppWrapper";
+import ItemCard from "@/components/ItemCard";
+import directus from "@/utils/directus";
+import { useBreakpointValue } from "@/utils/helpers";
+import type { Project } from "@/utils/types";
 
 type IndexProps = {
   tagline: string;

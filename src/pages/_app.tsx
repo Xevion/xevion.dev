@@ -1,8 +1,8 @@
 import { type AppType } from "next/app";
 
-import { trpc } from "../utils/trpc";
+import { trpc } from "@/utils/trpc";
 
-import "../styles/globals.scss";
+import "@/styles/globals.scss";
 import { Analytics } from "@vercel/analytics/react";
 import { Provider } from "react-wrap-balancer";
 import Head from "next/head";
