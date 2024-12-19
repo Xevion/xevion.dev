@@ -6,7 +6,7 @@ import { env } from "../../env/server.mjs";
 
 async function getURLs(
   type: string,
-  key: string,
+  key: string | number,
   payload: Map<string, unknown>,
 ): Promise<string[] | null> {
   if (type == "project_link" || type == "project_technology") {
@@ -49,7 +49,7 @@ async function getURLs(
 
 const requestSchema = z.object({
   type: z.string(),
-  keys: z.array(z.string()).min(1),
+  keys: z.array(z.string().or(z.number().int())).min(1),
   source: z.map(z.string(), z.any()),
   payload: z.map(z.string(), z.any()),
 });
