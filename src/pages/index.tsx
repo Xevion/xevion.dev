@@ -1,5 +1,5 @@
 import { readSingleton } from "@directus/sdk";
-import { type NextPage } from "next";
+import { GetStaticPropsResult, type NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect } from "react";
@@ -10,13 +10,19 @@ import directus from "../utils/directus";
 import { useBreakpointValue } from "../utils/helpers";
 import type { Project } from "../utils/types";
 
-type Props = {
+type IndexProps = {
   tagline: string;
   projects: Project[];
+  buttons: { text: string; href: string }[];
 };
 
-export async function getServerSideProps(): Promise<{ props: Props }> {
+export async function getStaticProps(): Promise<
+  GetStaticPropsResult<IndexProps>
+> {
   const metadata = await directus.request(readSingleton("metadata"));
+  const resumeUrl = `${directus.url}/assets/${metadata.resume}/${
+    metadata.resumeFilename ?? "resume.pdf"
+  }`;
 
   const projects: Project[] = [
     {
@@ -93,19 +99,23 @@ export async function getServerSideProps(): Promise<{ props: Props }> {
     props: {
       tagline: metadata.tagline,
       projects,
+      buttons: [
+        { text: "GitHub", href: "https://github.com/Xevion" },
+        { text: "Projects", href: "/projects" },
+        { text: "Blog", href: "https://undefined.behavio.rs" },
+        { text: "Contact", href: "/contact" },
+        { text: "Resume", href: resumeUrl },
+      ],
     },
+    revalidate: 60 * 10,
   };
 }
 
-const buttons = [
-  { text: "GitHub", href: "https://github.com/Xevion" },
-  { text: "Projects", href: "/projects" },
-  { text: "Blog", href: "https://undefined.behavio.rs" },
-  { text: "Contact", href: "/contact" },
-  { text: "Resume", href: "/resume" },
-];
-
-const Home: NextPage<Props> = ({ tagline, projects }: Props) => {
+const Home: NextPage<IndexProps> = ({
+  tagline,
+  projects,
+  buttons,
+}: IndexProps) => {
   const useLong = useBreakpointValue("sm", true, false);
 
   // use-tailwind-breakpoint
@@ -140,7 +150,7 @@ const Home: NextPage<Props> = ({ tagline, projects }: Props) => {
             <div className="sm:text-9x cursor-default select-none py-10 font-hanken text-6xl font-black uppercase tracking-widest min-[300px]:text-7xl min-[500px]:text-8xl lg:text-10xl">
               Xevion
             </div>
-            <div className="px-4 text-center text-base text-zinc-500 sm:text-sm">
+            <div className="max-w-screen-sm px-4 text-center text-base text-zinc-500 sm:text-sm">
               <Balancer>{tagline}</Balancer>
             </div>
           </div>
