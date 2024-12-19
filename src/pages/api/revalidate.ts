@@ -2,6 +2,7 @@ import { readItem, readItems } from "@directus/sdk";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import directus from "../../utils/directus";
+import { env } from "../../env/server.mjs";
 
 async function getURLs(
   type: string,
@@ -60,10 +61,7 @@ export default async function handler(
   if (req.method !== "POST")
     return res.status(405).json({ message: "Method not allowed" });
 
-  if (
-    req.headers["Authorization"] !==
-    "Bearer " + process.env.DIRECTUS_REVALIDATE_KEY
-  )
+  if (req.headers["authorization"] !== `Bearer ${env.DIRECTUS_REVALIDATE_KEY}`)
     return res.status(401).json({ message: "Invalid token" });
 
   try {
