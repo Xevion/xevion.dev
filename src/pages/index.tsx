@@ -20,7 +20,7 @@ export async function getStaticProps(): Promise<
   GetStaticPropsResult<IndexProps>
 > {
   const metadata = await directus.request(readSingleton("metadata"));
-  const resumeUrl = `${directus.url}/assets/${metadata.resume}/${
+  const resumeUrl = `${directus.url}assets/${metadata.resume}/${
     metadata.resumeFilename ?? "resume.pdf"
   }`;
 
