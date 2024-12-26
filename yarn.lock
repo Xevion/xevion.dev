@@ -3032,6 +3032,11 @@ p-locate@^5.0.0:
   dependencies:
     p-limit "^3.0.2"
 
+p5i@^0.6.0:
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/p5i/-/p5i-0.6.0.tgz#c23c0d687650473fa10ecd2ba855e2c738b6516b"
+  integrity sha512-Hw+J6Fq0ovVnC/h+6wInwZZyAu63eUzFW030+OksWs+MGftExxckKpKG8BRMQakj27oLpVwZEt63jNO17fYwcw==
+
 package-json-from-dist@^1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/package-json-from-dist/-/package-json-from-dist-1.0.1.tgz#4f1471a010827a86f94cfd9b0727e36d267de505"
@@ -3293,11 +3298,6 @@ react-markdown@^9.0.1:
     unified "^11.0.0"
     unist-util-visit "^5.0.0"
     vfile "^6.0.0"
-
-react-ogp@^0.0.3:
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/react-ogp/-/react-ogp-0.0.3.tgz#f3d49ff49e593576778f6a11824a4ccb2d8b427d"
-  integrity sha512-+m5my7G6dxzN79e1e/M5VV2MmM2sXrTqs+hfL8sFHsjWn4PMv3P8eD/aMSHPibvp6BYsiFCeWMMSzcqUCIQr9w==
 
 react-ssr-prepass@^1.5.0:
   version "1.5.0"
