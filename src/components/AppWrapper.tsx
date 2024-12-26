@@ -1,8 +1,9 @@
-import type { FunctionComponent, ReactNode } from "react";
-import { Disclosure } from "@headlessui/react";
-import { HiBars3, HiXMark } from "react-icons/hi2";
 import { classNames } from "@/utils/helpers";
+import { Disclosure } from "@headlessui/react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+import type { FunctionComponent, ReactNode } from "react";
+import { HiBars3, HiXMark } from "react-icons/hi2";
 
 const navigation: { id: string; name: string; href: string }[] = [
   { id: "home", name: "Home", href: "/" },
@@ -16,6 +17,11 @@ type WrapperProps = {
   current?: string;
   children?: ReactNode | ReactNode[] | null;
 };
+
+const DotsDynamic = dynamic(
+  () => import('@/components/Dots'),
+  { ssr: false }
+)
 
 const AppWrapper: FunctionComponent<WrapperProps> = ({
   current,
@@ -97,6 +103,7 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({
           )}
         </Disclosure>
       ) : null}
+      <DotsDynamic />
       {children}
     </main>
   );
