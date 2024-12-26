@@ -53,6 +53,22 @@ const v2_redirects = [
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.walters.to',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.xevion.dev',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.xevion.dev',
+      }
+    ]
+  },
   async redirects() {
     // Source cannot end with / slash
     return [
