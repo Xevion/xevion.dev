@@ -21,7 +21,7 @@ const Dots: React.FC = () => {
 
     let w = window.innerWidth;
     let h = window.innerHeight;
-    let offsetY = window.scrollY;
+    const offsetY = window.scrollY;
 
     const SCALE = 200;
     const LENGTH = 10;
@@ -69,7 +69,7 @@ const Dots: React.FC = () => {
             const nx = x + cos(rad) * length;
             const ny = y + sin(rad) * length;
 
-            let opacity = 1;
+            const opacity = 1;
             
             // const center_distance = Math.sqrt((x - w / 2) ** 2 + (y - h / 2) ** 2);
             // if (center_distance < 350)
