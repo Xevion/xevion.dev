@@ -1,25 +1,19 @@
+import AppWrapper from "@/components/AppWrapper";
+import ItemCard from "@/components/ItemCard";
+import directus, { type Project } from "@/utils/directus";
+import { useBreakpointValue } from "@/utils/helpers";
 import { readItems, readSingleton } from "@directus/sdk";
 import { GetStaticPropsResult, type NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useEffect } from "react";
 import Balancer from "react-wrap-balancer";
-import AppWrapper from "@/components/AppWrapper";
-import ItemCard from "@/components/ItemCard";
-import directus, { type Project } from "@/utils/directus";
-import { useBreakpointValue } from "@/utils/helpers";
-import dynamic from "next/dynamic";
 
 type IndexProps = {
   tagline: string;
   projects: Project[];
   buttons: { text: string; href: string }[];
 };
-
-const DotsDynamic = dynamic(
-  () => import('@/components/Dots'),
-  { ssr: false }
-)
 
 export async function getStaticProps(): Promise<
   GetStaticPropsResult<IndexProps>
@@ -68,7 +62,6 @@ const Home: NextPage<IndexProps> = ({
       </Head>
       <AppWrapper hideNavigation={true} className="overflow-x-hidden">
         <div className="flex h-screen w-screen items-center justify-center overflow-hidden">
-          <DotsDynamic />
           <div className="flex w-full flex-col items-center justify-start">
             <nav className="animate-fade-in">
               <ul className="flex items-center justify-center gap-4">
