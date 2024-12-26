@@ -69,11 +69,14 @@ const Dots: React.FC = () => {
             const nx = x + cos(rad) * length;
             const ny = y + sin(rad) * length;
 
-            let opacity = 0.5;
-            const center_distance = Math.sqrt((x - w / 2) ** 2 + (y - h / 2) ** 2);
+            let opacity = 1;
+            
+            // const center_distance = Math.sqrt((x - w / 2) ** 2 + (y - h / 2) ** 2);
             // if (center_distance < 350)
+            //     opacity = 0;
+
             //     opacity = 
-            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.2) * p.opacity * 255 * opacity);
+            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.2) * p.opacity * 255 * 0.5 * opacity);
             circle(nx, ny - offsetY, 1);
         }
     }
@@ -96,22 +99,13 @@ const Dots: React.FC = () => {
 
         window.addEventListener('resize', handleResize);
 
-        // Uncomment to enable scroll-based animation
-        // Tho there is some lag when scrolling, not sure if it's solvable
-        // const handleScroll = () => {
-        //   offsetY = window.scrollY;
-        //   addPoints();
-        // };
-        // window.addEventListener('scroll', handleScroll, { passive: true });
-
         return () => {
             window.removeEventListener('resize', handleResize);
-            // window.removeEventListener('scroll', handleScroll);
             unmount();
         };
     }, []);
 
-    return <div ref={canvasRef} className='fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-1 animate-bg' />;
+    return <div ref={canvasRef} className='fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-1 animate-bg delay-500' />;
 };
 
 export default Dots;

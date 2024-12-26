@@ -31,6 +31,9 @@ module.exports = {
 					},
 				},
 			},
+			dropShadow: {
+				"extreme": "0 0 50px black",
+			},
 			fontFamily: {
         inter: ['"Inter"', "sans-serif"],
         roboto: ['"Roboto"', "sans-serif"],
@@ -44,7 +47,7 @@ module.exports = {
 					"radial-gradient(50% 50% at 50% 50%, var(--tw-gradient-stops))",
 			},
 			animation: {
-				bg: "bg 5s ease-in-out forwards",
+				bg: "fade-in 3s ease-in forwards",
         "fade-in": "fade-in 3s ease-in-out forwards",
 				title: "title 3s ease-out forwards",
 				"fade-left": "fade-left 3s ease-in-out forwards",

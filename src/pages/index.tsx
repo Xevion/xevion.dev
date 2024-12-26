@@ -8,13 +8,18 @@ import AppWrapper from "@/components/AppWrapper";
 import ItemCard from "@/components/ItemCard";
 import directus, { type Project } from "@/utils/directus";
 import { useBreakpointValue } from "@/utils/helpers";
-import Dots from "@/components/Dots";
+import dynamic from "next/dynamic";
 
 type IndexProps = {
   tagline: string;
   projects: Project[];
   buttons: { text: string; href: string }[];
 };
+
+const DotsDynamic = dynamic(
+  () => import('@/components/Dots'),
+  { ssr: false }
+)
 
 export async function getStaticProps(): Promise<
   GetStaticPropsResult<IndexProps>
@@ -63,7 +68,7 @@ const Home: NextPage<IndexProps> = ({
       </Head>
       <AppWrapper hideNavigation={true} className="overflow-x-hidden">
         <div className="flex h-screen w-screen items-center justify-center overflow-hidden">
-          <Dots />
+          <DotsDynamic />
           <div className="flex w-full flex-col items-center justify-start">
             <nav className="animate-fade-in">
               <ul className="flex items-center justify-center gap-4">
@@ -79,8 +84,8 @@ const Home: NextPage<IndexProps> = ({
               </ul>
             </nav>
             <div className="hidden w-screen h-px animate-glow md:block animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
-            <h1 className="font-hanken select-none py-3.5 px-0.5 z-10 text-transparent duration-1000 bg-white cursor-default text-edge-outline animate-title font-display text-5xl sm:text-6xl md:text-9xl lg:text-10xl whitespace-nowrap bg-clip-text ">
-              XEVION
+            <h1 className="font-hanken uppercase select-none py-3.5 px-0.5 z-10 text-transparent duration-1000 bg-white cursor-default text-edge-outline animate-title font-display text-5xl sm:text-6xl md:text-9xl lg:text-10xl whitespace-nowrap bg-clip-text drop-shadow-extreme">
+              Xevion
             </h1>
             <div className="hidden w-screen h-px animate-glow md:block animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
       {/* <div className="sm:text-9x cursor-default select-none py-10 font-hanken text-6xl font-black uppercase tracking-widest min-[300px]:text-7xl min-[500px]:text-8xl lg:text-10xl">
