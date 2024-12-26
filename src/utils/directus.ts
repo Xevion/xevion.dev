@@ -18,8 +18,9 @@ export interface Project {
   description: string;
   shortDescription: string;
   links: Link[];
-  wakatime_offset: number | null;
-  technologies: Technology[];
+  wakatimeOffset: number | null;
+  technologies: Technology[] | null;
+  bannerImage: string;
 }
 
 export interface Link {
