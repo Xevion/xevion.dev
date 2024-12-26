@@ -23,8 +23,8 @@ const Dots: React.FC = () => {
     const SCALE = 200;
     const LENGTH = 10;
     const SPACING = 15;
-    const TARGET_FRAMERATE = 12;
-    const TIMESCALE = 18 / TARGET_FRAMERATE;
+    const TARGET_FRAMERATE = 8;
+    const TIMESCALE = 12 / TARGET_FRAMERATE;
 
     function getForceOnPoint(x: number, y: number, z: number) {
         return (noise(x / SCALE, y / SCALE, z) - 0.5) * 2 * TWO_PI;
