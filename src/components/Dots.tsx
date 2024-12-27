@@ -20,11 +20,11 @@ const Dots: React.FC = () => {
     let h = window.innerHeight;
     const offsetY = window.scrollY;
 
-    const SCALE = 200;
-    const LENGTH = 10;
-    const SPACING = 15;
-    const TARGET_FRAMERATE = 8;
-    const TIMESCALE = 12 / TARGET_FRAMERATE;
+    const SCALE = 400;
+    const LENGTH = 3;
+    const SPACING = 20;
+    const TARGET_FRAMERATE = 5;
+    const TIMESCALE = 4;
 
     function getForceOnPoint(x: number, y: number, z: number) {
         return (noise(x / SCALE, y / SCALE, z) - 0.5) * 2 * TWO_PI;
@@ -39,6 +39,7 @@ const Dots: React.FC = () => {
                 const id = `${x}-${y}`;
                 if (pointIds.has(id)) continue;
                 pointIds.add(id);
+                
                 points.push({ x, y, opacity: Math.random() * 0.5 + 0.5 });
             }
         }
@@ -72,7 +73,7 @@ const Dots: React.FC = () => {
             // if (center_distance < 350)
             //     opacity = 0;
             //     opacity = 
-            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.2) * p.opacity * 255 * 0.5);
+            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.1) * p.opacity * 255 * 0.4);
             circle(nx, ny - offsetY, 1);
         }
     }
