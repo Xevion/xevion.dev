@@ -60,7 +60,7 @@ const Home: NextPage<IndexProps> = ({
         <meta name="description" content="My personal website." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <AppWrapper hideNavigation={true} className="overflow-x-hidden">
+      <AppWrapper className="overflow-x-hidden">
         <div className="flex h-screen w-screen items-center justify-center overflow-hidden">
           <div className="flex w-full flex-col items-center justify-start">
             <nav className="animate-fade-in">
@@ -77,20 +77,12 @@ const Home: NextPage<IndexProps> = ({
               </ul>
             </nav>
             <div className="hidden w-screen h-px animate-glow md:block animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
-            <h1 className="font-hanken uppercase select-none py-3.5 px-0.5 z-10 text-transparent duration-1000 bg-white cursor-default text-edge-outline animate-title font-display text-5xl sm:text-6xl md:text-9xl lg:text-10xl whitespace-nowrap bg-clip-text drop-shadow-extreme">
+            <h1 className="font-hanken uppercase select-none my-3.5 z-10 text-transparent duration-1000 bg-white text-edge-outline animate-title font-display text-5xl sm:text-6xl md:text-9xl lg:text-10xl whitespace-nowrap bg-clip-text drop-shadow-extreme">
               Xevion
             </h1>
             <div className="hidden w-screen h-px animate-glow md:block animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
-      {/* <div className="sm:text-9x cursor-default select-none py-10 font-hanken text-6xl font-black uppercase tracking-widest min-[300px]:text-7xl min-[500px]:text-8xl lg:text-10xl">
-              Xevion
-            </div> */}
             <div className="max-w-screen-sm text-center text-sm  sm:text-base animate-fade-in text-zinc-500">
               <Balancer>{tagline}</Balancer>
-            </div>
-            {/* <div className="max-w-screen-sm px-4 text-center text-base text-zinc-500 sm:text-sm">
-              <Balancer>{tagline}</Balancer>
-            </div>
-          </div> */}
           </div>
         </div>
         <div
@@ -107,6 +99,7 @@ const Home: NextPage<IndexProps> = ({
             </div>
           </div>
         </div>
+</div>
       </AppWrapper>
     </>
   );
