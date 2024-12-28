@@ -7,15 +7,6 @@
 @tailwind components;
 @tailwind utilities;
 
-.body-gradient {
-  background-image: linear-gradient(
-    to top left,
-    black,
-    rgb(161 161 170 / 0.1),
-    black
-  );
-}
-
 @mixin active {
   .elements {
     @apply grid opacity-100;

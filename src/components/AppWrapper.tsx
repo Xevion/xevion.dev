@@ -32,7 +32,7 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({
   return (
     <main
       className={classNames(
-        "body-gradient min-h-screen text-zinc-50",
+        "min-h-screen text-zinc-50",
         className,
       )}
     >
