@@ -24,7 +24,8 @@ const Dots: React.FC = () => {
     const LENGTH = 3;
     const SPACING = 20;
     const TARGET_FRAMERATE = 5;
-    const TIMESCALE = 4;
+    const TIMESCALE = 2;
+    const OPACITY = 0.7;
 
     function getForceOnPoint(x: number, y: number, z: number) {
         return (noise(x / SCALE, y / SCALE, z) - 0.5) * 2 * TWO_PI;
@@ -73,7 +74,7 @@ const Dots: React.FC = () => {
             // if (center_distance < 350)
             //     opacity = 0;
             //     opacity = 
-            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.1) * p.opacity * 255 * 0.4);
+            stroke(200, 200, 200, (Math.abs(cos(rad)) * 0.8 + 0.1) * p.opacity * 255 * OPACITY);
             circle(nx, ny - offsetY, 1);
         }
     }
