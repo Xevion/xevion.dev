@@ -1,24 +1,20 @@
 import AppWrapper from "@/components/AppWrapper";
-import ItemCard from "@/components/ItemCard";
-import directus, { type Project } from "@/utils/directus";
-import { useBreakpointValue } from "@/utils/helpers";
-import { readItems, readSingleton } from "@directus/sdk";
+import directus from "@/utils/directus";
+import { readSingleton } from "@directus/sdk";
 import { GetStaticPropsResult, type NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
-import { useEffect } from "react";
 import Balancer from "react-wrap-balancer";
 
 type IndexProps = {
   tagline: string;
-  projects: Project[];
   buttons: { text: string; href: string }[];
 };
 
 export async function getStaticProps(): Promise<
   GetStaticPropsResult<IndexProps>
 > {
-  const [metadata, projects] = await Promise.all([directus.request(readSingleton("metadata")), directus.request(readItems("project"))]);
+  const metadata = await directus.request(readSingleton("metadata"));
 
   const resumeUrl = `${directus.url}assets/${metadata.resume}/${
     metadata.resumeFilename ?? "resume.pdf"
@@ -27,7 +23,6 @@ export async function getStaticProps(): Promise<
   return {
     props: {
       tagline: metadata.tagline,
-      projects,
       buttons: [
         { text: "GitHub", href: "https://github.com/Xevion" },
         { text: "Projects", href: "/projects" },
@@ -42,17 +37,8 @@ export async function getStaticProps(): Promise<
 
 const Home: NextPage<IndexProps> = ({
   tagline,
-  projects,
   buttons,
 }: IndexProps) => {
-  const useLong = useBreakpointValue("sm", true, false);
-
-  // use-tailwind-breakpoint
-  useEffect(() => {
-    if (typeof window !== "undefined")
-      window.dispatchEvent(new Event("resize"));
-  }, []);
-
   return (
     <>
       <Head>
@@ -83,20 +69,6 @@ const Home: NextPage<IndexProps> = ({
             <div className="hidden w-screen h-px animate-glow md:block animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
             <div className="max-w-screen-sm text-center text-sm  sm:text-base animate-fade-in text-zinc-500">
               <Balancer>{tagline}</Balancer>
-          </div>
-        </div>
-        <div
-          id="projects"
-          className="flex min-h-screen flex-row justify-center py-12 sm:py-8 md:items-center"
-        >
-          <div className="mx-auto h-full w-full max-w-[95%] lg:max-w-[85%] xl:max-w-[70%]">
-            <div className="m-1 flex h-full flex-col justify-start gap-y-1">
-              {projects.map((project) => {
-                  return (<ItemCard key={project.id}
-                                description={useLong ? project.description : project.shortDescription} banner={`${directus.url}assets/${project.bannerImage}`} title={project.name} location={`/${project.id}/`}                />
-                  );
-                })}
-            </div>
           </div>
         </div>
 </div>
