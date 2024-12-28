@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { useOnClickOutside, useToggle } from "usehooks-ts";
-import { classNames, isHoverable } from "@/utils/helpers";
+import { cn, isHoverable } from "@/utils/helpers";
 import ReactMarkdown from "react-markdown";
 import Balancer from "react-wrap-balancer";
 
@@ -52,7 +52,7 @@ const ItemCard = ({
     <>
       <div
         ref={itemRef}
-        className={classNames(
+        className={cn(
           "item [&:not(:first-child)]:mt-3",
           active ? "active" : null,
         )}
@@ -63,7 +63,7 @@ const ItemCard = ({
           src={banner}
           quality={bannerSettings?.quality ?? 75}
           className={(loaded) =>
-            classNames("object-cover", loaded ? null : "blur-xl")
+            cn("object-cover", loaded ? null : "blur-xl")
           }
           alt={`Banner for ${title}`}
         />
@@ -109,7 +109,7 @@ const ItemCard = ({
         aria-disabled={!active}
         ref={mobileButtonRef}
         href={active ? { pathname: location } : {}}
-        className={classNames(
+        className={cn(
           "flex w-full items-center justify-center rounded border border-zinc-900 bg-zinc-800 shadow transition-all",
           active ? "h-9 p-2 opacity-100" : "h-0 p-0 opacity-0",
         )}

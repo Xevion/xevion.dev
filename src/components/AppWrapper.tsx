@@ -1,4 +1,4 @@
-import { classNames } from "@/utils/helpers";
+import { cn } from "@/utils/helpers";
 import { Disclosure } from "@headlessui/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -31,7 +31,7 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({
 }: WrapperProps) => {
   return (
     <main
-      className={classNames(
+      className={cn(
         "min-h-screen text-zinc-50",
         className,
       )}
