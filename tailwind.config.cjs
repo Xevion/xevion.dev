@@ -39,24 +39,33 @@ module.exports = {
         roboto: ['"Roboto"', "sans-serif"],
         mono: ['"Roboto Mono"', "monospace"],
         hanken: ['"Hanken Grotesk"', "sans-serif"],
-				// sans: ["var(--font-inter)", ...defaultTheme.fontFamily.sans],
-				// display: ["var(--font-calsans)"],
 			},
 			backgroundImage: {
 				"gradient-radial":
 					"radial-gradient(50% 50% at 50% 50%, var(--tw-gradient-stops))",
 			},
 			animation: {
-				"bg-fast": "fade-in 0.5s ease-in-out 0.5s forwards",
-				bg: "fade-in 1.2s ease-in-out 1.1s forwards",
-        "fade-in": "fade-in 3s ease-in-out forwards",
+				"bg-fast": "fade 0.5s ease-in-out 0.5s forwards",
+				bg: "fade 1.2s ease-in-out 1.1s forwards",
+        "fade-in": "fade-in 2.5s ease-in-out forwards",
 				title: "title 3s ease-out forwards",
 				"fade-left": "fade-left 3s ease-in-out forwards",
 				"fade-right": "fade-right 3s ease-in-out forwards",
 			},
 			keyframes: {
+				"fade": {
+					"0%": {
+						opacity: "0%",
+					},
+					"100%": {
+						opacity: "100%",
+					},
+				},
 				"fade-in": {
 					"0%": {
+						opacity: "0%",
+					},
+					"75%": {
 						opacity: "0%",
 					},
 					"100%": {
