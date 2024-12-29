@@ -19,7 +19,7 @@ async function getURLs(
     return [];
   }
 
-  if (type === "project") return ["/projects", `/projects/${key}`];
+  if (type === "project") return ["/projects"];
   if (type === "metadata") return ["/"];
   if (type === "technology") {
     const urls = ["/technology"];
@@ -67,8 +67,10 @@ export default async function handler(
   try {
     // Verify JSON body
     const { success, data, error } = requestSchema.safeParse(req.body);
-    if (!success)
+    if (!success) {
+      console.error({ message: "Invalid JSON body", error });
       return res.status(400).json({ message: "Invalid JSON body", error });
+    }
 
     // Get URLs
     const urls = await getURLs(data.type, data.keys[0]!, data.payload);
