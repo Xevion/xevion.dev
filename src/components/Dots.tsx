@@ -1,7 +1,14 @@
+import { cn } from '@/utils/helpers';
 import { p5i, P5I } from 'p5i';
 import React, { useEffect, useRef } from 'react';
 
-const Dots: React.FC = () => {
+interface DotsProps {
+    className?: string;
+}
+
+const Dots = ({
+    className,
+}: DotsProps) => {
     const canvasRef = useRef<HTMLDivElement | null>(null);
 
     const {
@@ -103,7 +110,10 @@ const Dots: React.FC = () => {
         };
     }, []);
 
-    return <div ref={canvasRef} className='fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-1 animate-bg delay-500' />;
+    return <div ref={canvasRef} className={cn(
+        "fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-1 opacity-0",
+        className
+    )} />;
 };
 
 export default Dots;

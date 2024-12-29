@@ -4,6 +4,7 @@ import type { FunctionComponent, ReactNode } from "react";
 
 type WrapperProps = {
   className?: string;
+  dotsClassName?: string;
   children?: ReactNode;
 };
 
@@ -15,6 +16,7 @@ const DotsDynamic = dynamic(
 const AppWrapper: FunctionComponent<WrapperProps> = ({
   children,
   className,
+  dotsClassName,
 }: WrapperProps) => {
   return (
     <main
@@ -23,7 +25,7 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({
         className,
       )}
     >
-      <DotsDynamic />
+      <DotsDynamic className={dotsClassName} />
       {children}
     </main>
   );

@@ -46,7 +46,7 @@ const Home: NextPage<IndexProps> = ({
         <meta name="description" content="My personal website." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <AppWrapper className="overflow-x-hidden">
+      <AppWrapper className="overflow-x-hidden" dotsClassName="animate-bg">
         <div className="flex h-screen w-screen items-center justify-center overflow-hidden">
           <div className="flex w-full flex-col items-center justify-start">
             <nav className="animate-fade-in">
