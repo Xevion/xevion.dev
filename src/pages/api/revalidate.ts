@@ -25,13 +25,18 @@ async function getURLs(
     const urls = ["/technology"];
 
     // Get all projects with the technology
-    const all_projects = await directus.request(readItems("project"));
-    if (all_projects != null) {
-      for (const project of all_projects) {
-        if (project.technologies?.some((t) => t.id === key))
-          urls.push(`/projects/${project.id}`);
-      }
-    }
+    const all_projects = await directus.request(readItems("project", {
+      fields: ["id", {
+        technologies: ["id"],
+      }],
+    }));
+
+    // if (all_projects != null) {
+    //   for (const project of all_projects) {
+    //     if (project.technologies?.some((t) => t.id === key))
+    //       urls.push(`/projects/${project.id}`);
+    //   }
+    // }
 
     return urls;
   }
