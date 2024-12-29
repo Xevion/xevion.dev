@@ -35,10 +35,7 @@ export async function getStaticProps(): Promise<
   };
 }
 
-const Home: NextPage<IndexProps> = ({
-  tagline,
-  buttons,
-}: IndexProps) => {
+const Home: NextPage<IndexProps> = ({ tagline, buttons }: IndexProps) => {
   return (
     <>
       <Head>
@@ -62,16 +59,16 @@ const Home: NextPage<IndexProps> = ({
                 ))}
               </ul>
             </nav>
-            <div className="hidden w-screen h-px animate-glow md:block animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
-            <h1 className="font-hanken uppercase select-none my-3.5 z-10 text-transparent duration-1000 bg-white text-edge-outline animate-title font-display text-5xl sm:text-6xl md:text-9xl lg:text-10xl whitespace-nowrap bg-clip-text drop-shadow-extreme">
-              Xevion
+            <div className="animate-glow hidden h-px w-screen animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
+            <h1 className="text-edge-outline font-display z-10 my-3.5 animate-title whitespace-nowrap bg-white bg-clip-text font-hanken text-5xl uppercase text-transparent drop-shadow-extreme duration-1000 sm:text-6xl md:text-9xl lg:text-10xl">
+              <span className="select-none">Xevion</span>
             </h1>
-            <div className="hidden w-screen h-px animate-glow md:block animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0" />
-            <div className="max-w-screen-sm text-center text-sm  sm:text-base animate-fade-in text-zinc-500">
+            <div className="animate-glow hidden h-px w-screen animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
+            <div className="max-w-screen-sm animate-fade-in text-center text-sm text-zinc-500 sm:text-base">
               <Balancer>{tagline}</Balancer>
+            </div>
           </div>
         </div>
-</div>
       </AppWrapper>
     </>
   );
