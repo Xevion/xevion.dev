@@ -1,8 +1,8 @@
-import { readItem, readItems } from "@directus/sdk";
+import { env } from "@/env/server.mjs";
+import directus from "@/utils/directus";
+import { readItem } from "@directus/sdk";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-import directus from "@/utils/directus";
-import { env } from "@/env/server.mjs";
 
 async function getURLs(
   type: string,
@@ -25,11 +25,11 @@ async function getURLs(
     const urls = ["/technology"];
 
     // Get all projects with the technology
-    const all_projects = await directus.request(readItems("project", {
-      fields: ["id", {
-        technologies: ["id"],
-      }],
-    }));
+    // const all_projects = await directus.request(readItems("project", {
+    //   fields: ["id", {
+    //     technologies: ["id"],
+    //   }],
+    // }));
 
     // if (all_projects != null) {
     //   for (const project of all_projects) {
