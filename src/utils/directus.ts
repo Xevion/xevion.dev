@@ -14,6 +14,7 @@ export interface Technology {
 
 export interface Project {
   id: string;
+  icon: string | null;
   name: string;
   description: string;
   shortDescription: string;

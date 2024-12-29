@@ -30,7 +30,7 @@ const socials: {
 
 const ContactPage: NextPage = () => {
   return (
-    <AppWrapper current="contact">
+    <AppWrapper>
       <div className="my-10 flex w-full flex-col items-center">
         <div className="mx-3 flex w-full max-w-[23rem] flex-col rounded-md border border-zinc-800 bg-zinc-800/50 p-5 sm:max-w-[25rem] lg:max-w-[30rem]">
           <div className="flex justify-center gap-x-5 text-center">
