@@ -27,30 +27,40 @@ export async function getStaticProps(): Promise<GetStaticPropsResult<Props>> {;
 const ProjectsPage: NextPage<Props> = ({projects}) => {
   return (
     <AppWrapper dotsClassName="animate-bg-fast">
-      <div className="max-w-500 mx-auto mt-20 grid h-full w-max grid-cols-1 gap-x-20 gap-y-7 py-2 md:grid-cols-2 lg:grid-cols-3">
-        {projects.map(({ name, shortDescription: description, links, icon }) => {
-          return (
-            <Link
-              key={name}
-              className="flex relative max-w-[30rem] flex-shrink items-center opacity-75 transition-opacity hover:opacity-100 bg-black/30 hover:bg-white/5 py-2 rounded"
-              href={links![0]?.url ?? "#"}
-              target="_blank"
-              rel="noreferrer"
-              title={name}
-            >
+      <div className="max-w-500 mx-auto py-20 grid h-full w-max grid-cols-1 gap-x-20 gap-y-9 md:grid-cols-2 lg:grid-cols-3">
+        <div className="md:col-span-2 lg:col-span-3 w-full">
+          <h1 className="text-4xl md:text-5xl text-center text-zinc-200 opacity-100 font-hanken">
+          Projects
+          </h1>
+        </div>
+        {projects.map(({ name, shortDescription: description, links, icon }) =>
+        {
+          const DynamicLink = links?.length ?? 0 > 0  ? Link : "div";
+          const linkProps = links?.length ?? 0 > 0 ? { href: links![0]!.url, target: "_blank", rel: "noreferrer" } : {};
 
-              <div className="pr-5 pt-2">
-                <i className={cn(icon ?? "fa-heart", "fa-solid text-3xl text-opacity-80 saturate-0")}></i>
-              </div>
-              <div className="flex-auto overflow-hidden">
-                <div className="text-lg">{name}</div>
-                <div className="text-base font-normal opacity-70 whitespace-nowrap">
-                  {description}
+            return <div className="flex">
+              {/* @ts-ignore */}
+              <DynamicLink
+                key={name}
+                title={name}
+                className="flex pl-3 pr-5 pt-1 pb-2.5 relative max-w-[30rem] items-center transition-colors rounded-lg text-zinc-400 hover:text-zinc-50 bg-black/10 hover:bg-zinc-500/10"
+                {...linkProps}
+              >
+
+                <div className="w-14 pr-5 h-full flex items-center justify-center">
+                  <i className={cn(icon ?? "fa-heart", "fa-solid text-3xl text-opacity-80 saturate-0")}></i>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
+                <div className="flex-auto overflow-hidden">
+                  <div className="text-lg">{name}</div>
+                  <div className="text-base font-normal opacity-70 whitespace-nowrap">
+                    {description}
+                  </div>
+                </div>
+              </DynamicLink>
+              <div className="grow" />
+            </div>;
+          } 
+)}
       </div>
     </AppWrapper>
   );

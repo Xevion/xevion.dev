@@ -111,7 +111,7 @@ const Dots = ({
     }, []);
 
     return <div ref={canvasRef} className={cn(
-        "fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-1 opacity-0",
+        "fixed left-0 right-0 top-0 bottom-0 pointer-events-none -z-10 opacity-0",
         className
     )} />;
 };
