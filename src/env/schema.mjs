@@ -7,6 +7,10 @@ import { z } from "zod";
  */
 export const serverSchema = z.object({
   DIRECTUS_REVALIDATE_KEY: z.string(),
+  OVERRIDE_TITLE: z.preprocess((v) => {
+    if (v === undefined || v === "") return null;
+    return v;
+  }, z.string().nullable()),
   NODE_ENV: z.enum(["development", "test", "production"]),
 });
 

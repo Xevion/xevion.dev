@@ -1,4 +1,5 @@
 import AppWrapper from "@/components/AppWrapper";
+import { env } from "@/env/server.mjs";
 import directus from "@/utils/directus";
 import { readSingleton } from "@directus/sdk";
 import { GetStaticPropsResult, type NextPage } from "next";
@@ -7,6 +8,7 @@ import Link from "next/link";
 import Balancer from "react-wrap-balancer";
 
 type IndexProps = {
+  title: string | null;
   tagline: string;
   buttons: { text: string; href: string }[];
 };
@@ -23,6 +25,7 @@ export async function getStaticProps(): Promise<
   return {
     props: {
       tagline: metadata.tagline,
+      title: env.OVERRIDE_TITLE,
       buttons: [
         { text: "GitHub", href: "https://github.com/Xevion" },
         { text: "Projects", href: "/projects" },
@@ -35,7 +38,11 @@ export async function getStaticProps(): Promise<
   };
 }
 
-const Home: NextPage<IndexProps> = ({ tagline, buttons }: IndexProps) => {
+const Home: NextPage<IndexProps> = ({
+  title,
+  tagline,
+  buttons,
+}: IndexProps) => {
   return (
     <>
       <Head>
@@ -61,7 +68,7 @@ const Home: NextPage<IndexProps> = ({ tagline, buttons }: IndexProps) => {
             </nav>
             <div className="animate-glow hidden h-px w-screen animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
             <h1 className="text-edge-outline font-display z-10 my-3.5 animate-title whitespace-nowrap bg-white bg-clip-text font-hanken text-5xl uppercase text-transparent drop-shadow-extreme duration-1000 sm:text-6xl md:text-9xl lg:text-10xl">
-              <span className="select-none">Xevion</span>
+              <span className="select-none">{title ?? "Xevion"}</span>
             </h1>
             <div className="animate-glow hidden h-px w-screen animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
             <div className="max-w-screen-sm animate-fade-in text-center text-sm text-zinc-500 sm:text-base">
