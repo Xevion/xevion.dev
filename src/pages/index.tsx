@@ -53,7 +53,7 @@ const Home: NextPage<IndexProps> = ({
       <AppWrapper className="overflow-x-hidden" dotsClassName="animate-bg">
         <div className="flex h-screen w-screen items-center justify-center overflow-hidden">
           <div className="flex w-full flex-col items-center justify-start">
-            <nav className="animate-fade-in">
+            <nav className="z-10 animate-fade-in">
               <ul className="flex items-center justify-center gap-4">
                 {buttons.map(({ text, href }) => (
                   <Link
@@ -67,7 +67,7 @@ const Home: NextPage<IndexProps> = ({
               </ul>
             </nav>
             <div className="animate-glow hidden h-px w-screen animate-fade-left bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
-            <h1 className="text-edge-outline font-display z-10 my-3.5 animate-title whitespace-nowrap bg-white bg-clip-text font-hanken text-5xl uppercase text-transparent drop-shadow-extreme duration-1000 sm:text-6xl md:text-9xl lg:text-10xl">
+            <h1 className="text-edge-outline font-display my-3.5 animate-title select-none whitespace-nowrap bg-white bg-clip-text font-hanken text-5xl uppercase text-transparent drop-shadow-extreme duration-1000 sm:text-6xl md:text-9xl lg:text-10xl">
               {title}
             </h1>
             <div className="animate-glow hidden h-px w-screen animate-fade-right bg-gradient-to-r from-zinc-300/0 via-zinc-300/50 to-zinc-300/0 md:block" />
