@@ -1,4 +1,5 @@
-import { createDirectus, rest } from "@directus/sdk";
+import { env } from "@/env/server.mjs";
+import { createDirectus, rest, staticToken } from "@directus/sdk";
 
 export interface Schema {
   metadata: Metadata;
@@ -23,20 +24,28 @@ export interface ProjectTechnology {
 
 export interface Project {
   id: string;
-  
-  // One2Many
-  links: number[] | ProjectLink[];
-  // Many2Many
-  technologies: number[] | ProjectTechnology[];
 
+  // core fields
+  date_created: string;
+  date_updated: string;
+  sort: number; // used for ordering
+  status: string;
+
+  // relationships
+  links: number[] | ProjectLink[]; // One2Many
+  technologies: number[] | ProjectTechnology[]; // Many2Many
+
+  // relevant fields
   icon: string | null;
   name: string;
   description: string;
   shortDescription: string;
 
-  featured: boolean;
-  wakatimeOffset: number | null;
-  bannerImage: string;
+  // misc fields
+  featured: boolean; // places the project in the 'featured' section
+  autocheckUpdated: boolean; // triggers a cron job to check for updates
+  wakatimeOffset: number | null; // offsets the WakaTime fetched data
+  bannerImage: string; // file identifier
 }
 
 export interface Link {
@@ -62,6 +71,8 @@ export interface Metadata {
   resumeFilename: string;
 }
 
-const directus = createDirectus<Schema>("https://api.xevion.dev").with(rest());
+const directus = createDirectus<Schema>("https://api.xevion.dev")
+  .with(staticToken(env.DIRECTUS_API_TOKEN))
+  .with(rest());
 
 export default directus;
