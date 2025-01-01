@@ -7,6 +7,7 @@
 @tailwind components;
 @tailwind utilities;
 
+// Used for ItemCard
 @mixin active {
   .elements {
     @apply grid opacity-100;
@@ -19,7 +20,7 @@
 
 html,
 body {
-  @apply font-inter;
+  @apply font-inter overflow-x-hidden;
 }
 
 .item {
