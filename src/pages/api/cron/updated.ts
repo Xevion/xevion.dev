@@ -258,14 +258,6 @@ export default async function handler(
       // null values are still included in the array, so filter them out.
       .filter((project) => project !== null);
 
-    // Log the date_updated for each project
-    eligibleProjects.forEach((project) => {
-      console.log({
-        name: project.name,
-        date_updated: project.date_updated,
-      });
-    });
-
     // For each project, query the GitHub API for the latest commit date on all branches.
     const projectPromises = eligibleProjects.map((project) =>
       handleProject({
