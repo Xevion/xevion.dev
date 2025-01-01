@@ -25,6 +25,7 @@
     "@trpc/server": "^10.0.0",
     "@vercel/analytics": "^0.1.6",
     "clsx": "^2.1.1",
+    "cssnano": "^7.0.6",
     "next": "^15.1.1",
     "p5i": "^0.6.0",
     "plaiceholder": "^3.0.0",
