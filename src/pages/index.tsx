@@ -34,7 +34,7 @@ export async function getStaticProps(): Promise<
         { text: "Resume", href: resumeUrl },
       ],
     },
-    revalidate: 60 * 10,
+    revalidate: 60 * 60,
   };
 }
 
