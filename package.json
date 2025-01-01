@@ -14,6 +14,7 @@
     "@headlessui/react": "^2.2.0",
     "@kodingdotninja/use-tailwind-breakpoint": "^1.0.0",
     "@next/eslint-plugin-next": "^15.1.1",
+    "@octokit/core": "^6.1.2",
     "@plaiceholder/next": "^3.0.0",
     "@tailwindcss/typography": "^0.5.8",
     "@tanstack/react-query": "^4.16.0",

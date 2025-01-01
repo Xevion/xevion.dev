@@ -71,7 +71,14 @@ export interface Metadata {
   resumeFilename: string;
 }
 
-const directus = createDirectus<Schema>("https://api.xevion.dev")
+const directus = createDirectus<Schema>("https://api.xevion.dev", {
+  globals: {
+    fetch: (input, init) => {
+      console.log(`${init.method?.toUpperCase()} ${input}`);
+      return fetch(input, init);
+    },
+  },
+})
   .with(staticToken(env.DIRECTUS_API_TOKEN))
   .with(rest());
 

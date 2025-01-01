@@ -2,15 +2,13 @@ import type { IconType } from "react-icons";
 import { AiFillGithub, AiOutlineLink } from "react-icons/ai";
 import { RxOpenInNewWindow } from "react-icons/rx";
 
-export type Project = {
-  title: string;
-  banner: string;
-  bannerSettings?: { quality: number };
-  longDescription: string;
-  shortDescription: string;
-  links?: LinkIcon[];
-  location: string;
-};
+// Promise.allSettled type guards
+export const isFulfilled = <T>(
+  p: PromiseSettledResult<T>,
+): p is PromiseFulfilledResult<T> => p.status === "fulfilled";
+export const isRejected = <T>(
+  p: PromiseSettledResult<T>,
+): p is PromiseRejectedResult => p.status === "rejected";
 
 export const LinkIcons: Record<string, IconType> = {
   github: AiFillGithub,
