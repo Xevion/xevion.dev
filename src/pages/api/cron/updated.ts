@@ -200,12 +200,15 @@ export default async function handler(
   }
 
   // Ensure the cron request is authenticated
-  if (process.env.NODE_ENV !== "development") {
+  if (process.env.NODE_ENV === "production") {
     const authHeader = req.headers["authorization"];
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return new Response("Unauthorized", {
-        status: 401,
-      });
+    const secretQueryParam = req.query.secret;
+    if (
+      authHeader !== `Bearer ${CRON_SECRET}` &&
+      secretQueryParam !== CRON_SECRET
+    ) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
   }
 
