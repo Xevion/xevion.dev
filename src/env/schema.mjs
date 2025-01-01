@@ -6,7 +6,7 @@ import { z } from "zod";
  * This way you can ensure the app isn't built with invalid env vars.
  */
 export const serverSchema = z.object({
-  CRON_SECRET: z.string(),
+  CRON_SECRET: z.string().nullish(),
   GITHUB_API_TOKEN: z.string(),
   DIRECTUS_API_TOKEN: z.string(),
   DIRECTUS_REVALIDATE_KEY: z.string(),
