@@ -56,23 +56,24 @@ const config = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'img.walters.to',
+        protocol: "https",
+        hostname: "img.walters.to",
       },
       {
-        protocol: 'https',
-        hostname: 'img.xevion.dev',
+        protocol: "https",
+        hostname: "img.xevion.dev",
       },
       {
-        protocol: 'https',
-        hostname: 'api.xevion.dev',
-      }
-    ]
+        protocol: "https",
+        hostname: "api.xevion.dev",
+      },
+    ],
   },
   async redirects() {
     // Source cannot end with / slash
     return [
-      { source: "/resume", destination: "/resume.pdf", permanent: false },
+      { source: "/resume", destination: "/api/resume", permanent: false },
+      { source: "/resume.pdf", destination: "/api/resume", permanent: false },
       ...v2_redirects,
     ];
   },
