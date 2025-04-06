@@ -72,8 +72,21 @@ const config = {
   async redirects() {
     // Source cannot end with / slash
     return [
-      { source: "/resume", destination: "/api/resume", permanent: false },
-      { source: "/resume.pdf", destination: "/api/resume", permanent: false },
+      ...[
+        "resume.pdf",
+        "resume.docx",
+        "resume.txt",
+        "resum",
+        "resumee",
+        "cv",
+        "cover.pdf",
+        "cv.docx",
+        "cv.pdf",
+      ].map((ext) => ({
+        source: `/${ext}`,
+        destination: "/resume",
+        permanent: true,
+      })),
       ...v2_redirects,
     ];
   },
