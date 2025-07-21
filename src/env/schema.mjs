@@ -10,6 +10,7 @@ export const serverSchema = z.object({
   GITHUB_API_TOKEN: z.string(),
   DIRECTUS_API_TOKEN: z.string(),
   DIRECTUS_REVALIDATE_KEY: z.string(),
+  HEALTHCHECK_SECRET: z.string(), // Added for healthcheck route
   NODE_ENV: z.enum(["development", "test", "production"]),
   TITLE: z.preprocess((value) => {
     if (value === undefined || value === "") return null;
