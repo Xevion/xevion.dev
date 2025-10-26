@@ -1,3 +1,4 @@
+import { withPayload } from "@payloadcms/next/withPayload";
 // @ts-check
 
 import withPlaiceholder from "@plaiceholder/next";
@@ -91,4 +92,4 @@ const config = {
     ];
   },
 };
-export default withPlaiceholder(config);
+export default withPayload(withPlaiceholder(config));

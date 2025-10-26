@@ -8,9 +8,10 @@ import { z } from "zod";
 export const serverSchema = z.object({
   CRON_SECRET: z.string().nullish(),
   GITHUB_API_TOKEN: z.string(),
-  DIRECTUS_API_TOKEN: z.string(),
-  DIRECTUS_REVALIDATE_KEY: z.string(),
-  HEALTHCHECK_SECRET: z.string(), // Added for healthcheck route
+  PAYLOAD_SECRET: z.string(),
+  DATABASE_URI: z.string(),
+  PAYLOAD_REVALIDATE_KEY: z.string().optional(),
+  HEALTHCHECK_SECRET: z.string(),
   NODE_ENV: z.enum(["development", "test", "production"]),
   TITLE: z.preprocess((value) => {
     if (value === undefined || value === "") return null;

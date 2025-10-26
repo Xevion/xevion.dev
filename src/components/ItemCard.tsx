@@ -62,9 +62,7 @@ const ItemCard = ({
           fill
           src={banner}
           quality={bannerSettings?.quality ?? 75}
-          className={(loaded) =>
-            cn("object-cover", loaded ? null : "blur-xl")
-          }
+          className={(loaded) => cn("object-cover", loaded ? null : "blur-xl")}
           alt={`Banner for ${title}`}
         />
         <div className="elements m-2 grid h-full grid-cols-12 px-1 sm:px-4">

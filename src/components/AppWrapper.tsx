@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/utils/helpers";
 import dynamic from "next/dynamic";
 import type { FunctionComponent, ReactNode } from "react";
@@ -8,10 +10,7 @@ type WrapperProps = {
   children?: ReactNode;
 };
 
-const DotsDynamic = dynamic(
-  () => import('@/components/Dots'),
-  { ssr: false }
-)
+const DotsDynamic = dynamic(() => import("@/components/Dots"), { ssr: false });
 
 const AppWrapper: FunctionComponent<WrapperProps> = ({
   children,
@@ -20,10 +19,7 @@ const AppWrapper: FunctionComponent<WrapperProps> = ({
 }: WrapperProps) => {
   return (
     <main
-      className={cn(
-        "min-h-screen text-zinc-50",
-        className,
-      )}
+      className={cn("relative min-h-screen bg-black text-zinc-50", className)}
     >
       <DotsDynamic className={dotsClassName} />
       {children}

@@ -20,7 +20,7 @@
 
 html,
 body {
-  @apply font-inter overflow-x-hidden;
+  @apply overflow-x-hidden font-inter text-white;
 }
 
 .item {
@@ -32,7 +32,7 @@ body {
   .elements {
     @apply hidden opacity-0 transition-all delay-100;
     > * {
-      z-index: 30;
+      // z-index: 30;
       min-height: 0;
     }
   }
