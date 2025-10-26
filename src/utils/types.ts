@@ -1,6 +1,5 @@
-import type { IconType } from "react-icons";
-import { AiFillGithub, AiOutlineLink } from "react-icons/ai";
-import { RxOpenInNewWindow } from "react-icons/rx";
+import { Github, ExternalLink, Link } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // Promise.allSettled type guards
 export const isFulfilled = <T>(
@@ -10,10 +9,10 @@ export const isRejected = <T>(
   p: PromiseSettledResult<T>,
 ): p is PromiseRejectedResult => p.status === "rejected";
 
-export const LinkIcons: Record<string, IconType> = {
-  github: AiFillGithub,
-  external: RxOpenInNewWindow,
-  link: AiOutlineLink,
+export const LinkIcons: Record<string, LucideIcon> = {
+  github: Github,
+  external: ExternalLink,
+  link: Link,
 };
 export type LinkIcon = {
   icon: keyof typeof LinkIcons;

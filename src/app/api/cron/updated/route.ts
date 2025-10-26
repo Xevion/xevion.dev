@@ -224,9 +224,7 @@ export async function GET(req: Request) {
         const urls = allLinks
           .filter((link) => {
             const projectId =
-              typeof link.project === "number"
-                ? link.project
-                : link.project.id;
+              typeof link.project === "number" ? link.project : link.project.id;
             return projectId === project.id;
           })
           .map((link) => link.url)

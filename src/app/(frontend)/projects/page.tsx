@@ -31,7 +31,8 @@ export default async function ProjectsPage() {
   // Group links by project ID
   const linksByProject = new Map<number, PayloadLink[]>();
   for (const link of allLinks) {
-    const projectId = typeof link.project === "number" ? link.project : link.project.id;
+    const projectId =
+      typeof link.project === "number" ? link.project : link.project.id;
     if (!linksByProject.has(projectId)) {
       linksByProject.set(projectId, []);
     }

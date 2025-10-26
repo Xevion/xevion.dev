@@ -1,5 +1,12 @@
 import React from "react";
-import "@/styles/globals.scss";
+
+// Fontsource imports
+import "@fontsource-variable/inter";
+import "@fontsource-variable/roboto";
+import "@fontsource-variable/roboto-mono";
+import "@fontsource/hanken-grotesk/900.css";
+
+import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 

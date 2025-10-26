@@ -41,7 +41,11 @@ const Dots = ({ className }: DotsProps) => {
 
   function addPoints() {
     for (let x = -SPACING / 2; x < w.current + SPACING; x += SPACING) {
-      for (let y = -SPACING / 2; y < h.current + offsetY + SPACING; y += SPACING) {
+      for (
+        let y = -SPACING / 2;
+        y < h.current + offsetY + SPACING;
+        y += SPACING
+      ) {
         const id = `${x}-${y}`;
         if (pointIds.has(id)) continue;
         pointIds.add(id);

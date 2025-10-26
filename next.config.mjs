@@ -1,8 +1,6 @@
 import { withPayload } from "@payloadcms/next/withPayload";
 // @ts-check
 
-import withPlaiceholder from "@plaiceholder/next";
-
 /**
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation.
  * This is especially useful for Docker builds.
@@ -70,6 +68,9 @@ const config = {
       },
     ],
   },
+  turbopack: {
+    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
+  },
   async redirects() {
     // Source cannot end with / slash
     return [
@@ -92,4 +93,4 @@ const config = {
     ];
   },
 };
-export default withPayload(withPlaiceholder(config));
+export default withPayload(config);
