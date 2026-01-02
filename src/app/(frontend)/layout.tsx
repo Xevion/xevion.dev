@@ -5,7 +5,11 @@ import "@fontsource-variable/inter";
 import "@fontsource-variable/roboto";
 import "@fontsource-variable/roboto-mono";
 import "@fontsource/hanken-grotesk/900.css";
+import "@fontsource/schibsted-grotesk/400.css";
+import "@fontsource/schibsted-grotesk/500.css";
+import "@fontsource/schibsted-grotesk/600.css";
 
+import "@radix-ui/themes/styles.css";
 import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "./providers";

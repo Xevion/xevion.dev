@@ -181,14 +181,25 @@ async function handleProject({
 
 export async function GET(req: Request) {
   const { CRON_SECRET, GITHUB_API_TOKEN } = process.env;
-  if (!CRON_SECRET || !GITHUB_API_TOKEN) {
+
+  if (!GITHUB_API_TOKEN) {
     return NextResponse.json(
-      { error: "Missing environment variables" },
-      { status: 500 },
+      {
+        error: "Service unavailable",
+        message: "GITHUB_API_TOKEN not configured",
+      },
+      { status: 503 },
     );
   }
 
   if (process.env.NODE_ENV === "production") {
+    if (!CRON_SECRET) {
+      return NextResponse.json(
+        { error: "Server misconfiguration" },
+        { status: 500 },
+      );
+    }
+
     const authHeader = req.headers.get("authorization");
     const url = new URL(req.url);
     const secretQueryParam = url.searchParams.get("secret");

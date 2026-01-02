@@ -6,12 +6,18 @@ import { z } from "zod";
  * This way you can ensure the app isn't built with invalid env vars.
  */
 export const serverSchema = z.object({
-  CRON_SECRET: z.string().nullish(),
-  GITHUB_API_TOKEN: z.string(),
-  PAYLOAD_SECRET: z.string(),
-  DATABASE_URI: z.string(),
+  CRON_SECRET: z.string().optional(),
+  GITHUB_API_TOKEN: z.string().optional(),
+  PAYLOAD_SECRET: z
+    .string()
+    .default("dev-secret-change-in-production-immediately"),
+  DATABASE_URI: z
+    .string()
+    .default(
+      "postgresql://xevion:xevion_dev_password@localhost:5432/xevion_dev",
+    ),
   PAYLOAD_REVALIDATE_KEY: z.string().optional(),
-  HEALTHCHECK_SECRET: z.string(),
+  HEALTHCHECK_SECRET: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]),
   TITLE: z.preprocess((value) => {
     if (value === undefined || value === "") return null;

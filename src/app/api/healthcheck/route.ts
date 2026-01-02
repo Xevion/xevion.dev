@@ -3,10 +3,20 @@ import config from "../../../payload.config";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
-  const secret = req.headers.get("authorization");
   const healthcheckSecret = process.env.HEALTHCHECK_SECRET;
 
-  if (!secret || !healthcheckSecret || secret !== healthcheckSecret) {
+  if (!healthcheckSecret) {
+    return NextResponse.json(
+      {
+        error: "Service unavailable",
+        message: "HEALTHCHECK_SECRET not configured",
+      },
+      { status: 503 },
+    );
+  }
+
+  const secret = req.headers.get("authorization");
+  if (secret !== healthcheckSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

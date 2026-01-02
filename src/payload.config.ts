@@ -13,6 +13,7 @@ import { Projects } from "./collections/Projects";
 import { Technologies } from "./collections/Technologies";
 import { Links } from "./collections/Links";
 import { Metadata } from "./globals/Metadata";
+import { env } from "./env/server.mjs";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -24,13 +25,13 @@ export default buildConfig({
   collections: [Users, Media, Projects, Technologies, Links],
   globals: [Metadata],
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || "",
+  secret: env.PAYLOAD_SECRET,
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts"),
   },
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URI || "",
+      connectionString: env.DATABASE_URI,
     },
   }),
   sharp,
