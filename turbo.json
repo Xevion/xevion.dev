@@ -1,0 +1,119 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    ".env",
+    ".env.*",
+    "tsconfig.json",
+    "package.json",
+    "bun.lock"
+  ],
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "PAYLOAD_SECRET"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "static/**",
+        "*.config.*",
+        "tsconfig.json",
+        "package.json"
+      ],
+      "outputs": [".svelte-kit/**", "build/**", "dist/**", ".next/**"],
+      "outputLogs": "new-only"
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "deploy": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@xevion/payload#build:worker": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "static/**",
+        "*.config.*",
+        "tsconfig.json",
+        "package.json"
+      ],
+      "outputs": [".svelte-kit/**", "dist/**", ".next/**"],
+      "outputLogs": "new-only"
+    },
+    "@xevion/web#dev": {
+      "dependsOn": ["@xevion/payload#build:worker"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "*.config.*", "package.json"],
+      "outputLogs": "new-only"
+    },
+    "check": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "*.config.*", "tsconfig.json", "package.json"],
+      "outputLogs": "new-only"
+    },
+    "type-check": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "*.config.*", "tsconfig.json", "package.json"],
+      "outputs": ["*.tsbuildinfo"],
+      "outputLogs": "errors-only"
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tests/**", "test/**", "*.config.*", "package.json"],
+      "outputLogs": "new-only"
+    },
+    "test:int": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tests/int/**", "vitest.config.*", "package.json"],
+      "env": ["NODE_ENV"],
+      "outputLogs": "new-only"
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "inputs": [
+        "src/**",
+        "tests/e2e/**",
+        "playwright.config.*",
+        "package.json"
+      ],
+      "env": ["NODE_ENV"],
+      "outputLogs": "new-only"
+    },
+    "generate:types": {
+      "inputs": [
+        "src/collections/**",
+        "src/globals/**",
+        "src/payload.config.ts"
+      ],
+      "outputs": ["src/payload-types.ts"],
+      "cache": false
+    },
+    "generate:schema": {
+      "inputs": [
+        "src/collections/**",
+        "src/globals/**",
+        "src/payload.config.ts"
+      ],
+      "outputs": [
+        "src/payload-generated-schema.ts",
+        "../../packages/db/src/schema.ts"
+      ],
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    },
+    "preview": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
