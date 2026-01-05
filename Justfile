@@ -1,3 +1,5 @@
+set dotenv-load
+
 default:
 	just --list
 
@@ -31,4 +33,6 @@ docker-run port="8080":
 	just docker-run-json {{port}} | hl --config .hl.config.toml -P
 
 docker-run-json port="8080":
-    docker run -p {{port}}:8080 xevion-dev
+    docker stop xevion-dev-container 2>/dev/null || true
+    docker rm xevion-dev-container 2>/dev/null || true
+    docker run --name xevion-dev-container -p {{port}}:8080 xevion-dev

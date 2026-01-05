@@ -39,8 +39,9 @@ WORKDIR /build
 COPY web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
 
-# Build frontend
+# Build frontend with environment variables
 COPY web/ ./
+ARG VITE_OG_R2_BASE_URL
 RUN bun run build
 
 # ========== Stage 5: Final Rust Build (with embedded assets) ==========
@@ -88,9 +89,9 @@ cleanup() {
 }
 trap cleanup SIGTERM SIGINT
 
-# Start Bun SSR (propagate LOG_JSON to Bun process)
+# Start Bun SSR (propagate LOG_JSON and set UPSTREAM_URL)
 cd /app/web/build
-SOCKET_PATH=/tmp/bun.sock LOG_JSON="${LOG_JSON}" bun --preload /app/web/console-logger.js index.js &
+SOCKET_PATH=/tmp/bun.sock LOG_JSON="${LOG_JSON}" UPSTREAM_URL=/tmp/api.sock bun --preload /app/web/console-logger.js index.js &
 BUN_PID=$!
 
 # Wait for Bun socket

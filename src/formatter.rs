@@ -3,7 +3,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::fmt;
 use time::macros::format_description;
-use time::{format_description::FormatItem, OffsetDateTime};
+use time::{OffsetDateTime, format_description::FormatItem};
 use tracing::field::{Field, Visit};
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::fmt::format::Writer;

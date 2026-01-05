@@ -9,16 +9,21 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod assets;
 mod config;
 mod formatter;
+mod health;
 mod middleware;
+mod og;
+mod r2;
 use assets::serve_embedded_asset;
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
+use health::HealthChecker;
 use middleware::RequestIdLayer;
 
 fn init_tracing() {
@@ -69,14 +74,68 @@ async fn main() {
         std::process::exit(1);
     }
 
+    // Create HTTP client for TCP connections with optimized pool settings
+    let http_client = reqwest::Client::builder()
+        .pool_max_idle_per_host(8)
+        .pool_idle_timeout(Duration::from_secs(600)) // 10 minutes
+        .tcp_keepalive(Some(Duration::from_secs(60)))
+        .timeout(Duration::from_secs(5)) // Default timeout for SSR
+        .connect_timeout(Duration::from_secs(3))
+        .build()
+        .expect("Failed to create HTTP client");
+
+    // Create Unix socket client if downstream is a Unix socket
+    let unix_client = if args.downstream.starts_with('/') || args.downstream.starts_with("./") {
+        let path = PathBuf::from(&args.downstream);
+        Some(
+            reqwest::Client::builder()
+                .pool_max_idle_per_host(8)
+                .pool_idle_timeout(Duration::from_secs(600)) // 10 minutes
+                .timeout(Duration::from_secs(5)) // Default timeout for SSR
+                .connect_timeout(Duration::from_secs(3))
+                .unix_socket(path)
+                .build()
+                .expect("Failed to create Unix socket client"),
+        )
+    } else {
+        None
+    };
+
+    // Create health checker
+    let downstream_url_for_health = args.downstream.clone();
+    let http_client_for_health = http_client.clone();
+    let unix_client_for_health = unix_client.clone();
+
+    let health_checker = Arc::new(HealthChecker::new(move || {
+        let downstream_url = downstream_url_for_health.clone();
+        let http_client = http_client_for_health.clone();
+        let unix_client = unix_client_for_health.clone();
+
+        async move { perform_health_check(downstream_url, http_client, unix_client).await }
+    }));
+
     let state = Arc::new(AppState {
         downstream_url: args.downstream.clone(),
+        http_client,
+        unix_client,
+        health_checker,
+    });
+
+    // Regenerate common OGP images on startup
+    tokio::spawn({
+        let state = state.clone();
+        async move {
+            og::regenerate_common_images(state).await;
+        }
     });
 
     let app = Router::new()
         .nest("/api", api_routes())
         .route("/api/", any(api_root_404_handler))
-        .route("/_app/{*path}", axum::routing::get(serve_embedded_asset).head(serve_embedded_asset))
+        .route(
+            "/_app/{*path}",
+            axum::routing::get(serve_embedded_asset).head(serve_embedded_asset),
+        )
         .fallback(isr_handler)
         .layer(TraceLayer::new_for_http())
         .layer(RequestIdLayer::new(args.trust_request_id.clone()))
@@ -131,19 +190,24 @@ async fn main() {
 }
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     downstream_url: String,
+    http_client: reqwest::Client,
+    unix_client: Option<reqwest::Client>,
+    health_checker: Arc<HealthChecker>,
 }
 
 #[derive(Debug)]
-enum ProxyError {
+pub enum ProxyError {
     Network(reqwest::Error),
+    Other(String),
 }
 
 impl std::fmt::Display for ProxyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ProxyError::Network(e) => write!(f, "Network error: {}", e),
+            ProxyError::Other(s) => write!(f, "{}", s),
         }
     }
 }
@@ -178,8 +242,14 @@ fn is_page_route(path: &str) -> bool {
 fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", any(api_root_404_handler))
-        .route("/health", axum::routing::get(health_handler).head(health_handler))
-        .route("/projects", axum::routing::get(projects_handler).head(projects_handler))
+        .route(
+            "/health",
+            axum::routing::get(health_handler).head(health_handler),
+        )
+        .route(
+            "/projects",
+            axum::routing::get(projects_handler).head(projects_handler),
+        )
         .fallback(api_404_and_method_handler)
 }
 
@@ -187,20 +257,30 @@ async fn api_root_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
     api_404_handler(uri).await
 }
 
-async fn health_handler() -> impl IntoResponse {
-    (StatusCode::OK, "OK")
+async fn health_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let healthy = state.health_checker.check().await;
+
+    if healthy {
+        (StatusCode::OK, "OK")
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, "Unhealthy")
+    }
 }
 
 async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
     let method = req.method();
     let uri = req.uri();
     let path = uri.path();
-    
-    if method != axum::http::Method::GET && method != axum::http::Method::HEAD && method != axum::http::Method::OPTIONS {
-        let content_type = req.headers()
+
+    if method != axum::http::Method::GET
+        && method != axum::http::Method::HEAD
+        && method != axum::http::Method::OPTIONS
+    {
+        let content_type = req
+            .headers()
             .get(axum::http::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok());
-        
+
         if let Some(ct) = content_type {
             if !ct.starts_with("application/json") {
                 return (
@@ -209,9 +289,13 @@ async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
                         "error": "Unsupported media type",
                         "message": "API endpoints only accept application/json"
                     })),
-                ).into_response();
+                )
+                    .into_response();
             }
-        } else if method == axum::http::Method::POST || method == axum::http::Method::PUT || method == axum::http::Method::PATCH {
+        } else if method == axum::http::Method::POST
+            || method == axum::http::Method::PUT
+            || method == axum::http::Method::PATCH
+        {
             // POST/PUT/PATCH require Content-Type header
             return (
                 StatusCode::BAD_REQUEST,
@@ -219,10 +303,11 @@ async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
                     "error": "Missing Content-Type header",
                     "message": "Content-Type: application/json is required"
                 })),
-            ).into_response();
+            )
+                .into_response();
         }
     }
-    
+
     // Route not found
     tracing::warn!(path = %path, method = %method, "API route not found");
     (
@@ -231,7 +316,8 @@ async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
             "error": "Not found",
             "path": path
         })),
-    ).into_response()
+    )
+        .into_response()
 }
 
 async fn api_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
@@ -239,7 +325,7 @@ async fn api_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
         .uri(uri)
         .body(axum::body::Body::empty())
         .unwrap();
-    
+
     api_404_and_method_handler(req).await
 }
 
@@ -306,7 +392,7 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
         let mut headers = HeaderMap::new();
         headers.insert(
             axum::http::header::ALLOW,
-            axum::http::HeaderValue::from_static("GET, HEAD, OPTIONS")
+            axum::http::HeaderValue::from_static("GET, HEAD, OPTIONS"),
         );
         return (
             StatusCode::METHOD_NOT_ALLOWED,
@@ -315,19 +401,22 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
         )
             .into_response();
     }
-    
+
     let is_head = method == axum::http::Method::HEAD;
 
     if path.starts_with("/api/") {
         tracing::error!("API request reached ISR handler - routing bug!");
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal routing error",
-        )
-            .into_response();
+        return (StatusCode::INTERNAL_SERVER_ERROR, "Internal routing error").into_response();
     }
 
-    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./") {
+    // Block internal routes from external access
+    if path.starts_with("/internal/") {
+        tracing::warn!(path = %path, "Attempted access to internal route");
+        return (StatusCode::NOT_FOUND, "Not found").into_response();
+    }
+
+    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
+    {
         if query.is_empty() {
             format!("http://localhost{}", path)
         } else {
@@ -415,14 +504,10 @@ async fn proxy_to_bun(
     url: &str,
     state: Arc<AppState>,
 ) -> Result<(StatusCode, HeaderMap, String), ProxyError> {
-    let client = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./") {
-        let path = PathBuf::from(&state.downstream_url);
-        reqwest::Client::builder()
-            .unix_socket(path)
-            .build()
-            .map_err(ProxyError::Network)?
+    let client = if state.unix_client.is_some() {
+        state.unix_client.as_ref().unwrap()
     } else {
-        reqwest::Client::new()
+        &state.http_client
     };
 
     let response = client.get(url).send().await.map_err(ProxyError::Network)?;
@@ -449,4 +534,43 @@ async fn proxy_to_bun(
 
     let body = response.text().await.map_err(ProxyError::Network)?;
     Ok((status, headers, body))
+}
+
+async fn perform_health_check(
+    downstream_url: String,
+    http_client: reqwest::Client,
+    unix_client: Option<reqwest::Client>,
+) -> bool {
+    let url = if downstream_url.starts_with('/') || downstream_url.starts_with("./") {
+        "http://localhost/internal/health".to_string()
+    } else {
+        format!("{}/internal/health", downstream_url)
+    };
+
+    let client = if unix_client.is_some() {
+        unix_client.as_ref().unwrap()
+    } else {
+        &http_client
+    };
+
+    match tokio::time::timeout(Duration::from_secs(5), client.get(&url).send()).await {
+        Ok(Ok(response)) => {
+            let is_success = response.status().is_success();
+            if !is_success {
+                tracing::warn!(
+                    status = response.status().as_u16(),
+                    "Health check failed: Bun returned non-success status"
+                );
+            }
+            is_success
+        }
+        Ok(Err(err)) => {
+            tracing::error!(error = %err, "Health check failed: cannot reach Bun");
+            false
+        }
+        Err(_) => {
+            tracing::error!("Health check failed: timeout after 5s");
+            false
+        }
+    }
 }

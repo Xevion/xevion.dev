@@ -1,9 +1,4 @@
-use axum::{
-    body::Body,
-    extract::Request,
-    http::HeaderName,
-    response::Response,
-};
+use axum::{body::Body, extract::Request, http::HeaderName, response::Response};
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
@@ -44,7 +39,9 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)

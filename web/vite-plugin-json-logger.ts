@@ -55,7 +55,7 @@ export function jsonLogger(): Plugin {
           sinks: ["json"],
         },
         {
-          category: ["vite"],
+          category: [],
           lowestLevel: "debug",
           sinks: ["json"],
         },

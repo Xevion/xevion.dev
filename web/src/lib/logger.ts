@@ -27,46 +27,29 @@ export async function initLogger() {
   const useJsonLogs =
     process.env.LOG_JSON === "true" || process.env.LOG_JSON === "1";
 
-  try {
-    if (!useJsonLogs) {
-      await configure({
-        sinks: {
-          console: getConsoleSink(),
-        },
-        filters: {},
-        loggers: [
-          {
-            category: ["logtape", "meta"],
-            lowestLevel: "warning",
-            sinks: ["console"],
-          },
-          {
-            category: [],
-            lowestLevel: "debug",
-            sinks: ["console"],
-          },
-        ],
-      });
-      return;
-    }
+  const sinkName = useJsonLogs ? "json" : "console";
+  const sink = useJsonLogs
+    ? (record: LogRecord) => {
+        process.stdout.write(railwayFormatter(record));
+      }
+    : getConsoleSink();
 
+  try {
     await configure({
       sinks: {
-        json: (record: LogRecord) => {
-          process.stdout.write(railwayFormatter(record));
-        },
+        [sinkName]: sink,
       },
       filters: {},
       loggers: [
         {
           category: ["logtape", "meta"],
           lowestLevel: "warning",
-          sinks: ["json"],
+          sinks: [sinkName],
         },
         {
-          category: ["ssr"],
-          lowestLevel: "info",
-          sinks: ["json"],
+          category: [],
+          lowestLevel: "debug",
+          sinks: [sinkName],
         },
       ],
     });

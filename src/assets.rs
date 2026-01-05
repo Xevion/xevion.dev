@@ -1,8 +1,8 @@
 use axum::{
-    http::{header, StatusCode, Uri},
+    http::{StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
 
