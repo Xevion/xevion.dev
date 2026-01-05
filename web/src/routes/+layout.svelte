@@ -2,19 +2,19 @@
   import "../app.css";
   import "@fontsource-variable/inter";
   import "@fontsource/hanken-grotesk/900.css";
-  import "@fontsource/schibsted-grotesk/400.css";
-  import "@fontsource/schibsted-grotesk/500.css";
-  import "@fontsource/schibsted-grotesk/600.css";
+  import "@fontsource-variable/schibsted-grotesk";
 
   let { children, data } = $props();
 
-  const metadata = data?.metadata ?? {
+  const defaultMetadata = {
     title: "Xevion.dev",
     description:
       "The personal website of Xevion, a full-stack software developer.",
     ogImage: "/api/og/home.png",
     url: "https://xevion.dev",
   };
+
+  const metadata = $derived(data?.metadata ?? defaultMetadata);
 </script>
 
 <svelte:head>

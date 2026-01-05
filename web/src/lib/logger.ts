@@ -27,29 +27,28 @@ export async function initLogger() {
   const useJsonLogs =
     process.env.LOG_JSON === "true" || process.env.LOG_JSON === "1";
 
-  const sinkName = useJsonLogs ? "json" : "console";
-  const sink = useJsonLogs
-    ? (record: LogRecord) => {
-        process.stdout.write(railwayFormatter(record));
-      }
-    : getConsoleSink();
+  const jsonSink = (record: LogRecord) => {
+    process.stdout.write(railwayFormatter(record));
+  };
+  const consoleSink = getConsoleSink();
 
   try {
     await configure({
       sinks: {
-        [sinkName]: sink,
+        json: useJsonLogs ? jsonSink : consoleSink,
+        console: useJsonLogs ? jsonSink : consoleSink,
       },
       filters: {},
       loggers: [
         {
           category: ["logtape", "meta"],
           lowestLevel: "warning",
-          sinks: [sinkName],
+          sinks: [useJsonLogs ? "json" : "console"],
         },
         {
           category: [],
           lowestLevel: "debug",
-          sinks: [sinkName],
+          sinks: [useJsonLogs ? "json" : "console"],
         },
       ],
     });

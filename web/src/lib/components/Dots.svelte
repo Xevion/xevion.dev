@@ -365,6 +365,11 @@
     let animationId: number;
 
     function render() {
+      if (document.hidden) {
+        animationId = requestAnimationFrame(render);
+        return;
+      }
+
       const time = ((Date.now() - startTime) / 1000) * timeScale;
 
       uniforms.set("u_resolution", [canvas.width, canvas.height]);

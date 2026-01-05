@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::{AppState, r2::R2Client};
 
@@ -38,9 +38,9 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
     // Call Bun's internal endpoint
     let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
     {
-        "http://localhost/internal/ogp".to_string()
+        "http://localhost/internal/ogp/generate".to_string()
     } else {
-        format!("{}/internal/ogp", state.downstream_url)
+        format!("{}/internal/ogp/generate", state.downstream_url)
     };
 
     let client = state.unix_client.as_ref().unwrap_or(&state.http_client);
@@ -48,7 +48,7 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
     let response = client
         .post(&bun_url)
         .json(spec)
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(Duration::from_secs(30))
         .send()
         .await
         .map_err(|e| format!("Failed to call Bun: {}", e))?;
@@ -93,8 +93,10 @@ pub async fn ensure_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Result
 
 /// Regenerate common OG images (index, projects) on server startup
 pub async fn regenerate_common_images(state: Arc<AppState>) {
-    tracing::info!("Regenerating common OG images");
+    // Wait 2 seconds before starting
+    tokio::time::sleep(Duration::from_secs(2)).await;
 
+    tracing::info!("Regenerating common OG images");
     let specs = vec![OGImageSpec::Index, OGImageSpec::Projects];
 
     for spec in specs {
