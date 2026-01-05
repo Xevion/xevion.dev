@@ -195,7 +195,6 @@
       float closestRad = 0.0;
       float pointOpacity = 0.0;
 
-      // Check 9 neighboring grid points
       for (float dx = -1.0; dx <= 1.0; dx += 1.0) {
         for (float dy = -1.0; dy <= 1.0; dy += 1.0) {
           vec2 testGrid = gridCoord + vec2(dx * spacing, dy * spacing);
@@ -296,7 +295,6 @@
 
     const { gl, program } = context;
 
-    // Setup fullscreen quad geometry
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(
@@ -309,7 +307,6 @@
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Setup uniform manager
     const uniforms = new UniformManager(gl, program, [
       "u_resolution",
       "u_time",
@@ -335,7 +332,6 @@
 
     const dpr = window.devicePixelRatio || 1;
 
-    // Set static uniforms
     uniforms.setStatic({
       u_seed: Math.random() * 1000,
       u_dpr: dpr,

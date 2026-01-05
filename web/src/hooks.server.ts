@@ -3,13 +3,11 @@ import { dev } from "$app/environment";
 import { initLogger } from "$lib/logger";
 import { getLogger } from "@logtape/logtape";
 
-// Initialize logger on server startup
 await initLogger();
 
 const logger = getLogger(["ssr", "error"]);
 
 export const handle: Handle = async ({ event, resolve }) => {
-  // Handle DevTools request silently to prevent console.log spam
   if (
     dev &&
     event.url.pathname === "/.well-known/appspecific/com.chrome.devtools.json"
@@ -26,7 +24,6 @@ export const handleError: HandleServerError = async ({
   status,
   message,
 }) => {
-  // Use structured logging via LogTape instead of console.error
   logger.error(message, {
     status,
     method: event.request.method,

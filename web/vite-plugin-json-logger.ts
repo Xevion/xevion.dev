@@ -9,9 +9,6 @@ interface RailwayLogEntry {
   [key: string]: unknown;
 }
 
-/**
- * Railway-compatible JSON formatter for Vite logs
- */
 function railwayFormatter(record: LogRecord): string {
   const entry: RailwayLogEntry = {
     timestamp: new Date().toISOString(),
@@ -20,7 +17,6 @@ function railwayFormatter(record: LogRecord): string {
     target: "vite",
   };
 
-  // Flatten properties to root level
   if (record.properties && Object.keys(record.properties).length > 0) {
     Object.assign(entry, record.properties);
   }
@@ -28,7 +24,6 @@ function railwayFormatter(record: LogRecord): string {
   return JSON.stringify(entry) + "\n";
 }
 
-// Strip ANSI escape codes from strings
 function stripAnsi(str: string): string {
   return str.replace(/\u001b\[[0-9;]*m/g, "").trim();
 }
@@ -37,14 +32,12 @@ export function jsonLogger(): Plugin {
   const useJsonLogs =
     process.env.LOG_JSON === "true" || process.env.LOG_JSON === "1";
 
-  // If JSON logging is disabled, return a minimal plugin that does nothing
   if (!useJsonLogs) {
     return {
       name: "vite-plugin-json-logger",
     };
   }
 
-  // Configure LogTape for Vite plugin logging
   let loggerConfigured = false;
   const configureLogger = async () => {
     if (loggerConfigured) return;
@@ -56,7 +49,6 @@ export function jsonLogger(): Plugin {
       },
       filters: {},
       loggers: [
-        // Suppress LogTape meta logger info messages
         {
           category: ["logtape", "meta"],
           lowestLevel: "warning",
@@ -86,7 +78,6 @@ export function jsonLogger(): Plugin {
         customLogger: {
           info(msg: string) {
             const cleaned = stripAnsi(msg);
-            // Filter out noise
             if (
               !cleaned ||
               ignoredMessages.has(cleaned) ||
@@ -108,9 +99,7 @@ export function jsonLogger(): Plugin {
               logger.error(cleaned);
             }
           },
-          clearScreen() {
-            // No-op since clearScreen is already false
-          },
+          clearScreen() {},
           hasErrorLogged() {
             return false;
           },
@@ -126,7 +115,6 @@ export function jsonLogger(): Plugin {
       server = s;
       const logger = getLogger(["vite"]);
 
-      // Override the default URL printing
       const originalPrintUrls = server.printUrls;
       server.printUrls = () => {
         const urls = server.resolvedUrls;
@@ -138,7 +126,6 @@ export function jsonLogger(): Plugin {
         }
       };
 
-      // Listen to server events
       server.httpServer?.once("listening", () => {
         logger.info("server listening");
       });

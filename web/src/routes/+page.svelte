@@ -8,17 +8,12 @@
 </script>
 
 <AppWrapper class="overflow-x-hidden font-schibsted">
-  <!-- Top Navigation Bar -->
-  <div class="flex w-full justify-end items-center pt-5 px-6 pb-9">
-    <!-- <div class="flex gap-4 items-center"></div> -->
-  </div>
+  <div class="flex w-full justify-end items-center pt-5 px-6 pb-9"></div>
 
-  <!-- Main Content -->
   <div class="flex items-center flex-col">
     <div
       class="max-w-2xl mx-6 border-b border-zinc-700 divide-y divide-zinc-700"
     >
-      <!-- Name & Occupation -->
       <div class="flex flex-col pb-4">
         <span class="text-3xl font-bold text-white">Ryan Walters,</span>
         <span class="text-2xl font-normal text-zinc-400">

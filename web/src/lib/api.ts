@@ -3,20 +3,11 @@ import { env } from "$env/dynamic/private";
 
 const logger = getLogger(["ssr", "lib", "api"]);
 
-// Compute upstream configuration once at module load
 const upstreamUrl = env.UPSTREAM_URL;
 const isUnixSocket =
   upstreamUrl?.startsWith("/") || upstreamUrl?.startsWith("./");
 const baseUrl = isUnixSocket ? "http://localhost" : upstreamUrl;
 
-/**
- * Fetch utility for calling the Rust backend API.
- * Automatically prefixes requests with the upstream URL from environment.
- * Supports both HTTP URLs and Unix socket paths.
- *
- * Connection pooling and keep-alive are handled automatically by Bun.
- * Default timeout is 30 seconds unless overridden via init.signal.
- */
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
@@ -29,10 +20,8 @@ export async function apiFetch<T>(
   const url = `${baseUrl}${path}`;
   const method = init?.method ?? "GET";
 
-  // Build fetch options with 30s default timeout and unix socket support
   const fetchOptions: RequestInit & { unix?: string } = {
     ...init,
-    // Respect caller-provided signal, otherwise default to 30s timeout
     signal: init?.signal ?? AbortSignal.timeout(30_000),
   };
 

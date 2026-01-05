@@ -4,16 +4,11 @@ use axum::{
 };
 use include_dir::{include_dir, Dir};
 
-/// Embedded client assets from the SvelteKit build
-/// These are the static JS/CSS bundles that get served to browsers
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
 
-/// Serves embedded client assets from the /_app path
-/// Returns 404 if the asset doesn't exist
 pub async fn serve_embedded_asset(uri: Uri) -> Response {
     let path = uri.path();
 
-    // Strip leading slash for lookup
     let asset_path = path.strip_prefix('/').unwrap_or(path);
 
     match CLIENT_ASSETS.get_file(asset_path) {
@@ -31,14 +26,12 @@ pub async fn serve_embedded_asset(uri: Uri) -> Response {
                 }),
             );
 
-            // Immutable assets can be cached forever (they're content-hashed)
             if path.contains("/immutable/") {
                 headers.insert(
                     header::CACHE_CONTROL,
                     header::HeaderValue::from_static("public, max-age=31536000, immutable"),
                 );
             } else {
-                // Version file and other assets get short cache
                 headers.insert(
                     header::CACHE_CONTROL,
                     header::HeaderValue::from_static("public, max-age=3600"),
