@@ -503,7 +503,7 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
 async fn proxy_to_bun(
     url: &str,
     state: Arc<AppState>,
-) -> Result<(StatusCode, HeaderMap, String), ProxyError> {
+) -> Result<(StatusCode, HeaderMap, axum::body::Bytes), ProxyError> {
     let client = if state.unix_client.is_some() {
         state.unix_client.as_ref().unwrap()
     } else {
@@ -532,7 +532,7 @@ async fn proxy_to_bun(
         }
     }
 
-    let body = response.text().await.map_err(ProxyError::Network)?;
+    let body = response.bytes().await.map_err(ProxyError::Network)?;
     Ok((status, headers, body))
 }
 

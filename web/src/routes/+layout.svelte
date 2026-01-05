@@ -1,8 +1,8 @@
 <script lang="ts">
-  import "../app.css";
-  import "@fontsource-variable/inter";
+  import "@fontsource-variable/inter/wght.css";
   import "@fontsource/hanken-grotesk/900.css";
-  import "@fontsource-variable/schibsted-grotesk";
+  import "@fontsource-variable/schibsted-grotesk/wght.css";
+  import "../app.css";
 
   let { children, data } = $props();
 

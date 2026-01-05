@@ -1,7 +1,9 @@
 {
   "private": true,
   "type": "module",
+  "packageManager": "bun@latest",
   "scripts": {
+    "preinstall": "npx only-allow bun",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
