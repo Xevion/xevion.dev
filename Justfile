@@ -15,6 +15,9 @@ build:
     bun run --cwd web build
     cargo build --release
 
+serve:
+    LOG_JSON=true bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/api --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
+
 check:
     bun run --cwd web format
     bun run --cwd web lint
