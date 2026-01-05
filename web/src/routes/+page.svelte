@@ -5,17 +5,12 @@
   import IconSimpleIconsDiscord from "~icons/simple-icons/discord";
   import MaterialSymbolsMailRounded from "~icons/material-symbols/mail-rounded";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
-  // import IconLucideRss from "~icons/lucide/rss";
 </script>
 
 <AppWrapper class="overflow-x-hidden font-schibsted">
   <!-- Top Navigation Bar -->
   <div class="flex w-full justify-end items-center pt-5 px-6 pb-9">
-    <div class="flex gap-4 items-center">
-      <!-- <a href="/rss" class="text-zinc-400 hover:text-zinc-200">
-        <IconLucideRss class="size-5" />
-      </a> -->
-    </div>
+    <!-- <div class="flex gap-4 items-center"></div> -->
   </div>
 
   <!-- Main Content -->

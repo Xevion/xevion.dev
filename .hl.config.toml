@@ -1,0 +1,98 @@
+#:schema https://raw.githubusercontent.com/pamburus/hl/v0.34.0/schema/json/config.schema.json
+
+# Configuration for Railway-compatible JSON logs
+# Usage: hl --config .hl.config.toml
+
+# Time format for display (Railway ignores timestamp but we include it)
+time-format = "%b %d %T.%3N"
+time-zone = "UTC"
+
+# Input file display settings
+input-info = "auto"
+
+# ASCII mode detection
+ascii = "auto"
+
+# Theme
+theme = "uni"
+theme-overlays = ["@accent-italic"]
+
+[fields]
+# Don't ignore any fields by default
+ignore = []
+hide = []
+
+# Field configuration for Railway format
+[fields.predefined]
+
+# Timestamp field (Railway ignores this but we want consistency)
+[fields.predefined.time]
+show = "auto"
+names = [
+  "timestamp",
+  "ts",
+  "time",
+  "@timestamp"
+]
+
+# Logger field (optional, matches Rust 'target' field)
+[fields.predefined.logger]
+names = ["logger", "target", "span.name"]
+
+# Level field (Railway uses this)
+[fields.predefined.level]
+show = "auto"
+
+[[fields.predefined.level.variants]]
+names = ["level"]
+
+[fields.predefined.level.variants.values]
+error = ["error", "err", "fatal", "critical", "panic"]
+warning = ["warning", "warn"]
+info = ["info", "information"]
+debug = ["debug"]
+trace = ["trace"]
+
+# Message field (Railway uses this)
+[fields.predefined.message]
+names = ["message", "msg"]
+
+# Caller field
+[fields.predefined.caller]
+names = ["caller"]
+
+[fields.predefined.caller-file]
+names = []
+
+[fields.predefined.caller-line]
+names = []
+
+# Formatting settings
+[formatting]
+# Flatten nested fields
+flatten = "always"
+
+# Message format - delimited for better readability
+[formatting.message]
+format = "delimited"
+
+# Punctuation
+[formatting.punctuation]
+logger-name-separator = ":"
+field-key-value-separator = "="
+string-opening-quote = "'"
+string-closing-quote = "'"
+caller-name-file-separator = " @ "
+hidden-fields-indicator = " ..."
+level-left-separator = "["
+level-right-separator = "]"
+input-number-prefix = "#"
+input-number-left-separator = ""
+input-name-left-separator = ""
+array-separator = " "
+source-location-separator = { ascii = "-> ", unicode = "→ " }
+input-number-right-separator = { ascii = " | ", unicode = " │ " }
+input-name-right-separator = { ascii = " | ", unicode = " │ " }
+input-name-clipping = { ascii = "..", unicode = "··" }
+input-name-common-part = { ascii = "..", unicode = "··" }
+message-delimiter = { ascii = "::", unicode = "›" }

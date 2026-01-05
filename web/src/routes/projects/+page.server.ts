@@ -1,4 +1,5 @@
 import type { PageServerLoad } from "./$types";
+import { apiFetch } from "$lib/api";
 
 interface ProjectLink {
   url: string;
@@ -14,8 +15,8 @@ export interface Project {
 }
 
 export const load: PageServerLoad = async () => {
-  // TODO: Fetch from Rust backend API
+  const projects = await apiFetch<Project[]>("/api/projects");
   return {
-    projects: [] as Project[],
+    projects,
   };
 };

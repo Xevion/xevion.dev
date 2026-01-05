@@ -9,6 +9,7 @@ const config = {
     adapter: adapter({
       out: "build",
       precompress: false,
+      serveAssets: false,
     }),
     alias: {
       $components: "src/lib/components",
