@@ -3,7 +3,7 @@ use axum::{
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{any, get},
 };
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -12,9 +12,11 @@ use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
+mod assets;
 mod config;
 mod formatter;
 mod middleware;
+use assets::serve_embedded_asset;
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 use middleware::RequestIdLayer;
@@ -81,8 +83,12 @@ async fn main() {
     });
 
     // Build router with shared state
+    // Note: Axum's nest() handles /api/* but not /api or /api/ at the parent level
+    // So we explicitly add those routes before nesting
     let app = Router::new()
-        .nest("/api", api_routes().fallback(api_404_handler))
+        .nest("/api", api_routes())
+        .route("/api/", any(api_root_404_handler))
+        .route("/_app/{*path}", get(serve_embedded_asset))
         .fallback(isr_handler)
         .layer(TraceLayer::new_for_http())
         .layer(RequestIdLayer::new(args.trust_request_id.clone()))
@@ -192,8 +198,15 @@ fn is_page_route(path: &str) -> bool {
 // API routes for data endpoints
 fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
+        .route("/", any(api_root_404_handler))
         .route("/health", get(health_handler))
         .route("/projects", get(projects_handler))
+        .fallback(api_404_handler)
+}
+
+// API root 404 handler - explicit 404 for /api and /api/ requests
+async fn api_root_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
+    api_404_handler(uri).await
 }
 
 // Health check endpoint
@@ -268,11 +281,22 @@ async fn projects_handler() -> impl IntoResponse {
 
 // ISR handler - proxies to Bun SSR server
 // This is the fallback for all routes not matched by /api/*
-#[tracing::instrument(skip(state, req), fields(path = %req.uri().path()))]
+#[tracing::instrument(skip(state, req), fields(path = %req.uri().path(), method = %req.method()))]
 async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Response {
+    let method = req.method();
     let uri = req.uri();
     let path = uri.path();
     let query = uri.query().unwrap_or("");
+
+    // Only allow GET requests outside of /api routes
+    if method != axum::http::Method::GET {
+        tracing::warn!(method = %method, path = %path, "Non-GET request to non-API route");
+        return (
+            StatusCode::METHOD_NOT_ALLOWED,
+            "Method not allowed",
+        )
+            .into_response();
+    }
 
     // Check if API route somehow reached ISR handler (shouldn't happen)
     if path.starts_with("/api/") {
@@ -285,10 +309,22 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
     }
 
     // Build URL for Bun server
-    let bun_url = if query.is_empty() {
-        format!("{}{}", state.downstream_url, path)
+    // For unix sockets, use http://localhost + path (socket is configured in client)
+    // For TCP, use the actual downstream URL
+    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./") {
+        // Unix socket - host is ignored, just need the path
+        if query.is_empty() {
+            format!("http://localhost{}", path)
+        } else {
+            format!("http://localhost{}?{}", path, query)
+        }
     } else {
-        format!("{}{}?{}", state.downstream_url, path, query)
+        // TCP - use the actual downstream URL
+        if query.is_empty() {
+            format!("{}{}", state.downstream_url, path)
+        } else {
+            format!("{}{}?{}", state.downstream_url, path, query)
+        }
     };
 
     // Track request timing
@@ -297,7 +333,7 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
     // TODO: Add ISR caching layer here (moka, singleflight, stale-while-revalidate)
     // For now, just proxy directly to Bun
 
-    match proxy_to_bun(&bun_url, &state.downstream_url).await {
+    match proxy_to_bun(&bun_url, state.clone()).await {
         Ok((status, headers, body)) => {
             let duration_ms = start.elapsed().as_millis() as u64;
             let cache = "miss"; // Hardcoded for now, will change when caching is implemented
@@ -373,18 +409,18 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
 // Proxy a request to the Bun SSR server, returning status, headers and body
 async fn proxy_to_bun(
     url: &str,
-    downstream_url: &str,
+    state: Arc<AppState>,
 ) -> Result<(StatusCode, HeaderMap, String), ProxyError> {
-    // Check if downstream is a Unix socket path
-    let client = if downstream_url.starts_with('/') || downstream_url.starts_with("./") {
-        // Unix socket
-        let path = PathBuf::from(downstream_url);
+    // Build client - if downstream_url is a path, use unix socket, otherwise TCP
+    let client = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./") {
+        // Unix socket - the host in the URL (localhost) is ignored
+        let path = PathBuf::from(&state.downstream_url);
         reqwest::Client::builder()
             .unix_socket(path)
             .build()
             .map_err(ProxyError::Network)?
     } else {
-        // Regular HTTP
+        // Regular TCP connection
         reqwest::Client::new()
     };
 
