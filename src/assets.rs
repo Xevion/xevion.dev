@@ -9,10 +9,14 @@ static ERROR_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendere
 
 pub async fn serve_embedded_asset(uri: Uri) -> Response {
     let path = uri.path();
+    serve_asset_by_path(path)
+}
 
+/// Serve an embedded asset by path, or return None if not found
+pub fn try_serve_embedded_asset(path: &str) -> Option<Response> {
     let asset_path = path.strip_prefix('/').unwrap_or(path);
 
-    if let Some(file) = CLIENT_ASSETS.get_file(asset_path) {
+    CLIENT_ASSETS.get_file(asset_path).map(|file| {
         let mime_type = mime_guess::from_path(asset_path)
             .first_or_octet_stream()
             .as_ref()
@@ -39,6 +43,12 @@ pub async fn serve_embedded_asset(uri: Uri) -> Response {
         }
 
         (StatusCode::OK, headers, file.contents()).into_response()
+    })
+}
+
+fn serve_asset_by_path(path: &str) -> Response {
+    if let Some(response) = try_serve_embedded_asset(path) {
+        response
     } else {
         tracing::debug!(path, "Embedded asset not found");
         (StatusCode::NOT_FOUND, "Asset not found").into_response()

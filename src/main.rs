@@ -23,7 +23,7 @@ mod middleware;
 mod og;
 mod r2;
 mod tarpit;
-use assets::serve_embedded_asset;
+use assets::{serve_embedded_asset, try_serve_embedded_asset};
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 use health::HealthChecker;
@@ -1233,6 +1233,15 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
         }
 
         return (StatusCode::NOT_FOUND, "Not found").into_response();
+    }
+
+    // Check if this is a static asset that exists in embedded CLIENT_ASSETS
+    // This handles root-level files like favicon.ico, favicon.svg, etc.
+    if is_static_asset(path) {
+        if let Some(response) = try_serve_embedded_asset(path) {
+            return response;
+        }
+        // If not found in embedded assets, continue to proxy (might be in Bun's static dir)
     }
 
     let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
