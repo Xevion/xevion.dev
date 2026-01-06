@@ -31,14 +31,10 @@
     }
   }
 
+  // Load events on mount and when filters change
   $effect(() => {
-    loadEvents();
-  });
-
-  // Reload when filters change
-  $effect(() => {
-    filterLevel;
-    filterTarget;
+    void filterLevel;
+    void filterTarget;
     loadEvents();
   });
 </script>
@@ -57,7 +53,9 @@
   </div>
 
   <!-- Filters -->
-  <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20">
+  <div
+    class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+  >
     <h3 class="text-sm font-medium text-zinc-400 mb-4">Filters</h3>
     <div class="grid gap-4 md:grid-cols-2">
       <Input
@@ -77,15 +75,15 @@
 
   <!-- Events Log -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">
-      Loading events...
-    </div>
+    <div class="text-center py-12 text-zinc-500">Loading events...</div>
   {:else if events.length === 0}
     <div class="text-center py-12">
       <p class="text-zinc-500">No events found</p>
     </div>
   {:else}
-    <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-sm shadow-black/20">
+    <div
+      class="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-sm shadow-black/20"
+    >
       <div class="px-6 py-3.5 bg-zinc-800/30 border-b border-zinc-800">
         <h2 class="text-sm font-medium text-zinc-300">
           Event Log
@@ -94,7 +92,7 @@
           </span>
         </h2>
       </div>
-      <EventLog events={events} maxHeight="600px" showMetadata={true} />
+      <EventLog {events} maxHeight="600px" showMetadata={true} />
     </div>
   {/if}
 </div>

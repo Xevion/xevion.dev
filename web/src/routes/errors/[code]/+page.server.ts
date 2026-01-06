@@ -6,7 +6,7 @@ import type { EntryGenerator, PageServerLoad } from "./$types";
  * This generates static HTML files at build time.
  */
 export const entries: EntryGenerator = () => {
-	return Object.keys(ERROR_CODES).map((code) => ({ code }));
+  return Object.keys(ERROR_CODES).map((code) => ({ code }));
 };
 
 export const prerender = true;
@@ -16,10 +16,10 @@ export const prerender = true;
  * This runs during prerendering to generate static HTML.
  */
 export const load: PageServerLoad = ({ params }) => {
-	const code = parseInt(params.code, 10) as keyof typeof ERROR_CODES;
+  const code = parseInt(params.code, 10) as keyof typeof ERROR_CODES;
 
-	return {
-		code,
-		...ERROR_CODES[code],
-	};
+  return {
+    code,
+    ...ERROR_CODES[code],
+  };
 };

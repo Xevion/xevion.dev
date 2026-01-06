@@ -9,9 +9,6 @@ import type {
   CreateTagData,
   UpdateTagData,
   SiteSettings,
-  SiteIdentity,
-  SocialLink,
-  AdminPreferences,
 } from "./admin-types";
 
 // ============================================================================
@@ -19,30 +16,110 @@ import type {
 // ============================================================================
 
 // Mock data storage (in-memory for now)
-let MOCK_TAGS: AdminTag[] = [
-  { id: "tag-1", slug: "rust", name: "Rust", createdAt: "2024-01-15T10:00:00Z" },
-  { id: "tag-2", slug: "typescript", name: "TypeScript", createdAt: "2024-01-16T10:00:00Z" },
+const MOCK_TAGS: AdminTag[] = [
+  {
+    id: "tag-1",
+    slug: "rust",
+    name: "Rust",
+    createdAt: "2024-01-15T10:00:00Z",
+  },
+  {
+    id: "tag-2",
+    slug: "typescript",
+    name: "TypeScript",
+    createdAt: "2024-01-16T10:00:00Z",
+  },
   { id: "tag-3", slug: "web", name: "Web", createdAt: "2024-01-17T10:00:00Z" },
   { id: "tag-4", slug: "cli", name: "CLI", createdAt: "2024-01-18T10:00:00Z" },
   { id: "tag-5", slug: "api", name: "API", createdAt: "2024-01-19T10:00:00Z" },
-  { id: "tag-6", slug: "database", name: "Database", createdAt: "2024-01-20T10:00:00Z" },
-  { id: "tag-7", slug: "svelte", name: "Svelte", createdAt: "2024-01-21T10:00:00Z" },
-  { id: "tag-8", slug: "python", name: "Python", createdAt: "2024-01-22T10:00:00Z" },
-  { id: "tag-9", slug: "machine-learning", name: "Machine Learning", createdAt: "2024-01-23T10:00:00Z" },
-  { id: "tag-10", slug: "docker", name: "Docker", createdAt: "2024-01-24T10:00:00Z" },
-  { id: "tag-11", slug: "kubernetes", name: "Kubernetes", createdAt: "2024-01-25T10:00:00Z" },
-  { id: "tag-12", slug: "react", name: "React", createdAt: "2024-01-26T10:00:00Z" },
-  { id: "tag-13", slug: "nextjs", name: "Next.js", createdAt: "2024-01-27T10:00:00Z" },
-  { id: "tag-14", slug: "tailwind", name: "Tailwind CSS", createdAt: "2024-01-28T10:00:00Z" },
-  { id: "tag-15", slug: "graphql", name: "GraphQL", createdAt: "2024-01-29T10:00:00Z" },
-  { id: "tag-16", slug: "postgres", name: "PostgreSQL", createdAt: "2024-01-30T10:00:00Z" },
-  { id: "tag-17", slug: "redis", name: "Redis", createdAt: "2024-01-31T10:00:00Z" },
+  {
+    id: "tag-6",
+    slug: "database",
+    name: "Database",
+    createdAt: "2024-01-20T10:00:00Z",
+  },
+  {
+    id: "tag-7",
+    slug: "svelte",
+    name: "Svelte",
+    createdAt: "2024-01-21T10:00:00Z",
+  },
+  {
+    id: "tag-8",
+    slug: "python",
+    name: "Python",
+    createdAt: "2024-01-22T10:00:00Z",
+  },
+  {
+    id: "tag-9",
+    slug: "machine-learning",
+    name: "Machine Learning",
+    createdAt: "2024-01-23T10:00:00Z",
+  },
+  {
+    id: "tag-10",
+    slug: "docker",
+    name: "Docker",
+    createdAt: "2024-01-24T10:00:00Z",
+  },
+  {
+    id: "tag-11",
+    slug: "kubernetes",
+    name: "Kubernetes",
+    createdAt: "2024-01-25T10:00:00Z",
+  },
+  {
+    id: "tag-12",
+    slug: "react",
+    name: "React",
+    createdAt: "2024-01-26T10:00:00Z",
+  },
+  {
+    id: "tag-13",
+    slug: "nextjs",
+    name: "Next.js",
+    createdAt: "2024-01-27T10:00:00Z",
+  },
+  {
+    id: "tag-14",
+    slug: "tailwind",
+    name: "Tailwind CSS",
+    createdAt: "2024-01-28T10:00:00Z",
+  },
+  {
+    id: "tag-15",
+    slug: "graphql",
+    name: "GraphQL",
+    createdAt: "2024-01-29T10:00:00Z",
+  },
+  {
+    id: "tag-16",
+    slug: "postgres",
+    name: "PostgreSQL",
+    createdAt: "2024-01-30T10:00:00Z",
+  },
+  {
+    id: "tag-17",
+    slug: "redis",
+    name: "Redis",
+    createdAt: "2024-01-31T10:00:00Z",
+  },
   { id: "tag-18", slug: "aws", name: "AWS", createdAt: "2024-02-01T10:00:00Z" },
-  { id: "tag-19", slug: "devops", name: "DevOps", createdAt: "2024-02-02T10:00:00Z" },
-  { id: "tag-20", slug: "security", name: "Security", createdAt: "2024-02-03T10:00:00Z" },
+  {
+    id: "tag-19",
+    slug: "devops",
+    name: "DevOps",
+    createdAt: "2024-02-02T10:00:00Z",
+  },
+  {
+    id: "tag-20",
+    slug: "security",
+    name: "Security",
+    createdAt: "2024-02-03T10:00:00Z",
+  },
 ];
 
-let MOCK_PROJECTS: AdminProject[] = [
+const MOCK_PROJECTS: AdminProject[] = [
   {
     id: "proj-1",
     slug: "portfolio-site",
@@ -167,7 +244,8 @@ let MOCK_PROJECTS: AdminProject[] = [
     id: "proj-9",
     slug: "security-scanner",
     title: "Security Scanner",
-    description: "Automated security vulnerability scanner for web applications",
+    description:
+      "Automated security vulnerability scanner for web applications",
     status: "active",
     githubRepo: "xevion/sec-scanner",
     demoUrl: null,
@@ -197,7 +275,8 @@ let MOCK_PROJECTS: AdminProject[] = [
     id: "proj-11",
     slug: "deployment-tools",
     title: "Deployment Automation Tools",
-    description: "CLI tools for automated deployments to multiple cloud providers",
+    description:
+      "CLI tools for automated deployments to multiple cloud providers",
     status: "active",
     githubRepo: "xevion/deploy-tools",
     demoUrl: null,
@@ -270,7 +349,7 @@ let MOCK_PROJECTS: AdminProject[] = [
   },
 ];
 
-let MOCK_EVENTS: AdminEvent[] = [
+const MOCK_EVENTS: AdminEvent[] = [
   {
     id: "evt-1",
     timestamp: "2025-01-06T10:30:00Z",
@@ -455,7 +534,9 @@ export async function getAdminProjects(): Promise<AdminProject[]> {
   return [...MOCK_PROJECTS].sort((a, b) => b.priority - a.priority);
 }
 
-export async function getAdminProject(id: string): Promise<AdminProject | null> {
+export async function getAdminProject(
+  id: string,
+): Promise<AdminProject | null> {
   // TODO: Replace with apiFetch(`/admin/api/projects/${id}`) when backend ready
   await new Promise((resolve) => setTimeout(resolve, 50));
   return MOCK_PROJECTS.find((p) => p.id === id) || null;
@@ -743,7 +824,9 @@ export async function getSettings(): Promise<SiteSettings> {
   return structuredClone(MOCK_SETTINGS);
 }
 
-export async function updateSettings(settings: SiteSettings): Promise<SiteSettings> {
+export async function updateSettings(
+  settings: SiteSettings,
+): Promise<SiteSettings> {
   // TODO: Replace with apiFetch('/admin/api/settings', { method: 'PUT', body: JSON.stringify(settings) })
   await new Promise((resolve) => setTimeout(resolve, 200));
 

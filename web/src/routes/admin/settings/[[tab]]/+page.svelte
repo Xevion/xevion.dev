@@ -17,12 +17,14 @@
   let settings = $state<SiteSettings | null>(null);
   let loading = $state(true);
   let saving = $state(false);
-  
+
   // Read tab from URL, default to "identity"
   let activeTab = $derived.by(() => {
     const params = $page.params as { tab?: string };
     const tab = params.tab as Tab | undefined;
-    return tab && ["identity", "social", "admin"].includes(tab) ? tab : "identity";
+    return tab && ["identity", "social", "admin"].includes(tab)
+      ? tab
+      : "identity";
   });
 
   // Form state - will be populated when settings load
@@ -98,6 +100,7 @@
   }
 
   function navigateToTab(tab: Tab) {
+    // eslint-disable-next-line svelte/no-navigation-without-resolve
     goto(`/admin/settings/${tab}`, { replaceState: true });
   }
 </script>
@@ -127,7 +130,7 @@
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "identity"
               ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
+              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
           )}
           onclick={() => navigateToTab("identity")}
         >
@@ -139,7 +142,7 @@
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "social"
               ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
+              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
           )}
           onclick={() => navigateToTab("social")}
         >
@@ -151,7 +154,7 @@
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "admin"
               ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
+              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
           )}
           onclick={() => navigateToTab("admin")}
         >
@@ -161,10 +164,14 @@
     </div>
 
     <!-- Tab Content -->
-    <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20">
+    <div
+      class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+    >
       {#if activeTab === "identity"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-zinc-200 mb-4">Site Identity</h3>
+          <h3 class="text-base font-medium text-zinc-200 mb-4">
+            Site Identity
+          </h3>
           <Input
             label="Display Name"
             type="text"
@@ -204,7 +211,7 @@
           </p>
 
           <div class="space-y-3">
-            {#each formData.socialLinks as link}
+            {#each formData.socialLinks as link (link.id)}
               {@const Icon = getSocialIcon(link.platform)}
               <div
                 class="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-700 transition-colors"
@@ -215,7 +222,9 @@
                   </div>
                   <div class="flex-1 space-y-3">
                     <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium text-zinc-200">{link.label}</span>
+                      <span class="text-sm font-medium text-zinc-200"
+                        >{link.label}</span
+                      >
                       <label class="flex items-center gap-2 cursor-pointer">
                         <span class="text-xs text-zinc-500">Visible</span>
                         <input
@@ -238,7 +247,9 @@
         </div>
       {:else if activeTab === "admin"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-zinc-200 mb-4">Admin Preferences</h3>
+          <h3 class="text-base font-medium text-zinc-200 mb-4">
+            Admin Preferences
+          </h3>
           <Input
             label="Session Timeout"
             type="number"

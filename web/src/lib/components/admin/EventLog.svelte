@@ -34,28 +34,30 @@
 
 <OverlayScrollbarsComponent
   options={{
-    scrollbars: { autoHide: "leave", autoHideDelay: 800 }
+    scrollbars: { autoHide: "leave", autoHideDelay: 800 },
   }}
   defer
   style="max-height: {maxHeight}"
 >
   <div class="divide-y divide-zinc-800/50 bg-zinc-950">
-    {#each events as event}
+    {#each events as event (event.id)}
       {@const levelColors = {
         info: "text-cyan-500/60",
         warning: "text-amber-500/70",
-        error: "text-rose-500/70"
+        error: "text-rose-500/70",
       }}
       {@const levelLabels = {
         info: "INFO",
         warning: "WARN",
-        error: "ERR"
+        error: "ERR",
       }}
       <div class="hover:bg-zinc-900/50 transition-colors">
         <div class="px-4 py-1.5">
           <div class="flex items-center justify-between gap-4 text-xs">
             <div class="flex items-center gap-2.5 flex-1 min-w-0">
-              <span class={`${levelColors[event.level]} font-mono font-medium shrink-0 w-10`}>
+              <span
+                class={`${levelColors[event.level]} font-mono font-medium shrink-0 w-10`}
+              >
                 {levelLabels[event.level]}
               </span>
               <span class="text-zinc-300 truncate">
@@ -82,9 +84,15 @@
         </div>
         {#if showMetadata && expandedEventId === event.id && event.metadata}
           <div class="px-4 pb-2">
-            <div class="bg-zinc-900 border border-zinc-800 rounded p-3 text-[11px]">
+            <div
+              class="bg-zinc-900 border border-zinc-800 rounded p-3 text-[11px]"
+            >
               <p class="text-zinc-500 mb-2 font-medium">Metadata:</p>
-              <pre class="text-zinc-400 overflow-x-auto">{JSON.stringify(event.metadata, null, 2)}</pre>
+              <pre class="text-zinc-400 overflow-x-auto">{JSON.stringify(
+                  event.metadata,
+                  null,
+                  2,
+                )}</pre>
             </div>
           </div>
         {/if}

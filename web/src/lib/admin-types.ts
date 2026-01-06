@@ -78,7 +78,12 @@ export interface AuthSession {
   expiresAt: string; // ISO 8601
 }
 
-export type SocialPlatform = "github" | "linkedin" | "discord" | "email" | "pgp";
+export type SocialPlatform =
+  | "github"
+  | "linkedin"
+  | "discord"
+  | "email"
+  | "pgp";
 
 export interface SocialLink {
   id: string;

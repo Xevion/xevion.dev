@@ -12,17 +12,14 @@ export const load: LayoutServerLoad = async ({ request, url }) => {
 
   if (!sessionUser) {
     const targetPath = url.pathname + url.search;
-    
+
     // If redirecting to /admin (the default), omit the next parameter
     if (targetPath === "/admin") {
       throw redirect(302, "/admin/login");
     }
-    
+
     // For other paths, include next parameter
-    throw redirect(
-      302,
-      `/admin/login?next=${encodeURIComponent(targetPath)}`
-    );
+    throw redirect(302, `/admin/login?next=${encodeURIComponent(targetPath)}`);
   }
 
   return {

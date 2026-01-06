@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
   import Button from "./Button.svelte";
 
   interface Props {
@@ -47,11 +46,14 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
     onclick={handleBackdropClick}
-    role="dialog"
-    aria-modal="true"
+    onkeydown={(e) => e.key === "Escape" && handleCancel()}
+    role="presentation"
+    tabindex="-1"
   >
     <div
       class="relative w-full max-w-md rounded-xl bg-zinc-900 border border-zinc-800 p-8 shadow-xl shadow-black/50"
+      role="dialog"
+      aria-modal="true"
     >
       {#if title}
         <h2 class="text-lg font-semibold text-zinc-50 mb-2">

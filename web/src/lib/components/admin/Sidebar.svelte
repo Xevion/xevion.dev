@@ -24,17 +24,22 @@
   interface NavItem {
     href: string;
     label: string;
-    icon: any;
+    icon: import("svelte").Component;
     badge?: number;
   }
 
-  const navItems: NavItem[] = [
+  const navItems = $derived<NavItem[]>([
     { href: "/admin", label: "Dashboard", icon: IconLayoutDashboard },
-    { href: "/admin/projects", label: "Projects", icon: IconFolder, badge: projectCount },
+    {
+      href: "/admin/projects",
+      label: "Projects",
+      icon: IconFolder,
+      badge: projectCount,
+    },
     { href: "/admin/tags", label: "Tags", icon: IconTags, badge: tagCount },
     { href: "/admin/events", label: "Events", icon: IconList },
     { href: "/admin/settings", label: "Settings", icon: IconSettings },
-  ];
+  ]);
 
   const pathname = $derived($page.url.pathname as string);
 
@@ -67,7 +72,7 @@
 <aside
   class={cn(
     "fixed left-0 top-0 z-40 h-screen w-64 border-r border-zinc-800 bg-admin-bg transition-transform lg:translate-x-0",
-    mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+    mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
   )}
 >
   <div class="flex h-full flex-col">
@@ -81,14 +86,14 @@
 
     <!-- Navigation -->
     <nav class="flex-1 space-y-0.5 p-3">
-      {#each navItems as item}
+      {#each navItems as item (item.href)}
         <a
           href={item.href}
           class={cn(
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all relative",
             isActive(item.href)
               ? "bg-zinc-800/50 text-zinc-50 before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-indigo-500 before:rounded-r"
-              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30"
+              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30",
           )}
         >
           <item.icon class="w-4 h-4 flex-shrink-0" />
@@ -127,5 +132,8 @@
   <div
     class="fixed inset-0 z-30 bg-black/50 lg:hidden"
     onclick={() => (mobileMenuOpen = false)}
+    onkeydown={(e) => e.key === "Escape" && (mobileMenuOpen = false)}
+    role="presentation"
+    tabindex="-1"
   ></div>
 {/if}

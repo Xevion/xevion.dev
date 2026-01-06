@@ -3,7 +3,14 @@
 
   interface Props {
     label?: string;
-    type?: "text" | "number" | "email" | "password" | "url" | "textarea" | "select";
+    type?:
+      | "text"
+      | "number"
+      | "email"
+      | "password"
+      | "url"
+      | "textarea"
+      | "select";
     value: string | number;
     placeholder?: string;
     disabled?: boolean;
@@ -17,9 +24,9 @@
   }
 
   let {
-    label,
     type = "text",
-    value = $bindable(""),
+    value = $bindable(),
+    label,
     placeholder,
     disabled = false,
     required = false,
@@ -31,15 +38,21 @@
     oninput,
   }: Props = $props();
 
+  // Generate unique ID for accessibility
+  const inputId = `input-${Math.random().toString(36).substring(2, 11)}`;
+
   const inputStyles =
     "block w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 transition-colors";
 
-  const errorStyles = error
-    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-    : "";
+  const errorStyles = $derived(
+    error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "",
+  );
 
   function handleInput(e: Event) {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const target = e.target as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement;
     const newValue = type === "number" ? Number(target.value) : target.value;
     value = newValue;
     oninput?.(newValue);
@@ -48,7 +61,7 @@
 
 <div class={cn("space-y-1.5", className)}>
   {#if label}
-    <label class="block text-sm font-medium text-admin-text">
+    <label for={inputId} class="block text-sm font-medium text-admin-text">
       {label}
       {#if required}
         <span class="text-red-500">*</span>
@@ -58,6 +71,7 @@
 
   {#if type === "textarea"}
     <textarea
+      id={inputId}
       bind:value
       {placeholder}
       {disabled}
@@ -68,6 +82,7 @@
     ></textarea>
   {:else if type === "select"}
     <select
+      id={inputId}
       bind:value
       {disabled}
       {required}
@@ -77,12 +92,13 @@
       {#if placeholder}
         <option value="" disabled>{placeholder}</option>
       {/if}
-      {#each options as option}
+      {#each options as option (option.value)}
         <option value={option.value}>{option.label}</option>
       {/each}
     </select>
   {:else}
     <input
+      id={inputId}
       {type}
       bind:value
       {placeholder}

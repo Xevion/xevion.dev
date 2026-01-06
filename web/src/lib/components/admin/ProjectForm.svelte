@@ -2,7 +2,12 @@
   import Button from "./Button.svelte";
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
-  import type { AdminProject, AdminTag, CreateProjectData, ProjectStatus } from "$lib/admin-types";
+  import type {
+    AdminProject,
+    AdminTag,
+    CreateProjectData,
+    ProjectStatus,
+  } from "$lib/admin-types";
 
   interface Props {
     project?: AdminProject | null;
@@ -19,18 +24,32 @@
   }: Props = $props();
 
   // Form state
-  let title = $state(project?.title ?? "");
-  let slug = $state(project?.slug ?? "");
-  let description = $state(project?.description ?? "");
-  let status = $state<ProjectStatus>(project?.status ?? "active");
-  let githubRepo = $state(project?.githubRepo ?? "");
-  let demoUrl = $state(project?.demoUrl ?? "");
-  let icon = $state(project?.icon ?? "");
-  let priority = $state(project?.priority ?? 0);
-  let selectedTagIds = $state<string[]>(project?.tags.map(t => t.id) ?? []);
+  let title = $state("");
+  let slug = $state("");
+  let description = $state("");
+  let status = $state<ProjectStatus>("active");
+  let githubRepo = $state("");
+  let demoUrl = $state("");
+  let icon = $state("");
+  let priority = $state(0);
+  let selectedTagIds = $state<string[]>([]);
+
+  // Initialize form from project prop
+  $effect(() => {
+    if (project) {
+      title = project.title;
+      slug = project.slug;
+      description = project.description;
+      status = project.status;
+      githubRepo = project.githubRepo ?? "";
+      demoUrl = project.demoUrl ?? "";
+      icon = project.icon ?? "";
+      priority = project.priority;
+      selectedTagIds = project.tags.map((t) => t.id);
+    }
+  });
 
   let submitting = $state(false);
-  let slugTouched = $state(false);
 
   const statusOptions = [
     { value: "active", label: "Active" },
@@ -45,11 +64,10 @@
       .toLowerCase()
       .replace(/[^\w\s-]/g, "")
       .replace(/[\s_-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
+      .replace(/^-+|-+$/g, ""),
   );
 
   function handleSlugInput(value: string | number) {
-    slugTouched = true;
     slug = value as string;
   }
 
@@ -76,8 +94,6 @@
       submitting = false;
     }
   }
-
-
 </script>
 
 <form onsubmit={handleSubmit} class="space-y-6">
@@ -170,15 +186,8 @@
 
   <!-- Media Upload Placeholder -->
   <div class="space-y-1.5">
-    <label class="block text-sm font-medium text-admin-text">
-      Media
-    </label>
-    <Button
-      type="button"
-      variant="secondary"
-      disabled
-      class="w-full"
-    >
+    <div class="block text-sm font-medium text-admin-text">Media</div>
+    <Button type="button" variant="secondary" disabled class="w-full">
       <i class="fa-solid fa-upload mr-2"></i>
       Upload Images/Videos (Coming Soon)
     </Button>
@@ -189,17 +198,8 @@
 
   <!-- Actions -->
   <div class="flex justify-end gap-3 pt-4 border-t border-admin-border">
-    <Button
-      variant="secondary"
-      href="/admin/projects"
-    >
-      Cancel
-    </Button>
-    <Button
-      type="submit"
-      variant="primary"
-      disabled={submitting || !title}
-    >
+    <Button variant="secondary" href="/admin/projects">Cancel</Button>
+    <Button type="submit" variant="primary" disabled={submitting || !title}>
       {submitting ? "Saving..." : submitLabel}
     </Button>
   </div>

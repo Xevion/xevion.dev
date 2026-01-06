@@ -32,12 +32,12 @@
   function initiateDelete(project: AdminProject) {
     deleteTarget = project;
     deleteConfirmReady = false;
-    
+
     // Enable confirm button after delay
     deleteTimeout = setTimeout(() => {
       deleteConfirmReady = true;
     }, 2000);
-    
+
     deleteModalOpen = true;
   }
 
@@ -84,9 +84,7 @@
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-xl font-semibold text-zinc-50">Projects</h1>
-      <p class="mt-1 text-sm text-zinc-500">
-        Manage your project portfolio
-      </p>
+      <p class="mt-1 text-sm text-zinc-500">Manage your project portfolio</p>
     </div>
     <Button variant="primary" href="/admin/projects/new">
       <IconPlus class="w-4 h-4 mr-2" />
@@ -96,13 +94,13 @@
 
   <!-- Projects Table -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">
-      Loading projects...
-    </div>
+    <div class="text-center py-12 text-zinc-500">Loading projects...</div>
   {:else if projects.length === 0}
     <div class="text-center py-12">
       <p class="text-zinc-500 mb-4">No projects yet</p>
-      <Button variant="primary" href="/admin/projects/new">Create your first project</Button>
+      <Button variant="primary" href="/admin/projects/new"
+        >Create your first project</Button
+      >
     </div>
   {:else}
     <Table>
@@ -129,7 +127,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-zinc-800/50">
-        {#each projects as project}
+        {#each projects as project (project.id)}
           <tr class="hover:bg-zinc-800/30 transition-colors">
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
@@ -150,7 +148,7 @@
             </td>
             <td class="px-4 py-3">
               <div class="flex flex-wrap gap-1">
-                {#each project.tags.slice(0, 3) as tag}
+                {#each project.tags.slice(0, 3) as tag (tag.id)}
                   <Badge variant="default">{tag.name}</Badge>
                 {/each}
                 {#if project.tags.length > 3}

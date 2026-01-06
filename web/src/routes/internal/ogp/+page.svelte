@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import type { PageData } from "./$types";
+  import { resolve } from "$app/paths";
 
   let { data }: { data: PageData } = $props();
 
@@ -62,7 +63,7 @@
   <div class="examples">
     <h2>Example URLs:</h2>
     <ul>
-      <li><a href="/internal/ogp?type=index">Index page</a></li>
+      <li><a href={resolve("/internal/ogp")}>Index page</a></li>
       <li><a href="/internal/ogp?type=projects">Projects page</a></li>
       <li>
         <a href="/internal/ogp?type=project&id=example-id"

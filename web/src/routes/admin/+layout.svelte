@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { page } from "$app/stores";
   import Sidebar from "$lib/components/admin/Sidebar.svelte";
   import AppWrapper from "$lib/components/AppWrapper.svelte";
@@ -10,7 +11,6 @@
   let { children, data } = $props();
 
   let stats = $state<AdminStats | null>(null);
-  let loading = $state(true);
 
   const pathname = $derived($page.url.pathname as string);
   const isLoginPage = $derived(pathname === "/admin/login");
@@ -18,19 +18,21 @@
   // Load stats for sidebar badges
   async function loadStats() {
     if (isLoginPage || !authStore.isAuthenticated) return;
-    
+
     try {
       stats = await getAdminStats();
     } catch (error) {
       console.error("Failed to load stats:", error);
-    } finally {
-      loading = false;
     }
   }
 
   // Sync authStore with server session on mount
   $effect(() => {
-    if (data?.session?.authenticated && data.session.username && !authStore.isAuthenticated) {
+    if (
+      data?.session?.authenticated &&
+      data.session.username &&
+      !authStore.isAuthenticated
+    ) {
       authStore.setSession(data.session.username);
     }
   });
@@ -44,7 +46,7 @@
 
   function handleLogout() {
     authStore.logout();
-    goto("/admin/login");
+    goto(resolve("/admin/login"));
   }
 </script>
 

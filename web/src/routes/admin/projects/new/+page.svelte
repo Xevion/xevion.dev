@@ -1,8 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
   import { getAdminTags, createAdminProject } from "$lib/api";
-  import type { AdminTag, AdminTagWithCount, CreateProjectData } from "$lib/admin-types";
+  import type {
+    AdminTag,
+    AdminTagWithCount,
+    CreateProjectData,
+  } from "$lib/admin-types";
 
   let tags = $state<AdminTag[]>([]);
   let loading = $state(true);
@@ -10,12 +15,14 @@
   async function loadTags() {
     try {
       const tagsWithCounts = await getAdminTags();
-      tags = tagsWithCounts.map((t: AdminTagWithCount): AdminTag => ({ 
-        id: t.id, 
-        slug: t.slug, 
-        name: t.name, 
-        createdAt: t.createdAt 
-      }));
+      tags = tagsWithCounts.map(
+        (t: AdminTagWithCount): AdminTag => ({
+          id: t.id,
+          slug: t.slug,
+          name: t.name,
+          createdAt: t.createdAt,
+        }),
+      );
     } catch (error) {
       console.error("Failed to load tags:", error);
     } finally {
@@ -29,7 +36,7 @@
 
   async function handleSubmit(data: CreateProjectData) {
     await createAdminProject(data);
-    goto("/admin/projects");
+    goto(resolve("/admin/projects"));
   }
 </script>
 
@@ -48,9 +55,7 @@
 
   <!-- Form -->
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">
-      Loading...
-    </div>
+    <div class="text-center py-12 text-admin-text-muted">Loading...</div>
   {:else}
     <div class="rounded-lg border border-admin-border bg-admin-panel p-6">
       <ProjectForm

@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { resolve } from "$app/paths";
   import AppWrapper from "$lib/components/AppWrapper.svelte";
   import { page } from "$app/stores";
 
   const status = $derived($page.status);
-  
+
   const messages: Record<number, string> = {
     404: "Page not found",
     405: "Method not allowed",
@@ -27,7 +28,7 @@
       <p class="mb-8 text-2xl text-zinc-400">{message}</p>
       {#if showHomeLink}
         <a
-          href="/"
+          href={resolve("/")}
           class="inline-block rounded-sm bg-zinc-900 px-4 py-2 text-zinc-100 transition-colors hover:bg-zinc-800"
         >
           Return home

@@ -9,7 +9,9 @@
   let { class: className, children }: Props = $props();
 </script>
 
-<div class={cn("overflow-x-auto rounded-lg border border-admin-border", className)}>
+<div
+  class={cn("overflow-x-auto rounded-lg border border-admin-border", className)}
+>
   <table class="w-full text-sm">
     {@render children?.()}
   </table>

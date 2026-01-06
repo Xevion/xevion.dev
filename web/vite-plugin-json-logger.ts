@@ -25,6 +25,7 @@ function railwayFormatter(record: LogRecord): string {
 }
 
 function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
   return str.replace(/\u001b\[[0-9;]*m/g, "").trim();
 }
 
@@ -115,7 +116,6 @@ export function jsonLogger(): Plugin {
       server = s;
       const logger = getLogger(["vite"]);
 
-      const originalPrintUrls = server.printUrls;
       server.printUrls = () => {
         const urls = server.resolvedUrls;
         if (urls) {

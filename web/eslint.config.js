@@ -25,6 +25,16 @@ export default ts.config(
         parser: ts.parser,
       },
     },
+    rules: {
+      // Disable resolve() requirement for dynamic hrefs in components
+      "svelte/no-navigation-without-resolve": "off",
+    },
+  },
+  {
+    files: ["**/*.svelte.ts"],
+    languageOptions: {
+      parser: ts.parser,
+    },
   },
   {
     ignores: ["build/", ".svelte-kit/", "dist/"],

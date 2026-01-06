@@ -1,7 +1,6 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import AppWrapper from "$components/AppWrapper.svelte";
-  import Dots from "$lib/components/Dots.svelte";
 
   let { data } = $props();
 

@@ -33,8 +33,7 @@
       "bg-transparent text-admin-text border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/50 focus-visible:ring-zinc-500",
     danger:
       "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm hover:shadow",
-    ghost:
-      "text-admin-text hover:bg-zinc-800/50 focus-visible:ring-zinc-500",
+    ghost: "text-admin-text hover:bg-zinc-800/50 focus-visible:ring-zinc-500",
   };
 
   const sizeStyles = {
@@ -47,7 +46,13 @@
 {#if href}
   <a
     {href}
-    class={cn(baseStyles, variantStyles[variant], sizeStyles[size], "cursor-pointer", className)}
+    class={cn(
+      baseStyles,
+      variantStyles[variant],
+      sizeStyles[size],
+      "cursor-pointer",
+      className,
+    )}
     aria-disabled={disabled}
   >
     {@render children?.()}

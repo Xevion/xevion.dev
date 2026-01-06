@@ -1,9 +1,16 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
   import { getAdminProject, getAdminTags, updateAdminProject } from "$lib/api";
-  import type { AdminProject, AdminTag, AdminTagWithCount, CreateProjectData, UpdateProjectData } from "$lib/admin-types";
+  import type {
+    AdminProject,
+    AdminTag,
+    AdminTagWithCount,
+    CreateProjectData,
+    UpdateProjectData,
+  } from "$lib/admin-types";
 
   const projectId = $derived(($page.params as { id: string }).id);
 
@@ -19,16 +26,18 @@
       ]);
 
       project = projectData;
-      tags = tagsWithCounts.map((t: AdminTagWithCount): AdminTag => ({ 
-        id: t.id, 
-        slug: t.slug, 
-        name: t.name, 
-        createdAt: t.createdAt 
-      }));
+      tags = tagsWithCounts.map(
+        (t: AdminTagWithCount): AdminTag => ({
+          id: t.id,
+          slug: t.slug,
+          name: t.name,
+          createdAt: t.createdAt,
+        }),
+      );
     } catch (error) {
       console.error("Failed to load data:", error);
       alert("Failed to load project");
-      goto("/admin/projects");
+      goto(resolve("/admin/projects"));
     } finally {
       loading = false;
     }
@@ -44,7 +53,7 @@
       id: projectId,
     };
     await updateAdminProject(updateData);
-    goto("/admin/projects");
+    goto(resolve("/admin/projects"));
   }
 </script>
 
@@ -63,13 +72,14 @@
 
   <!-- Form -->
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">
-      Loading...
-    </div>
+    <div class="text-center py-12 text-admin-text-muted">Loading...</div>
   {:else if !project}
     <div class="text-center py-12">
       <p class="text-admin-text-muted mb-4">Project not found</p>
-      <a href="/admin/projects" class="text-blue-400 hover:text-blue-300">
+      <a
+        href={resolve("/admin/projects")}
+        class="text-blue-400 hover:text-blue-300"
+      >
         ← Back to projects
       </a>
     </div>

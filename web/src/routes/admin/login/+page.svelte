@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
@@ -18,7 +19,7 @@
 
     try {
       const success = await authStore.login(username, password);
-      
+
       if (success) {
         const nextUrl = $page.url.searchParams.get("next") || "/admin";
         goto(nextUrl);
@@ -42,9 +43,7 @@
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md space-y-4">
       <!-- Login Form -->
-      <div
-        class="rounded-lg bg-admin-panel p-8 shadow-2xl shadow-zinc-500/20"
-      >
+      <div class="rounded-lg bg-admin-panel p-8 shadow-2xl shadow-zinc-500/20">
         <form onsubmit={handleSubmit} class="space-y-6">
           <Input
             label="Username"
@@ -86,7 +85,7 @@
       <!-- Back to site link -->
       <div class="text-center">
         <a
-          href="/"
+          href={resolve("/")}
           class="text-sm text-admin-text-muted hover:text-admin-text transition-colors"
         >
           ← Back to site

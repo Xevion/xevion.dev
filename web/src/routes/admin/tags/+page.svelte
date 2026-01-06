@@ -3,14 +3,23 @@
   import Input from "$lib/components/admin/Input.svelte";
   import Table from "$lib/components/admin/Table.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
-  import { getAdminTags, createAdminTag, updateAdminTag, deleteAdminTag } from "$lib/api";
-  import type { AdminTagWithCount, CreateTagData, UpdateTagData } from "$lib/admin-types";
+  import {
+    getAdminTags,
+    createAdminTag,
+    updateAdminTag,
+    deleteAdminTag,
+  } from "$lib/api";
+  import type {
+    AdminTagWithCount,
+    CreateTagData,
+    UpdateTagData,
+  } from "$lib/admin-types";
   import IconPlus from "~icons/lucide/plus";
   import IconX from "~icons/lucide/x";
 
   let tags = $state<AdminTagWithCount[]>([]);
   let loading = $state(true);
-  
+
   // Create form state
   let showCreateForm = $state(false);
   let createName = $state("");
@@ -101,12 +110,12 @@
   function initiateDelete(tag: AdminTagWithCount) {
     deleteTarget = tag;
     deleteConfirmReady = false;
-    
+
     // Enable confirm button after delay
     deleteTimeout = setTimeout(() => {
       deleteConfirmReady = true;
     }, 2000);
-    
+
     deleteModalOpen = true;
   }
 
@@ -148,7 +157,10 @@
         Manage project tags and categories
       </p>
     </div>
-    <Button variant="primary" onclick={() => (showCreateForm = !showCreateForm)}>
+    <Button
+      variant="primary"
+      onclick={() => (showCreateForm = !showCreateForm)}
+    >
       {#if showCreateForm}
         <IconX class="w-4 h-4 mr-2" />
       {:else}
@@ -160,7 +172,9 @@
 
   <!-- Create Form -->
   {#if showCreateForm}
-    <div class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20">
+    <div
+      class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+    >
       <h3 class="text-base font-medium text-zinc-200 mb-4">Create New Tag</h3>
       <div class="grid gap-4 md:grid-cols-2">
         <Input
@@ -194,9 +208,7 @@
 
   <!-- Tags Table -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">
-      Loading tags...
-    </div>
+    <div class="text-center py-12 text-zinc-500">Loading tags...</div>
   {:else if tags.length === 0}
     <div class="text-center py-12">
       <p class="text-zinc-500 mb-4">No tags yet</p>
@@ -223,7 +235,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-zinc-800/50">
-        {#each tags as tag}
+        {#each tags as tag (tag.id)}
           <tr class="hover:bg-zinc-800/30 transition-colors">
             {#if editingId === tag.id}
               <!-- Edit mode -->
@@ -315,7 +327,10 @@
     <div class="rounded-md bg-zinc-800/50 border border-zinc-700 p-3">
       <p class="font-medium text-zinc-200">{deleteTarget.name}</p>
       <p class="text-sm text-zinc-500">
-        Used in {deleteTarget.projectCount} project{deleteTarget.projectCount === 1 ? "" : "s"}
+        Used in {deleteTarget.projectCount} project{deleteTarget.projectCount ===
+        1
+          ? ""
+          : "s"}
       </p>
     </div>
   {/if}

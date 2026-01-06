@@ -23,16 +23,19 @@
   let dropdownOpen = $state(false);
   let inputRef: HTMLInputElement | undefined = $state();
 
+  // Generate unique ID for accessibility
+  const inputId = `tagpicker-${Math.random().toString(36).substring(2, 11)}`;
+
   const selectedTags = $derived(
-    availableTags.filter((tag) => selectedTagIds.includes(tag.id))
+    availableTags.filter((tag) => selectedTagIds.includes(tag.id)),
   );
 
   const filteredTags = $derived(
     availableTags.filter(
       (tag) =>
         !selectedTagIds.includes(tag.id) &&
-        tag.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+        tag.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    ),
   );
 
   function addTag(tagId: string) {
@@ -59,7 +62,7 @@
 
 <div class={cn("space-y-1.5", className)}>
   {#if label}
-    <label class="block text-sm font-medium text-admin-text">
+    <label for={inputId} class="block text-sm font-medium text-admin-text">
       {label}
     </label>
   {/if}
@@ -70,7 +73,7 @@
       class="min-h-[42px] w-full rounded-md border border-admin-border bg-admin-panel px-3 py-2"
     >
       <div class="flex flex-wrap gap-2">
-        {#each selectedTags as tag}
+        {#each selectedTags as tag (tag.id)}
           <span
             class="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20"
           >
@@ -88,6 +91,7 @@
 
         <!-- Search input -->
         <input
+          id={inputId}
           bind:this={inputRef}
           type="text"
           bind:value={searchTerm}
@@ -104,7 +108,7 @@
       <div
         class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-admin-border bg-admin-panel py-1 shadow-lg"
       >
-        {#each filteredTags as tag}
+        {#each filteredTags as tag (tag.id)}
           <button
             type="button"
             class="w-full px-3 py-2 text-left text-sm text-admin-text hover:bg-admin-hover transition-colors"
