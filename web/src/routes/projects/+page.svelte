@@ -24,6 +24,7 @@
       {@const links = project.links}
       {@const useAnchor = links.length > 0}
       {@const href = useAnchor ? links[0].url : undefined}
+      {@const iconSvg = project.iconSvg}
 
       <div class="max-w-fit">
         <svelte:element
@@ -35,7 +36,8 @@
           class="flex items-center justify-start overflow-hidden rounded bg-black/10 pb-2.5 pl-3 pr-5 pt-1 text-zinc-400 transition-colors hover:bg-zinc-500/10 hover:text-zinc-50"
         >
           <div class="flex h-full w-14 items-center justify-center pr-5">
-            {@html (project as any).iconSvg}
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+            {@html iconSvg}
           </div>
           <div class="overflow-hidden">
             <span class="text-sm md:text-base lg:text-lg">

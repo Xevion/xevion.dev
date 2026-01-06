@@ -100,7 +100,6 @@
   }
 
   function navigateToTab(tab: Tab) {
-    // eslint-disable-next-line svelte/no-navigation-without-resolve
     goto(`/admin/settings/${tab}`, { replaceState: true });
   }
 </script>

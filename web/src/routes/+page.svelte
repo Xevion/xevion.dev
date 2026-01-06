@@ -1,10 +1,15 @@
 <script lang="ts">
   import AppWrapper from "$lib/components/AppWrapper.svelte";
+  import ProjectCard from "$lib/components/ProjectCard.svelte";
+  import type { PageData } from "./$types";
   import IconSimpleIconsGithub from "~icons/simple-icons/github";
   import IconSimpleIconsLinkedin from "~icons/simple-icons/linkedin";
   import IconSimpleIconsDiscord from "~icons/simple-icons/discord";
   import MaterialSymbolsMailRounded from "~icons/material-symbols/mail-rounded";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
+
+  let { data }: { data: PageData } = $props();
+  const projects = data.projects;
 </script>
 
 <AppWrapper class="overflow-x-hidden font-schibsted">
@@ -24,7 +29,7 @@
       </div>
 
       <div class="py-4 text-zinc-200">
-        <p class="text-sm sm:text-[0.95em]">
+        <p class="sm:text-[0.95em]">
           A fanatical software engineer with expertise and passion for sound,
           scalable and high-performance applications. I'm always working on
           something new. <br />
@@ -72,6 +77,14 @@
             <span class="whitespace-nowrap text-sm text-zinc-100">PGP Key</span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <div class="max-w-2xl mx-4 mt-5 sm:mx-6">
+      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {#each projects as project (project.id)}
+          <ProjectCard {project} />
+        {/each}
       </div>
     </div>
   </div>
