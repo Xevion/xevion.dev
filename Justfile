@@ -91,3 +91,87 @@ docker-run-json port="8080":
     docker stop xevion-dev-container 2>/dev/null || true
     docker rm xevion-dev-container 2>/dev/null || true
     docker run --name xevion-dev-container -p {{port}}:8080 xevion-dev
+
+[script("bun")]
+seed:
+    const { spawnSync } = await import("child_process");
+    
+    // Ensure DB is running
+    const db = spawnSync("just", ["db"], { stdio: "inherit" });
+    if (db.status !== 0) process.exit(db.status);
+    
+    // Run migrations
+    const migrate = spawnSync("sqlx", ["migrate", "run"], { stdio: "inherit" });
+    if (migrate.status !== 0) process.exit(migrate.status);
+    
+    // Seed data
+    const seed = spawnSync("cargo", ["run", "--bin", "seed"], { stdio: "inherit" });
+    if (seed.status !== 0) process.exit(seed.status);
+    
+    console.log("✅ Database ready with seed data");
+
+[script("bun")]
+db cmd="start":
+    const fs = await import("fs/promises");
+    const { spawnSync } = await import("child_process");
+    
+    const NAME = "xevion-postgres";
+    const USER = "xevion";
+    const PASS = "dev";
+    const DB = "xevion";
+    const PORT = "5432";
+    const ENV_FILE = ".env";
+    const CMD = "{{cmd}}";
+    
+    const run = (args) => spawnSync("docker", args, { encoding: "utf8" });
+    const getContainer = () => {
+      const res = run(["ps", "-a", "--filter", `name=^${NAME}$`, "--format", "json"]);
+      return res.stdout.trim() ? JSON.parse(res.stdout) : null;
+    };
+    
+    const updateEnv = async () => {
+      const url = `postgresql://${USER}:${PASS}@localhost:${PORT}/${DB}`;
+      try {
+        let content = await fs.readFile(ENV_FILE, "utf8");
+        content = content.includes("DATABASE_URL=") 
+          ? content.replace(/DATABASE_URL=.*$/m, `DATABASE_URL=${url}`)
+          : content.trim() + `\nDATABASE_URL=${url}\n`;
+        await fs.writeFile(ENV_FILE, content);
+      } catch {
+        await fs.writeFile(ENV_FILE, `DATABASE_URL=${url}\n`);
+      }
+    };
+    
+    const create = () => {
+      run(["run", "-d", "--name", NAME, "-e", `POSTGRES_USER=${USER}`, 
+           "-e", `POSTGRES_PASSWORD=${PASS}`, "-e", `POSTGRES_DB=${DB}`,
+           "-p", `${PORT}:5432`, "postgres:16-alpine"]);
+      console.log("✅ created");
+    };
+    
+    const container = getContainer();
+    
+    if (CMD === "rm") {
+      if (!container) process.exit(0);
+      run(["stop", NAME]);
+      run(["rm", NAME]);
+      console.log("✅ removed");
+    } else if (CMD === "reset") {
+      if (!container) create();
+      else {
+        run(["exec", NAME, "psql", "-U", USER, "-c", `DROP DATABASE IF EXISTS ${DB}`]);
+        run(["exec", NAME, "psql", "-U", USER, "-c", `CREATE DATABASE ${DB}`]);
+        console.log("✅ reset");
+      }
+      await updateEnv();
+    } else {
+      if (!container) {
+        create();
+      } else if (container.State !== "running") {
+        run(["start", NAME]);
+        console.log("✅ started");
+      } else {
+        console.log("✅ running");
+      }
+      await updateEnv();
+    }

@@ -55,8 +55,13 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
 
-# Copy frontend client assets for embedding
+# Copy SQLx offline cache and migrations for compile-time macros
+COPY .sqlx/ ./.sqlx/
+COPY migrations/ ./migrations/
+
+# Copy frontend assets for embedding
 COPY --from=frontend /build/build/client ./web/build/client
+COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 
 # Build with real assets
 RUN cargo build --release && \

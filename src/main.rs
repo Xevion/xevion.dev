@@ -6,7 +6,6 @@ use axum::{
     routing::any,
 };
 use clap::Parser;
-use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -16,6 +15,7 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 
 mod assets;
 mod config;
+mod db;
 mod formatter;
 mod health;
 mod middleware;
@@ -68,9 +68,30 @@ fn init_tracing() {
 
 #[tokio::main]
 async fn main() {
+    // Load .env file if present
+    dotenvy::dotenv().ok();
+
+    // Parse args early to allow --help to work without database
+    let args = Args::parse();
+
     init_tracing();
 
-    let args = Args::parse();
+    // Load database URL from environment (fail-fast)
+    let database_url =
+        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in environment");
+
+    // Create connection pool
+    let pool = db::create_pool(&database_url)
+        .await
+        .expect("Failed to connect to database");
+
+    // Run migrations on startup
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to run database migrations");
+
+    tracing::info!("Database connected and migrations applied");
 
     if args.listen.is_empty() {
         eprintln!("Error: At least one --listen address is required");
@@ -108,13 +129,15 @@ async fn main() {
     let downstream_url_for_health = args.downstream.clone();
     let http_client_for_health = http_client.clone();
     let unix_client_for_health = unix_client.clone();
+    let pool_for_health = pool.clone();
 
     let health_checker = Arc::new(HealthChecker::new(move || {
         let downstream_url = downstream_url_for_health.clone();
         let http_client = http_client_for_health.clone();
         let unix_client = unix_client_for_health.clone();
+        let pool = pool_for_health.clone();
 
-        async move { perform_health_check(downstream_url, http_client, unix_client).await }
+        async move { perform_health_check(downstream_url, http_client, unix_client, Some(pool)).await }
     }));
 
     let tarpit_config = TarpitConfig::from_env();
@@ -137,6 +160,7 @@ async fn main() {
         unix_client,
         health_checker,
         tarpit_state,
+        pool: pool.clone(),
     });
 
     // Regenerate common OGP images on startup
@@ -238,6 +262,7 @@ pub struct AppState {
     unix_client: Option<reqwest::Client>,
     health_checker: Arc<HealthChecker>,
     tarpit_state: Arc<TarpitState>,
+    pool: sqlx::PgPool,
 }
 
 #[derive(Debug)]
@@ -289,10 +314,7 @@ fn api_routes() -> Router<Arc<AppState>> {
             "/health",
             axum::routing::get(health_handler).head(health_handler),
         )
-        .route(
-            "/projects",
-            axum::routing::get(projects_handler).head(projects_handler),
-        )
+        .route("/projects", axum::routing::get(projects_handler))
         .fallback(api_404_and_method_handler)
 }
 
@@ -423,55 +445,25 @@ async fn api_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
     api_404_and_method_handler(req).await
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ProjectLink {
-    url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    title: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Project {
-    id: String,
-    name: String,
-    #[serde(rename = "shortDescription")]
-    short_description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    icon: Option<String>,
-    links: Vec<ProjectLink>,
-}
-
-async fn projects_handler() -> impl IntoResponse {
-    let projects = vec![
-        Project {
-            id: "1".to_string(),
-            name: "xevion.dev".to_string(),
-            short_description: "Personal portfolio with fuzzy tag discovery".to_string(),
-            icon: None,
-            links: vec![ProjectLink {
-                url: "https://github.com/Xevion/xevion.dev".to_string(),
-                title: Some("GitHub".to_string()),
-            }],
-        },
-        Project {
-            id: "2".to_string(),
-            name: "Contest".to_string(),
-            short_description: "Competitive programming problem archive".to_string(),
-            icon: None,
-            links: vec![
-                ProjectLink {
-                    url: "https://github.com/Xevion/contest".to_string(),
-                    title: Some("GitHub".to_string()),
-                },
-                ProjectLink {
-                    url: "https://contest.xevion.dev".to_string(),
-                    title: Some("Demo".to_string()),
-                },
-            ],
-        },
-    ];
-
-    Json(projects)
+async fn projects_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match db::get_public_projects(&state.pool).await {
+        Ok(projects) => {
+            let api_projects: Vec<db::ApiProject> =
+                projects.into_iter().map(|p| p.to_api_project()).collect();
+            Json(api_projects).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch projects from database");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch projects"
+                })),
+            )
+                .into_response()
+        }
+    }
 }
 
 fn should_tarpit(state: &TarpitState, path: &str) -> bool {
@@ -687,6 +679,7 @@ async fn perform_health_check(
     downstream_url: String,
     http_client: reqwest::Client,
     unix_client: Option<reqwest::Client>,
+    pool: Option<sqlx::PgPool>,
 ) -> bool {
     let url = if downstream_url.starts_with('/') || downstream_url.starts_with("./") {
         "http://localhost/internal/health".to_string()
@@ -700,24 +693,40 @@ async fn perform_health_check(
         &http_client
     };
 
-    match tokio::time::timeout(Duration::from_secs(5), client.get(&url).send()).await {
-        Ok(Ok(response)) => {
-            let is_success = response.status().is_success();
-            if !is_success {
-                tracing::warn!(
-                    status = response.status().as_u16(),
-                    "Health check failed: Bun returned non-success status"
-                );
+    let bun_healthy =
+        match tokio::time::timeout(Duration::from_secs(5), client.get(&url).send()).await {
+            Ok(Ok(response)) => {
+                let is_success = response.status().is_success();
+                if !is_success {
+                    tracing::warn!(
+                        status = response.status().as_u16(),
+                        "Health check failed: Bun returned non-success status"
+                    );
+                }
+                is_success
             }
-            is_success
+            Ok(Err(err)) => {
+                tracing::error!(error = %err, "Health check failed: cannot reach Bun");
+                false
+            }
+            Err(_) => {
+                tracing::error!("Health check failed: timeout after 5s");
+                false
+            }
+        };
+
+    // Check database
+    let db_healthy = if let Some(pool) = pool {
+        match db::health_check(&pool).await {
+            Ok(_) => true,
+            Err(err) => {
+                tracing::error!(error = %err, "Database health check failed");
+                false
+            }
         }
-        Ok(Err(err)) => {
-            tracing::error!(error = %err, "Health check failed: cannot reach Bun");
-            false
-        }
-        Err(_) => {
-            tracing::error!("Health check failed: timeout after 5s");
-            false
-        }
-    }
+    } else {
+        true
+    };
+
+    bun_healthy && db_healthy
 }
