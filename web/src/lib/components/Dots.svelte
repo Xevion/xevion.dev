@@ -37,6 +37,7 @@
 
   let canvas: HTMLCanvasElement;
   let cleanupFns: (() => void)[] = [];
+  let ready = $state(false);
 
   function addCleanup(fn: () => void) {
     cleanupFns.push(fn);
@@ -363,6 +364,7 @@
 
     const startTime = Date.now();
     let animationId: number;
+    let firstFrameRendered = false;
 
     function render() {
       if (document.hidden) {
@@ -378,6 +380,15 @@
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      if (!firstFrameRendered) {
+        firstFrameRendered = true;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            ready = true;
+          });
+        });
+      }
 
       animationId = requestAnimationFrame(render);
     }
@@ -395,5 +406,9 @@
 
 <canvas
   bind:this={canvas}
-  class={cn("pointer-events-none fixed inset-0 -z-10", className)}
+  class={cn(
+    "pointer-events-none fixed inset-0 -z-10 transition-opacity duration-1300 ease-out",
+    ready ? "opacity-100" : "opacity-0",
+    className,
+  )}
 ></canvas>
