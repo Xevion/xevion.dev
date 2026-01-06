@@ -2,6 +2,7 @@ import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { dev } from "$app/environment";
 import { initLogger } from "$lib/logger";
 import { getLogger } from "@logtape/logtape";
+import { minify } from "html-minifier-terser";
 
 await initLogger();
 
@@ -15,7 +16,31 @@ export const handle: Handle = async ({ event, resolve }) => {
     return new Response(undefined, { status: 404 });
   }
 
-  return await resolve(event);
+  const response = await resolve(event, {
+    transformPageChunk: !dev
+      ? ({ html }) =>
+          minify(html, {
+            collapseBooleanAttributes: true,
+            collapseWhitespace: true,
+            conservativeCollapse: true,
+            decodeEntities: true,
+            html5: true,
+            ignoreCustomComments: [/^\[/],
+            minifyCSS: true,
+            minifyJS: true,
+            removeAttributeQuotes: true,
+            removeComments: true,
+            removeOptionalTags: true,
+            removeRedundantAttributes: true,
+            removeScriptTypeAttributes: true,
+            removeStyleLinkTypeAttributes: true,
+            sortAttributes: true,
+            sortClassName: true,
+          })
+      : undefined,
+  });
+
+  return response;
 };
 
 export const handleError: HandleServerError = async ({
