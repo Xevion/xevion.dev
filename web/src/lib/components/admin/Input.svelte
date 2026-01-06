@@ -1,0 +1,103 @@
+<script lang="ts">
+  import { cn } from "$lib/utils";
+
+  interface Props {
+    label?: string;
+    type?: "text" | "number" | "email" | "password" | "url" | "textarea" | "select";
+    value: string | number;
+    placeholder?: string;
+    disabled?: boolean;
+    required?: boolean;
+    error?: string;
+    help?: string;
+    class?: string;
+    rows?: number;
+    options?: Array<{ value: string; label: string }>;
+    oninput?: (value: string | number) => void;
+  }
+
+  let {
+    label,
+    type = "text",
+    value = $bindable(""),
+    placeholder,
+    disabled = false,
+    required = false,
+    error,
+    help,
+    class: className,
+    rows = 4,
+    options = [],
+    oninput,
+  }: Props = $props();
+
+  const inputStyles =
+    "block w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 transition-colors";
+
+  const errorStyles = error
+    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+    : "";
+
+  function handleInput(e: Event) {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const newValue = type === "number" ? Number(target.value) : target.value;
+    value = newValue;
+    oninput?.(newValue);
+  }
+</script>
+
+<div class={cn("space-y-1.5", className)}>
+  {#if label}
+    <label class="block text-sm font-medium text-admin-text">
+      {label}
+      {#if required}
+        <span class="text-red-500">*</span>
+      {/if}
+    </label>
+  {/if}
+
+  {#if type === "textarea"}
+    <textarea
+      bind:value
+      {placeholder}
+      {disabled}
+      {required}
+      {rows}
+      class={cn(inputStyles, errorStyles, "resize-y")}
+      oninput={handleInput}
+    ></textarea>
+  {:else if type === "select"}
+    <select
+      bind:value
+      {disabled}
+      {required}
+      class={cn(inputStyles, errorStyles)}
+      onchange={handleInput}
+    >
+      {#if placeholder}
+        <option value="" disabled>{placeholder}</option>
+      {/if}
+      {#each options as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
+  {:else}
+    <input
+      {type}
+      bind:value
+      {placeholder}
+      {disabled}
+      {required}
+      class={cn(inputStyles, errorStyles)}
+      oninput={handleInput}
+    />
+  {/if}
+
+  {#if error}
+    <p class="text-xs text-red-500">{error}</p>
+  {/if}
+
+  {#if help && !error}
+    <p class="text-xs text-admin-text-muted">{help}</p>
+  {/if}
+</div>

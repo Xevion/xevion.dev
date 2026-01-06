@@ -2,7 +2,10 @@
   import "@fontsource-variable/inter/wght.css";
   import "@fontsource/hanken-grotesk/900.css";
   import "@fontsource-variable/schibsted-grotesk/wght.css";
+  import "overlayscrollbars/overlayscrollbars.css";
   import "../app.css";
+  import { OverlayScrollbars } from "overlayscrollbars";
+  import { onMount } from "svelte";
 
   let { children, data } = $props();
 
@@ -15,6 +18,20 @@
   };
 
   const metadata = $derived(data?.metadata ?? defaultMetadata);
+
+  onMount(() => {
+    // Initialize overlay scrollbars on the body element
+    const osInstance = OverlayScrollbars(document.body, {
+      scrollbars: {
+        autoHide: "leave",
+        autoHideDelay: 800,
+      },
+    });
+
+    return () => {
+      osInstance?.destroy();
+    };
+  });
 </script>
 
 <svelte:head>

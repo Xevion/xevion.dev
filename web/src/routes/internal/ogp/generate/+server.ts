@@ -1,7 +1,7 @@
 import type { RequestHandler } from "./$types";
 import type { OGImageSpec } from "$lib/og-types";
 import { loadOGFonts } from "$lib/og-fonts";
-import { apiFetch } from "$lib/api";
+import { apiFetch } from "$lib/api.server";
 import type { Project } from "../../../projects/+page.server";
 import { getLogger } from "@logtape/logtape";
 import satori from "satori";

@@ -28,6 +28,32 @@
   --animate-title: title 3s ease-out forwards;
   --animate-fade-left: fade-left 3s ease-in-out forwards;
   --animate-fade-right: fade-right 3s ease-in-out forwards;
+
+  /* Admin colors - Geist-inspired semantic scale */
+  --color-admin-bg: #0a0a0b;
+  --color-admin-bg-secondary: #18181b;
+  --color-admin-surface: #27272a;
+  --color-admin-surface-hover: #3f3f46;
+  --color-admin-border: #27272a;
+  --color-admin-border-hover: #3f3f46;
+  --color-admin-text: #fafafa;
+  --color-admin-text-secondary: #a1a1aa;
+  --color-admin-text-muted: #71717a;
+  --color-admin-accent: #6366f1;
+  --color-admin-accent-hover: #818cf8;
+
+  /* Legacy aliases for backward compatibility */
+  --color-admin-panel: #18181b;
+  --color-admin-hover: #3f3f46;
+
+  /* Status colors */
+  --color-status-active: #22c55e;
+  --color-status-maintained: #6366f1;
+  --color-status-archived: #71717a;
+  --color-status-hidden: #52525b;
+  --color-status-error: #ef4444;
+  --color-status-warning: #f59e0b;
+  --color-status-info: #06b6d4;
 }
 
 @keyframes fade {
@@ -105,4 +131,16 @@ body {
 
 body {
   @apply h-full;
+}
+
+/* OverlayScrollbars theme customization */
+.os-theme-dark,
+.os-theme-light {
+  --os-handle-bg: rgb(63 63 70);
+  --os-handle-bg-hover: rgb(82 82 91);
+  --os-handle-bg-active: rgb(113 113 122);
+}
+
+.os-scrollbar-handle {
+  border-radius: 4px;
 }

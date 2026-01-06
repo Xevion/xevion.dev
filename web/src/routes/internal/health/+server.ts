@@ -1,5 +1,5 @@
 import type { RequestHandler } from "./$types";
-import { apiFetch } from "$lib/api";
+import { apiFetch } from "$lib/api.server";
 import { getLogger } from "@logtape/logtape";
 
 const logger = getLogger(["ssr", "routes", "internal", "health"]);

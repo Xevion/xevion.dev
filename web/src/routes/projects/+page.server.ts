@@ -1,5 +1,5 @@
 import type { PageServerLoad } from "./$types";
-import { apiFetch } from "$lib/api";
+import { apiFetch } from "$lib/api.server";
 import { getOGImageUrl } from "$lib/og-types";
 
 interface ProjectLink {
@@ -9,6 +9,7 @@ interface ProjectLink {
 
 export interface Project {
   id: string;
+  slug: string;
   name: string;
   shortDescription: string;
   icon?: string;

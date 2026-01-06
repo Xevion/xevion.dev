@@ -125,8 +125,7 @@ pub fn is_malicious_path(path: &str) -> bool {
     }
 
     // Admin panels
-    if path_lower.starts_with("/admin")
-        || path_lower.starts_with("/administrator")
+    if path_lower.starts_with("/administrator")
         || path_lower.contains("phpmyadmin")
     {
         return true;
@@ -473,7 +472,7 @@ mod tests {
 
     #[test]
     fn test_admin_panels() {
-        assert!(is_malicious_path("/admin"));
+        assert!(!is_malicious_path("/admin"));
         assert!(is_malicious_path("/administrator"));
         assert!(is_malicious_path("/phpmyadmin"));
         assert!(is_malicious_path("/phpMyAdmin"));

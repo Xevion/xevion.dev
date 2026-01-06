@@ -24,6 +24,8 @@
     "@resvg/resvg-js": "^2.6.2",
     "@xevion/satori-html": "^0.4.1",
     "clsx": "^2.1.1",
+    "overlayscrollbars": "^2.13.0",
+    "overlayscrollbars-svelte": "^0.5.5",
     "satori": "^0.18.3",
     "tailwind-merge": "^3.3.1"
   },
