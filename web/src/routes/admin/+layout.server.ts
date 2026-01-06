@@ -11,10 +11,17 @@ export const load: LayoutServerLoad = async ({ request, url }) => {
   const sessionUser = request.headers.get("x-session-user");
 
   if (!sessionUser) {
-    // Not authenticated - redirect to login with next parameter
+    const targetPath = url.pathname + url.search;
+    
+    // If redirecting to /admin (the default), omit the next parameter
+    if (targetPath === "/admin") {
+      throw redirect(302, "/admin/login");
+    }
+    
+    // For other paths, include next parameter
     throw redirect(
       302,
-      `/admin/login?next=${encodeURIComponent(url.pathname + url.search)}`
+      `/admin/login?next=${encodeURIComponent(targetPath)}`
     );
   }
 

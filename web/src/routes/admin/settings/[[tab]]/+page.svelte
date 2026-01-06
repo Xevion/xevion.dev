@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
@@ -15,7 +17,13 @@
   let settings = $state<SiteSettings | null>(null);
   let loading = $state(true);
   let saving = $state(false);
-  let activeTab = $state<Tab>("identity");
+  
+  // Read tab from URL, default to "identity"
+  let activeTab = $derived.by(() => {
+    const params = $page.params as { tab?: string };
+    const tab = params.tab as Tab | undefined;
+    return tab && ["identity", "social", "admin"].includes(tab) ? tab : "identity";
+  });
 
   // Form state - will be populated when settings load
   let formData = $state<SiteSettings | null>(null);
@@ -88,6 +96,10 @@
         return "https://example.com/pgp-key.asc";
     }
   }
+
+  function navigateToTab(tab: Tab) {
+    goto(`/admin/settings/${tab}`, { replaceState: true });
+  }
 </script>
 
 <svelte:head>
@@ -117,7 +129,7 @@
               ? "border-indigo-500 text-zinc-50"
               : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
           )}
-          onclick={() => (activeTab = "identity")}
+          onclick={() => navigateToTab("identity")}
         >
           Identity
         </button>
@@ -129,7 +141,7 @@
               ? "border-indigo-500 text-zinc-50"
               : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
           )}
-          onclick={() => (activeTab = "social")}
+          onclick={() => navigateToTab("social")}
         >
           Social Links
         </button>
@@ -141,7 +153,7 @@
               ? "border-indigo-500 text-zinc-50"
               : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700"
           )}
-          onclick={() => (activeTab = "admin")}
+          onclick={() => navigateToTab("admin")}
         >
           Admin Preferences
         </button>
