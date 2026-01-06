@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO project_tags (project_id, tag_id)\n        VALUES ($1, $2)\n        ON CONFLICT (project_id, tag_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f285ead462f3247e5c2e99f45188b6d3e8d5376776a9b6e815b1a6e223d55cf"
+}

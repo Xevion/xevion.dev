@@ -99,5 +99,115 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✅ Seeded {} projects", project_count);
 
+    // Seed tags
+    let tags = vec![
+        ("rust", "Rust"),
+        ("python", "Python"),
+        ("typescript", "TypeScript"),
+        ("javascript", "JavaScript"),
+        ("web", "Web"),
+        ("cli", "CLI"),
+        ("library", "Library"),
+        ("game", "Game"),
+        ("data-structures", "Data Structures"),
+        ("algorithms", "Algorithms"),
+        ("multiplayer", "Multiplayer"),
+        ("config", "Config"),
+    ];
+
+    let mut tag_ids = std::collections::HashMap::new();
+
+    for (slug, name) in tags {
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO tags (slug, name)
+            VALUES ($1, $2)
+            RETURNING id
+            "#,
+            slug,
+            name
+        )
+        .fetch_one(&pool)
+        .await?;
+
+        tag_ids.insert(slug, result.id);
+    }
+
+    println!("✅ Seeded {} tags", tag_ids.len());
+
+    // Associate tags with projects
+    let project_tag_associations = vec![
+        // xevion-dev
+        ("xevion-dev", vec!["rust", "web", "typescript"]),
+        // Contest
+        (
+            "contest",
+            vec!["python", "web", "algorithms", "data-structures"],
+        ),
+        // Reforge
+        ("reforge", vec!["rust", "library", "game"]),
+        // Algorithms
+        (
+            "algorithms",
+            vec!["python", "algorithms", "data-structures"],
+        ),
+        // WordPlay
+        (
+            "wordplay",
+            vec!["typescript", "javascript", "web", "game", "multiplayer"],
+        ),
+        // Dotfiles
+        ("dotfiles", vec!["config", "cli"]),
+    ];
+
+    let mut association_count = 0;
+
+    for (project_slug, tag_slugs) in project_tag_associations {
+        let project_id = sqlx::query!("SELECT id FROM projects WHERE slug = $1", project_slug)
+            .fetch_one(&pool)
+            .await?
+            .id;
+
+        for tag_slug in tag_slugs {
+            if let Some(&tag_id) = tag_ids.get(tag_slug) {
+                sqlx::query!(
+                    "INSERT INTO project_tags (project_id, tag_id) VALUES ($1, $2)",
+                    project_id,
+                    tag_id
+                )
+                .execute(&pool)
+                .await?;
+
+                association_count += 1;
+            }
+        }
+    }
+
+    println!("✅ Created {} project-tag associations", association_count);
+
+    // Recalculate tag cooccurrence
+    sqlx::query!("DELETE FROM tag_cooccurrence")
+        .execute(&pool)
+        .await?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO tag_cooccurrence (tag_a, tag_b, count)
+        SELECT 
+            LEAST(t1.tag_id, t2.tag_id) as tag_a,
+            GREATEST(t1.tag_id, t2.tag_id) as tag_b,
+            COUNT(*)::int as count
+        FROM project_tags t1
+        JOIN project_tags t2 ON t1.project_id = t2.project_id
+        WHERE t1.tag_id < t2.tag_id
+        GROUP BY tag_a, tag_b
+        HAVING COUNT(*) > 0
+        "#
+    )
+    .execute(&pool)
+    .await?;
+
+    println!("✅ Recalculated tag cooccurrence");
+
     Ok(())
 }

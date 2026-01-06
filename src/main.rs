@@ -86,12 +86,13 @@ async fn main() {
         .expect("Failed to connect to database");
 
     // Run migrations on startup
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Failed to run database migrations");
+    tracing::info!("Running database migrations...");
+    sqlx::migrate!().run(&pool).await.unwrap_or_else(|e| {
+        tracing::error!(error = %e, "Migration failed");
+        std::process::exit(1);
+    });
 
-    tracing::info!("Database connected and migrations applied");
+    tracing::info!("Migrations applied successfully");
 
     if args.listen.is_empty() {
         eprintln!("Error: At least one --listen address is required");
@@ -315,6 +316,30 @@ fn api_routes() -> Router<Arc<AppState>> {
             axum::routing::get(health_handler).head(health_handler),
         )
         .route("/projects", axum::routing::get(projects_handler))
+        .route(
+            "/projects/{id}/tags",
+            axum::routing::get(get_project_tags_handler).post(add_project_tag_handler),
+        )
+        .route(
+            "/projects/{id}/tags/{tag_id}",
+            axum::routing::delete(remove_project_tag_handler),
+        )
+        .route(
+            "/tags",
+            axum::routing::get(list_tags_handler).post(create_tag_handler),
+        )
+        .route(
+            "/tags/{slug}",
+            axum::routing::get(get_tag_handler).put(update_tag_handler),
+        )
+        .route(
+            "/tags/{slug}/related",
+            axum::routing::get(get_related_tags_handler),
+        )
+        .route(
+            "/tags/recalculate-cooccurrence",
+            axum::routing::post(recalculate_cooccurrence_handler),
+        )
         .fallback(api_404_and_method_handler)
 }
 
@@ -459,6 +484,435 @@ async fn projects_handler(State(state): State<Arc<AppState>>) -> impl IntoRespon
                 Json(serde_json::json!({
                     "error": "Internal server error",
                     "message": "Failed to fetch projects"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Tag API handlers
+
+async fn list_tags_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match db::get_all_tags_with_counts(&state.pool).await {
+        Ok(tags_with_counts) => {
+            let api_tags: Vec<db::ApiTagWithCount> = tags_with_counts
+                .into_iter()
+                .map(|(tag, count)| db::ApiTagWithCount {
+                    tag: tag.to_api_tag(),
+                    project_count: count,
+                })
+                .collect();
+            Json(api_tags).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tags");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tags"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct CreateTagRequest {
+    name: String,
+    slug: Option<String>,
+}
+
+async fn create_tag_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateTagRequest>,
+) -> impl IntoResponse {
+    if payload.name.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Tag name cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    match db::create_tag(&state.pool, &payload.name, payload.slug.as_deref()).await {
+        Ok(tag) => (StatusCode::CREATED, Json(tag.to_api_tag())).into_response(),
+        Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({
+                "error": "Conflict",
+                "message": "A tag with this name or slug already exists"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to create tag");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to create tag"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn get_tag_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(slug): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    match db::get_tag_by_slug(&state.pool, &slug).await {
+        Ok(Some(tag)) => match db::get_projects_for_tag(&state.pool, tag.id).await {
+            Ok(projects) => {
+                let response = serde_json::json!({
+                    "tag": tag.to_api_tag(),
+                    "projects": projects.into_iter().map(|p| p.to_api_project()).collect::<Vec<_>>()
+                });
+                Json(response).into_response()
+            }
+            Err(err) => {
+                tracing::error!(error = %err, "Failed to fetch projects for tag");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Internal server error",
+                        "message": "Failed to fetch projects"
+                    })),
+                )
+                    .into_response()
+            }
+        },
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Not found",
+                "message": "Tag not found"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tag");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tag"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateTagRequest {
+    name: String,
+    slug: Option<String>,
+}
+
+async fn update_tag_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(slug): axum::extract::Path<String>,
+    Json(payload): Json<UpdateTagRequest>,
+) -> impl IntoResponse {
+    if payload.name.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Tag name cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    let tag = match db::get_tag_by_slug(&state.pool, &slug).await {
+        Ok(Some(tag)) => tag,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Not found",
+                    "message": "Tag not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tag");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tag"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    match db::update_tag(&state.pool, tag.id, &payload.name, payload.slug.as_deref()).await {
+        Ok(updated_tag) => Json(updated_tag.to_api_tag()).into_response(),
+        Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({
+                "error": "Conflict",
+                "message": "A tag with this name or slug already exists"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to update tag");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to update tag"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn get_related_tags_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(slug): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    let tag = match db::get_tag_by_slug(&state.pool, &slug).await {
+        Ok(Some(tag)) => tag,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Not found",
+                    "message": "Tag not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tag");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tag"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    match db::get_related_tags(&state.pool, tag.id, 10).await {
+        Ok(related_tags) => {
+            let api_related_tags: Vec<db::ApiRelatedTag> = related_tags
+                .into_iter()
+                .map(|(tag, count)| db::ApiRelatedTag {
+                    tag: tag.to_api_tag(),
+                    cooccurrence_count: count,
+                })
+                .collect();
+            Json(api_related_tags).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch related tags");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch related tags"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn recalculate_cooccurrence_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match db::recalculate_tag_cooccurrence(&state.pool).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "message": "Tag cooccurrence recalculated successfully"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to recalculate cooccurrence");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to recalculate cooccurrence"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Project-Tag association handlers
+
+async fn get_project_tags_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    match db::get_tags_for_project(&state.pool, project_id).await {
+        Ok(tags) => {
+            let api_tags: Vec<db::ApiTag> = tags.into_iter().map(|t| t.to_api_tag()).collect();
+            Json(api_tags).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tags for project");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tags"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct AddProjectTagRequest {
+    tag_id: String,
+}
+
+async fn add_project_tag_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    Json(payload): Json<AddProjectTagRequest>,
+) -> impl IntoResponse {
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let tag_id = match uuid::Uuid::parse_str(&payload.tag_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid tag ID",
+                    "message": "Tag ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    match db::add_tag_to_project(&state.pool, project_id, tag_id).await {
+        Ok(()) => (
+            StatusCode::CREATED,
+            Json(serde_json::json!({
+                "message": "Tag added to project"
+            })),
+        )
+            .into_response(),
+        Err(sqlx::Error::Database(db_err)) if db_err.is_foreign_key_violation() => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Not found",
+                "message": "Project or tag not found"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to add tag to project");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to add tag to project"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn remove_project_tag_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path((id, tag_id)): axum::extract::Path<(String, String)>,
+) -> impl IntoResponse {
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let tag_id = match uuid::Uuid::parse_str(&tag_id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid tag ID",
+                    "message": "Tag ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    match db::remove_tag_from_project(&state.pool, project_id, tag_id).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "message": "Tag removed from project"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to remove tag from project");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to remove tag from project"
                 })),
             )
                 .into_response()

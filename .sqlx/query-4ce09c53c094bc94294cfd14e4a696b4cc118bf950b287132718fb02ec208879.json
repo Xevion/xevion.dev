@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name, \n            t.created_at,\n            COUNT(pt.project_id)::int as \"project_count!\"\n        FROM tags t\n        LEFT JOIN project_tags pt ON t.id = pt.tag_id\n        GROUP BY t.id, t.slug, t.name, t.created_at\n        ORDER BY t.name ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "project_count!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "4ce09c53c094bc94294cfd14e4a696b4cc118bf950b287132718fb02ec208879"
+}

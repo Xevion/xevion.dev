@@ -88,9 +88,13 @@ docker-run port="8080":
 	just docker-run-json {{port}} | hl --config .hl.config.toml -P
 
 docker-run-json port="8080":
+    #!/usr/bin/env bash
+    set -euo pipefail
     docker stop xevion-dev-container 2>/dev/null || true
     docker rm xevion-dev-container 2>/dev/null || true
-    docker run --name xevion-dev-container -p {{port}}:8080 xevion-dev
+    # Replace localhost with host.docker.internal for Docker networking
+    DOCKER_DATABASE_URL="${DATABASE_URL//localhost/host.docker.internal}"
+    docker run --name xevion-dev-container -p {{port}}:8080 --env-file .env -e DATABASE_URL="$DOCKER_DATABASE_URL" xevion-dev
 
 [script("bun")]
 seed:
@@ -159,8 +163,8 @@ db cmd="start":
     } else if (CMD === "reset") {
       if (!container) create();
       else {
-        run(["exec", NAME, "psql", "-U", USER, "-c", `DROP DATABASE IF EXISTS ${DB}`]);
-        run(["exec", NAME, "psql", "-U", USER, "-c", `CREATE DATABASE ${DB}`]);
+        run(["exec", NAME, "psql", "-U", USER, "-d", "postgres", "-c", `DROP DATABASE IF EXISTS ${DB}`]);
+        run(["exec", NAME, "psql", "-U", USER, "-d", "postgres", "-c", `CREATE DATABASE ${DB}`]);
         console.log("✅ reset");
       }
       await updateEnv();

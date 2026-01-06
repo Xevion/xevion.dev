@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM tag_cooccurrence",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2487d244576ae4f02e72f74b5a1501040c47a4206c4cfea566f17641ec82d160"
+}
