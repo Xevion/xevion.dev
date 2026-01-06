@@ -8,15 +8,18 @@ const config = {
   kit: {
     adapter: adapter({
       out: "build",
-      precompress: {
-        brotli: true,
-        gzip: true,
-        files: ["html", "js", "json", "css", "svg", "xml", "wasm"],
-      },
+      precompress: true,
       serveAssets: false,
     }),
     alias: {
       $components: "src/lib/components",
+    },
+    prerender: {
+      handleHttpError: ({ path, referrer, message }) => {
+        console.log(
+          `Prerender error for ${path} (from ${referrer}): ${message}`,
+        );
+      },
     },
   },
 };

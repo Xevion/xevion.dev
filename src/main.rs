@@ -300,6 +300,57 @@ async fn api_root_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
     api_404_handler(uri).await
 }
 
+fn accepts_html(headers: &HeaderMap) -> bool {
+    if let Some(accept) = headers.get(axum::http::header::ACCEPT) {
+        if let Ok(accept_str) = accept.to_str() {
+            return accept_str.contains("text/html") || accept_str.contains("*/*");
+        }
+    }
+    // Default to true for requests without Accept header (browsers typically send it)
+    true
+}
+
+fn serve_error_page(status: StatusCode) -> Response {
+    let status_code = status.as_u16();
+
+    if let Some(html) = assets::get_error_page(status_code) {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        headers.insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+        );
+
+        (status, headers, html).into_response()
+    } else {
+        // Fallback for undefined error codes (500 generic page)
+        tracing::warn!(
+            status_code,
+            "No prerendered error page found for status code - using fallback"
+        );
+
+        if let Some(fallback_html) = assets::get_error_page(500) {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                axum::http::header::CONTENT_TYPE,
+                axum::http::HeaderValue::from_static("text/html; charset=utf-8"),
+            );
+            headers.insert(
+                axum::http::header::CACHE_CONTROL,
+                axum::http::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+            );
+
+            (status, headers, fallback_html).into_response()
+        } else {
+            // Last resort: plaintext (should never happen if 500.html exists)
+            (status, format!("Error {}", status_code)).into_response()
+        }
+    }
+}
+
 async fn health_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let healthy = state.health_checker.check().await;
 
@@ -465,6 +516,11 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
 
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
         tracing::warn!(method = %method, path = %path, "Non-GET/HEAD request to non-API route");
+
+        if accepts_html(req.headers()) {
+            return serve_error_page(StatusCode::METHOD_NOT_ALLOWED);
+        }
+
         let mut headers = HeaderMap::new();
         headers.insert(
             axum::http::header::ALLOW,
@@ -488,6 +544,11 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
     // Block internal routes from external access
     if path.starts_with("/internal/") {
         tracing::warn!(path = %path, "Attempted access to internal route");
+
+        if accepts_html(req.headers()) {
+            return serve_error_page(StatusCode::NOT_FOUND);
+        }
+
         return (StatusCode::NOT_FOUND, "Not found").into_response();
     }
 
@@ -551,6 +612,12 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
                 }
             }
 
+            // Intercept error responses for HTML requests
+            if (status.is_client_error() || status.is_server_error()) && accepts_html(req.headers())
+            {
+                return serve_error_page(status);
+            }
+
             if is_head {
                 (status, headers).into_response()
             } else {
@@ -565,6 +632,12 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
                 duration_ms,
                 "Failed to proxy to Bun"
             );
+
+            // Serve 502 error page instead of plaintext
+            if accepts_html(req.headers()) {
+                return serve_error_page(StatusCode::BAD_GATEWAY);
+            }
+
             (
                 StatusCode::BAD_GATEWAY,
                 format!("Failed to render page: {err}"),

@@ -5,6 +5,7 @@ use axum::{
 use include_dir::{Dir, include_dir};
 
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
+static ERROR_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered/errors");
 
 pub async fn serve_embedded_asset(uri: Uri) -> Response {
     let path = uri.path();
@@ -42,4 +43,20 @@ pub async fn serve_embedded_asset(uri: Uri) -> Response {
         tracing::debug!(path, "Embedded asset not found");
         (StatusCode::NOT_FOUND, "Asset not found").into_response()
     }
+}
+
+/// Get prerendered error page HTML for a given status code.
+///
+/// Error pages are prerendered by SvelteKit and embedded at compile time.
+/// The list of available error codes is defined in web/src/lib/error-codes.ts.
+///
+/// # Arguments
+/// * `status_code` - HTTP status code (e.g., 404, 500)
+///
+/// # Returns
+/// * `Some(&[u8])` - HTML content if error page exists
+/// * `None` - If no prerendered page exists for this code
+pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
+    let filename = format!("{}.html", status_code);
+    ERROR_PAGES.get_file(&filename).map(|f| f.contents())
 }
