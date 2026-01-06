@@ -1,8 +1,8 @@
 <script lang="ts">
   import AppWrapper from "$lib/components/AppWrapper.svelte";
-  import { cn } from "$lib/utils";
+  import type { PageData } from "./$types";
 
-  let { data } = $props();
+  let { data }: { data: PageData } = $props();
 </script>
 
 <AppWrapper>
@@ -35,12 +35,7 @@
           class="flex items-center justify-start overflow-hidden rounded bg-black/10 pb-2.5 pl-3 pr-5 pt-1 text-zinc-400 transition-colors hover:bg-zinc-500/10 hover:text-zinc-50"
         >
           <div class="flex h-full w-14 items-center justify-center pr-5">
-            <i
-              class={cn(
-                project.icon ?? "fa-heart",
-                "fa-solid text-3xl text-opacity-80 saturate-0",
-              )}
-            ></i>
+            {@html (project as any).iconSvg}
           </div>
           <div class="overflow-hidden">
             <span class="text-sm md:text-base lg:text-lg">

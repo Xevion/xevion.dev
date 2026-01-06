@@ -378,6 +378,8 @@ fn api_routes() -> Router<Arc<AppState>> {
             "/tags/recalculate-cooccurrence",
             axum::routing::post(recalculate_cooccurrence_handler),
         )
+        // Icon API - proxy to SvelteKit (authentication handled by SvelteKit)
+        .route("/icons/{*path}", axum::routing::get(proxy_icons_handler))
         .fallback(api_404_and_method_handler)
 }
 
@@ -522,6 +524,57 @@ async fn projects_handler(State(state): State<Arc<AppState>>) -> impl IntoRespon
                 Json(serde_json::json!({
                     "error": "Internal server error",
                     "message": "Failed to fetch projects"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Icon API handler - proxy to SvelteKit
+async fn proxy_icons_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+    axum::extract::Path(path): axum::extract::Path<String>,
+    req: Request,
+) -> impl IntoResponse {
+    let full_path = format!("/api/icons/{}", path);
+    let query = req.uri().query().unwrap_or("");
+
+    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
+    {
+        if query.is_empty() {
+            format!("http://localhost{}", full_path)
+        } else {
+            format!("http://localhost{}?{}", full_path, query)
+        }
+    } else if query.is_empty() {
+        format!("{}{}", state.downstream_url, full_path)
+    } else {
+        format!("{}{}?{}", state.downstream_url, full_path, query)
+    };
+
+    // Build trusted headers with session info
+    let mut forward_headers = HeaderMap::new();
+
+    if let Some(cookie) = jar.get("admin_session") {
+        if let Ok(session_id) = ulid::Ulid::from_string(cookie.value()) {
+            if let Some(session) = state.session_manager.validate_session(session_id) {
+                if let Ok(username_value) = axum::http::HeaderValue::from_str(&session.username) {
+                    forward_headers.insert("x-session-user", username_value);
+                }
+            }
+        }
+    }
+
+    match proxy_to_bun(&bun_url, state, forward_headers).await {
+        Ok((status, headers, body)) => (status, headers, body).into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, path = %full_path, "Failed to proxy icon request");
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({
+                    "error": "Failed to fetch icon data"
                 })),
             )
                 .into_response()

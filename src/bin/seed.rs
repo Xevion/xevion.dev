@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/xevion.dev"),
             None,
             10,
-            Some("fa-globe"),
+            Some("lucide:globe"),
         ),
         (
             "contest",
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/contest"),
             Some("https://contest.xevion.dev"),
             9,
-            Some("fa-trophy"),
+            Some("lucide:trophy"),
         ),
         (
             "reforge",
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/reforge"),
             None,
             8,
-            Some("fa-file-code"),
+            Some("lucide:file-code"),
         ),
         (
             "algorithms",
@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/algorithms"),
             None,
             5,
-            Some("fa-brain"),
+            Some("lucide:brain"),
         ),
         (
             "wordplay",
@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/wordplay"),
             Some("https://wordplay.example.com"),
             7,
-            Some("fa-gamepad"),
+            Some("lucide:gamepad-2"),
         ),
         (
             "dotfiles",
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some("Xevion/dotfiles"),
             None,
             6,
-            Some("fa-terminal"),
+            Some("lucide:terminal"),
         ),
     ];
 

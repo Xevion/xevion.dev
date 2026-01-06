@@ -2,6 +2,7 @@
   import Button from "./Button.svelte";
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
+  import IconPicker from "./IconPicker.svelte";
   import type {
     AdminProject,
     AdminTag,
@@ -168,12 +169,10 @@
   </div>
 
   <!-- Icon -->
-  <Input
+  <IconPicker
     label="Icon"
-    type="text"
-    bind:value={icon}
-    placeholder="fa-rocket"
-    help="Font Awesome icon class (e.g., fa-rocket, fa-heart)"
+    bind:selectedIcon={icon}
+    placeholder="Search icons... (e.g., lucide:home or simple-icons:react)"
   />
 
   <!-- Tags -->
