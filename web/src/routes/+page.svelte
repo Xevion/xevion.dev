@@ -15,7 +15,9 @@
       class="max-w-2xl mx-4 border-b border-zinc-700 divide-y divide-zinc-700 sm:mx-6"
     >
       <div class="flex flex-col pb-4">
-        <span class="text-2xl font-bold text-white sm:text-3xl">Ryan Walters,</span>
+        <span class="text-2xl font-bold text-white sm:text-3xl"
+          >Ryan Walters,</span
+        >
         <span class="text-xl font-normal text-zinc-400 sm:text-2xl">
           Full-Stack Software Engineer
         </span>
@@ -45,7 +47,8 @@
             class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-900 shadow-sm hover:bg-zinc-800 transition-colors"
           >
             <IconSimpleIconsLinkedin class="size-4 text-zinc-300" />
-            <span class="whitespace-nowrap text-sm text-zinc-100">LinkedIn</span>
+            <span class="whitespace-nowrap text-sm text-zinc-100">LinkedIn</span
+            >
           </a>
           <button
             type="button"

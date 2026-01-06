@@ -11,38 +11,35 @@ pub async fn serve_embedded_asset(uri: Uri) -> Response {
 
     let asset_path = path.strip_prefix('/').unwrap_or(path);
 
-    match CLIENT_ASSETS.get_file(asset_path) {
-        Some(file) => {
-            let mime_type = mime_guess::from_path(asset_path)
-                .first_or_octet_stream()
-                .as_ref()
-                .to_string();
+    if let Some(file) = CLIENT_ASSETS.get_file(asset_path) {
+        let mime_type = mime_guess::from_path(asset_path)
+            .first_or_octet_stream()
+            .as_ref()
+            .to_string();
 
-            let mut headers = axum::http::HeaderMap::new();
+        let mut headers = axum::http::HeaderMap::new();
+        headers.insert(
+            header::CONTENT_TYPE,
+            mime_type
+                .parse()
+                .unwrap_or_else(|_| header::HeaderValue::from_static("application/octet-stream")),
+        );
+
+        if path.contains("/immutable/") {
             headers.insert(
-                header::CONTENT_TYPE,
-                mime_type.parse().unwrap_or_else(|_| {
-                    header::HeaderValue::from_static("application/octet-stream")
-                }),
+                header::CACHE_CONTROL,
+                header::HeaderValue::from_static("public, max-age=31536000, immutable"),
             );
-
-            if path.contains("/immutable/") {
-                headers.insert(
-                    header::CACHE_CONTROL,
-                    header::HeaderValue::from_static("public, max-age=31536000, immutable"),
-                );
-            } else {
-                headers.insert(
-                    header::CACHE_CONTROL,
-                    header::HeaderValue::from_static("public, max-age=3600"),
-                );
-            }
-
-            (StatusCode::OK, headers, file.contents()).into_response()
+        } else {
+            headers.insert(
+                header::CACHE_CONTROL,
+                header::HeaderValue::from_static("public, max-age=3600"),
+            );
         }
-        None => {
-            tracing::debug!(path, "Embedded asset not found");
-            (StatusCode::NOT_FOUND, "Asset not found").into_response()
-        }
+
+        (StatusCode::OK, headers, file.contents()).into_response()
+    } else {
+        tracing::debug!(path, "Embedded asset not found");
+        (StatusCode::NOT_FOUND, "Asset not found").into_response()
     }
 }

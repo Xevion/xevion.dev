@@ -1,12 +1,13 @@
 use axum::{
     Json, Router,
-    extract::{Request, State},
+    extract::{ConnectInfo, Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::any,
 };
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,11 +21,13 @@ mod health;
 mod middleware;
 mod og;
 mod r2;
+mod tarpit;
 use assets::serve_embedded_asset;
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 use health::HealthChecker;
 use middleware::RequestIdLayer;
+use tarpit::{TarpitConfig, TarpitState, is_malicious_path, tarpit_handler};
 
 fn init_tracing() {
     let use_json = std::env::var("LOG_JSON")
@@ -42,7 +45,7 @@ fn init_tracing() {
             }
         });
 
-        EnvFilter::new(format!("warn,api={}", our_level))
+        EnvFilter::new(format!("warn,api={our_level}"))
     };
 
     if use_json {
@@ -114,11 +117,26 @@ async fn main() {
         async move { perform_health_check(downstream_url, http_client, unix_client).await }
     }));
 
+    let tarpit_config = TarpitConfig::from_env();
+    let tarpit_state = Arc::new(TarpitState::new(tarpit_config));
+
+    tracing::info!(
+        enabled = tarpit_state.config.enabled,
+        delay_range_ms = format!(
+            "{}-{}",
+            tarpit_state.config.delay_min_ms, tarpit_state.config.delay_max_ms
+        ),
+        max_global = tarpit_state.config.max_global_connections,
+        max_per_ip = tarpit_state.config.max_connections_per_ip,
+        "Tarpit initialized"
+    );
+
     let state = Arc::new(AppState {
         downstream_url: args.downstream.clone(),
         http_client,
         unix_client,
         health_checker,
+        tarpit_state,
     });
 
     // Regenerate common OGP images on startup
@@ -129,29 +147,44 @@ async fn main() {
         }
     });
 
-    let app = Router::new()
-        .nest("/api", api_routes())
-        .route("/api/", any(api_root_404_handler))
-        .route(
-            "/_app/{*path}",
-            axum::routing::get(serve_embedded_asset).head(serve_embedded_asset),
-        )
-        .fallback(isr_handler)
-        .layer(TraceLayer::new_for_http())
-        .layer(RequestIdLayer::new(args.trust_request_id.clone()))
-        .layer(CorsLayer::permissive())
-        .layer(RequestBodyLimitLayer::new(1_048_576))
-        .with_state(state);
+    // Build base router (shared routes)
+    fn build_base_router() -> Router<Arc<AppState>> {
+        Router::new()
+            .nest("/api", api_routes())
+            .route("/api/", any(api_root_404_handler))
+            .route(
+                "/_app/{*path}",
+                axum::routing::get(serve_embedded_asset).head(serve_embedded_asset),
+            )
+    }
+
+    fn apply_middleware(
+        router: Router<Arc<AppState>>,
+        trust_request_id: Option<String>,
+    ) -> Router<Arc<AppState>> {
+        router
+            .layer(TraceLayer::new_for_http())
+            .layer(RequestIdLayer::new(trust_request_id))
+            .layer(CorsLayer::permissive())
+            .layer(RequestBodyLimitLayer::new(1_048_576))
+    }
 
     let mut tasks = Vec::new();
 
     for listen_addr in &args.listen {
-        let app = app.clone();
+        let state = state.clone();
+        let trust_request_id = args.trust_request_id.clone();
         let listen_addr = listen_addr.clone();
 
         let task = tokio::spawn(async move {
             match listen_addr {
                 ListenAddr::Tcp(addr) => {
+                    let app = apply_middleware(
+                        build_base_router().fallback(fallback_handler_tcp),
+                        trust_request_id,
+                    )
+                    .with_state(state);
+
                     let listener = tokio::net::TcpListener::bind(addr)
                         .await
                         .expect("Failed to bind TCP listener");
@@ -163,11 +196,20 @@ async fn main() {
                     };
 
                     tracing::info!(url, "Listening on TCP");
-                    axum::serve(listener, app)
-                        .await
-                        .expect("Server error on TCP listener");
+                    axum::serve(
+                        listener,
+                        app.into_make_service_with_connect_info::<SocketAddr>(),
+                    )
+                    .await
+                    .expect("Server error on TCP listener");
                 }
                 ListenAddr::Unix(path) => {
+                    let app = apply_middleware(
+                        build_base_router().fallback(fallback_handler_unix),
+                        trust_request_id,
+                    )
+                    .with_state(state);
+
                     let _ = std::fs::remove_file(&path);
 
                     let listener = tokio::net::UnixListener::bind(&path)
@@ -195,6 +237,7 @@ pub struct AppState {
     http_client: reqwest::Client,
     unix_client: Option<reqwest::Client>,
     health_checker: Arc<HealthChecker>,
+    tarpit_state: Arc<TarpitState>,
 }
 
 #[derive(Debug)]
@@ -206,8 +249,8 @@ pub enum ProxyError {
 impl std::fmt::Display for ProxyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProxyError::Network(e) => write!(f, "Network error: {}", e),
-            ProxyError::Other(s) => write!(f, "{}", s),
+            ProxyError::Network(e) => write!(f, "Network error: {e}"),
+            ProxyError::Other(s) => write!(f, "{s}"),
         }
     }
 }
@@ -380,6 +423,39 @@ async fn projects_handler() -> impl IntoResponse {
     Json(projects)
 }
 
+fn should_tarpit(state: &TarpitState, path: &str) -> bool {
+    state.config.enabled && is_malicious_path(path)
+}
+
+async fn fallback_handler_tcp(
+    State(state): State<Arc<AppState>>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    req: Request,
+) -> Response {
+    let path = req.uri().path();
+
+    if should_tarpit(&state.tarpit_state, path) {
+        tarpit_handler(
+            State(state.tarpit_state.clone()),
+            Some(ConnectInfo(peer)),
+            req,
+        )
+        .await
+    } else {
+        isr_handler(State(state), req).await
+    }
+}
+
+async fn fallback_handler_unix(State(state): State<Arc<AppState>>, req: Request) -> Response {
+    let path = req.uri().path();
+
+    if should_tarpit(&state.tarpit_state, path) {
+        tarpit_handler(State(state.tarpit_state.clone()), None, req).await
+    } else {
+        isr_handler(State(state), req).await
+    }
+}
+
 #[tracing::instrument(skip(state, req), fields(path = %req.uri().path(), method = %req.method()))]
 async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let method = req.method().clone();
@@ -418,16 +494,14 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
     let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
     {
         if query.is_empty() {
-            format!("http://localhost{}", path)
+            format!("http://localhost{path}")
         } else {
-            format!("http://localhost{}?{}", path, query)
+            format!("http://localhost{path}?{query}")
         }
+    } else if query.is_empty() {
+        format!("{}{}", state.downstream_url, path)
     } else {
-        if query.is_empty() {
-            format!("{}{}", state.downstream_url, path)
-        } else {
-            format!("{}{}?{}", state.downstream_url, path, query)
-        }
+        format!("{}{}?{}", state.downstream_url, path, query)
     };
 
     let start = std::time::Instant::now();
@@ -493,7 +567,7 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
             );
             (
                 StatusCode::BAD_GATEWAY,
-                format!("Failed to render page: {}", err),
+                format!("Failed to render page: {err}"),
             )
                 .into_response()
         }
@@ -525,10 +599,10 @@ async fn proxy_to_bun(
             continue;
         }
 
-        if let Ok(header_name) = axum::http::HeaderName::try_from(name.as_str()) {
-            if let Ok(header_value) = axum::http::HeaderValue::try_from(value.as_bytes()) {
-                headers.insert(header_name, header_value);
-            }
+        if let Ok(header_name) = axum::http::HeaderName::try_from(name.as_str())
+            && let Ok(header_value) = axum::http::HeaderValue::try_from(value.as_bytes())
+        {
+            headers.insert(header_name, header_value);
         }
     }
 
@@ -544,7 +618,7 @@ async fn perform_health_check(
     let url = if downstream_url.starts_with('/') || downstream_url.starts_with("./") {
         "http://localhost/internal/health".to_string()
     } else {
-        format!("{}/internal/health", downstream_url)
+        format!("{downstream_url}/internal/health")
     };
 
     let client = if unix_client.is_some() {

@@ -24,7 +24,7 @@ impl R2Client {
             .map_err(|_| "R2_SECRET_ACCESS_KEY not set".to_string())?;
         let bucket = std::env::var("R2_BUCKET").map_err(|_| "R2_BUCKET not set".to_string())?;
 
-        let endpoint = format!("https://{}.r2.cloudflarestorage.com", account_id);
+        let endpoint = format!("https://{account_id}.r2.cloudflarestorage.com");
 
         let credentials_provider =
             Credentials::new(access_key_id, secret_access_key, None, None, "static");
@@ -57,6 +57,7 @@ impl R2Client {
             .cloned()
     }
 
+    #[allow(dead_code)]
     pub async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
         let result = self
             .client
@@ -65,13 +66,13 @@ impl R2Client {
             .key(key)
             .send()
             .await
-            .map_err(|e| format!("Failed to get object from R2: {}", e))?;
+            .map_err(|e| format!("Failed to get object from R2: {e}"))?;
 
         let bytes = result
             .body
             .collect()
             .await
-            .map_err(|e| format!("Failed to read object body: {}", e))?
+            .map_err(|e| format!("Failed to read object body: {e}"))?
             .into_bytes()
             .to_vec();
 
@@ -87,11 +88,12 @@ impl R2Client {
             .content_type("image/png")
             .send()
             .await
-            .map_err(|e| format!("Failed to put object to R2: {}", e))?;
+            .map_err(|e| format!("Failed to put object to R2: {e}"))?;
 
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn object_exists(&self, key: &str) -> bool {
         self.client
             .head_object()

@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 
 use crate::{AppState, r2::R2Client};
 
-/// Discriminated union matching TypeScript's OGImageSpec in web/src/lib/og-types.ts
+/// Discriminated union matching TypeScript's `OGImageSpec` in web/src/lib/og-types.ts
 ///
 /// IMPORTANT: Keep this in sync with the TypeScript definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,7 +20,7 @@ impl OGImageSpec {
         match self {
             OGImageSpec::Index => "og/index.png".to_string(),
             OGImageSpec::Projects => "og/projects.png".to_string(),
-            OGImageSpec::Project { id } => format!("og/project/{}.png", id),
+            OGImageSpec::Project { id } => format!("og/project/{id}.png"),
         }
     }
 }
@@ -51,29 +51,30 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
         .timeout(Duration::from_secs(30))
         .send()
         .await
-        .map_err(|e| format!("Failed to call Bun: {}", e))?;
+        .map_err(|e| format!("Failed to call Bun: {e}"))?;
 
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
-        return Err(format!("Bun returned status {}: {}", status, error_text));
+        return Err(format!("Bun returned status {status}: {error_text}"));
     }
 
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| format!("Failed to read response: {}", e))?
+        .map_err(|e| format!("Failed to read response: {e}"))?
         .to_vec();
 
     r2.put_object(&r2_key, bytes)
         .await
-        .map_err(|e| format!("Failed to upload to R2: {}", e))?;
+        .map_err(|e| format!("Failed to upload to R2: {e}"))?;
 
     tracing::info!(r2_key, "OG image generated and uploaded");
     Ok(())
 }
 
 /// Check if an OG image exists in R2
+#[allow(dead_code)]
 pub async fn og_image_exists(spec: &OGImageSpec) -> bool {
     if let Some(r2) = R2Client::get().await {
         r2.object_exists(&spec.r2_key()).await
@@ -83,6 +84,7 @@ pub async fn og_image_exists(spec: &OGImageSpec) -> bool {
 }
 
 /// Ensure an OG image exists, generating if necessary
+#[allow(dead_code)]
 pub async fn ensure_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Result<(), String> {
     if og_image_exists(spec).await {
         tracing::debug!(r2_key = spec.r2_key(), "OG image already exists");

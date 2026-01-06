@@ -34,7 +34,7 @@ impl FromStr for ListenAddr {
         if let Some(port_str) = s.strip_prefix(':') {
             let port: u16 = port_str
                 .parse()
-                .map_err(|_| format!("Invalid port number: {}", port_str))?;
+                .map_err(|_| format!("Invalid port number: {port_str}"))?;
             return Ok(ListenAddr::Tcp(SocketAddr::from(([127, 0, 0, 1], port))));
         }
 
@@ -43,11 +43,10 @@ impl FromStr for ListenAddr {
             Err(_) => match s.to_socket_addrs() {
                 Ok(mut addrs) => addrs
                     .next()
-                    .ok_or_else(|| format!("Could not resolve address: {}", s))
+                    .ok_or_else(|| format!("Could not resolve address: {s}"))
                     .map(ListenAddr::Tcp),
                 Err(_) => Err(format!(
-                    "Invalid address '{}'. Expected host:port, :port, or Unix socket path",
-                    s
+                    "Invalid address '{s}'. Expected host:port, :port, or Unix socket path"
                 )),
             },
         }
@@ -57,7 +56,7 @@ impl FromStr for ListenAddr {
 impl std::fmt::Display for ListenAddr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ListenAddr::Tcp(addr) => write!(f, "{}", addr),
+            ListenAddr::Tcp(addr) => write!(f, "{addr}"),
             ListenAddr::Unix(path) => write!(f, "{}", path.display()),
         }
     }

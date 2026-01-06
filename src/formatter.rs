@@ -30,7 +30,7 @@ where
 
         let now = OffsetDateTime::now_utc();
         let formatted_time = now.format(&TIMESTAMP_FORMAT).map_err(|e| {
-            eprintln!("Failed to format timestamp: {}", e);
+            eprintln!("Failed to format timestamp: {e}");
             fmt::Error
         })?;
         write_dimmed(&mut writer, formatted_time)?;
@@ -48,12 +48,12 @@ where
                 write_dimmed(&mut writer, ":")?;
 
                 let ext = span.extensions();
-                if let Some(fields) = &ext.get::<FormattedFields<N>>() {
-                    if !fields.fields.is_empty() {
-                        write_bold(&mut writer, "{")?;
-                        writer.write_str(fields.fields.as_str())?;
-                        write_bold(&mut writer, "}")?;
-                    }
+                if let Some(fields) = &ext.get::<FormattedFields<N>>()
+                    && !fields.fields.is_empty()
+                {
+                    write_bold(&mut writer, "{")?;
+                    writer.write_str(fields.fields.as_str())?;
+                    write_bold(&mut writer, "}")?;
                 }
                 write_dimmed(&mut writer, ":")?;
             }
@@ -109,14 +109,14 @@ where
                 fields: &'a mut Map<String, Value>,
             }
 
-            impl<'a> Visit for FieldVisitor<'a> {
+            impl Visit for FieldVisitor<'_> {
                 fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
                     let key = field.name();
                     if key == "message" {
-                        *self.message = Some(format!("{:?}", value));
+                        *self.message = Some(format!("{value:?}"));
                     } else {
                         self.fields
-                            .insert(key.to_string(), Value::String(format!("{:?}", value)));
+                            .insert(key.to_string(), Value::String(format!("{value:?}")));
                     }
                 }
 
@@ -210,7 +210,7 @@ fn write_colored_level(writer: &mut Writer<'_>, level: &Level) -> fmt::Result {
             Level::WARN => Color::Yellow.paint(" WARN"),
             Level::ERROR => Color::Red.paint("ERROR"),
         };
-        write!(writer, "{}", colored)
+        write!(writer, "{colored}")
     } else {
         match *level {
             Level::TRACE => write!(writer, "{:>5}", "TRACE"),
@@ -226,7 +226,7 @@ fn write_dimmed(writer: &mut Writer<'_>, s: impl fmt::Display) -> fmt::Result {
     if writer.has_ansi_escapes() {
         write!(writer, "{}", Color::DarkGray.paint(s.to_string()))
     } else {
-        write!(writer, "{}", s)
+        write!(writer, "{s}")
     }
 }
 
@@ -234,6 +234,6 @@ fn write_bold(writer: &mut Writer<'_>, s: impl fmt::Display) -> fmt::Result {
     if writer.has_ansi_escapes() {
         write!(writer, "{}", Color::White.bold().paint(s.to_string()))
     } else {
-        write!(writer, "{}", s)
+        write!(writer, "{s}")
     }
 }

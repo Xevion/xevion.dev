@@ -53,8 +53,10 @@ where
             .as_ref()
             .and_then(|header| req.headers().get(header))
             .and_then(|value| value.to_str().ok())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| ulid::Ulid::new().to_string());
+            .map_or_else(
+                || ulid::Ulid::new().to_string(),
+                std::string::ToString::to_string,
+            );
 
         let span = tracing::info_span!("request", req_id = %req_id);
         let _enter = span.enter();
