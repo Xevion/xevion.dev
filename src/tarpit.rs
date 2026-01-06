@@ -125,9 +125,7 @@ pub fn is_malicious_path(path: &str) -> bool {
     }
 
     // Admin panels
-    if path_lower.starts_with("/administrator")
-        || path_lower.contains("phpmyadmin")
-    {
+    if path_lower.starts_with("/administrator") || path_lower.contains("phpmyadmin") {
         return true;
     }
 

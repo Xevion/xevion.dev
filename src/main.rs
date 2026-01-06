@@ -14,6 +14,7 @@ use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLaye
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod assets;
+mod auth;
 mod config;
 mod db;
 mod formatter;
@@ -94,6 +95,32 @@ async fn main() {
 
     tracing::info!("Migrations applied successfully");
 
+    // Ensure admin user exists
+    auth::ensure_admin_user(&pool)
+        .await
+        .expect("Failed to ensure admin user exists");
+
+    // Initialize session manager
+    let session_manager = Arc::new(
+        auth::SessionManager::new(pool.clone())
+            .await
+            .expect("Failed to initialize session manager"),
+    );
+
+    // Spawn background task to cleanup expired sessions
+    tokio::spawn({
+        let session_manager = session_manager.clone();
+        async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+            loop {
+                interval.tick().await;
+                if let Err(e) = session_manager.cleanup_expired().await {
+                    tracing::error!(error = %e, "Failed to cleanup expired sessions");
+                }
+            }
+        }
+    });
+
     if args.listen.is_empty() {
         eprintln!("Error: At least one --listen address is required");
         std::process::exit(1);
@@ -106,6 +133,7 @@ async fn main() {
         .tcp_keepalive(Some(Duration::from_secs(60)))
         .timeout(Duration::from_secs(5)) // Default timeout for SSR
         .connect_timeout(Duration::from_secs(3))
+        .redirect(reqwest::redirect::Policy::none()) // Don't follow redirects - pass them through
         .build()
         .expect("Failed to create HTTP client");
 
@@ -118,6 +146,7 @@ async fn main() {
                 .pool_idle_timeout(Duration::from_secs(600)) // 10 minutes
                 .timeout(Duration::from_secs(5)) // Default timeout for SSR
                 .connect_timeout(Duration::from_secs(3))
+                .redirect(reqwest::redirect::Policy::none()) // Don't follow redirects - pass them through
                 .unix_socket(path)
                 .build()
                 .expect("Failed to create Unix socket client"),
@@ -162,6 +191,7 @@ async fn main() {
         health_checker,
         tarpit_state,
         pool: pool.clone(),
+        session_manager: session_manager.clone(),
     });
 
     // Regenerate common OGP images on startup
@@ -264,6 +294,7 @@ pub struct AppState {
     health_checker: Arc<HealthChecker>,
     tarpit_state: Arc<TarpitState>,
     pool: sqlx::PgPool,
+    session_manager: Arc<auth::SessionManager>,
 }
 
 #[derive(Debug)]
@@ -315,7 +346,13 @@ fn api_routes() -> Router<Arc<AppState>> {
             "/health",
             axum::routing::get(health_handler).head(health_handler),
         )
+        // Authentication endpoints (public)
+        .route("/login", axum::routing::post(api_login_handler))
+        .route("/logout", axum::routing::post(api_logout_handler))
+        .route("/session", axum::routing::get(api_session_handler))
+        // Projects - GET is public, other methods require auth
         .route("/projects", axum::routing::get(projects_handler))
+        // Project tags - authentication checked in handlers
         .route(
             "/projects/{id}/tags",
             axum::routing::get(get_project_tags_handler).post(add_project_tag_handler),
@@ -324,6 +361,7 @@ fn api_routes() -> Router<Arc<AppState>> {
             "/projects/{id}/tags/{tag_id}",
             axum::routing::delete(remove_project_tag_handler),
         )
+        // Tags - authentication checked in handlers
         .route(
             "/tags",
             axum::routing::get(list_tags_handler).post(create_tag_handler),
@@ -527,8 +565,12 @@ struct CreateTagRequest {
 
 async fn create_tag_handler(
     State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
     Json(payload): Json<CreateTagRequest>,
 ) -> impl IntoResponse {
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
     if payload.name.trim().is_empty() {
         return (
             StatusCode::BAD_REQUEST,
@@ -620,8 +662,12 @@ struct UpdateTagRequest {
 async fn update_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(slug): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
     Json(payload): Json<UpdateTagRequest>,
 ) -> impl IntoResponse {
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
     if payload.name.trim().is_empty() {
         return (
             StatusCode::BAD_REQUEST,
@@ -736,7 +782,13 @@ async fn get_related_tags_handler(
     }
 }
 
-async fn recalculate_cooccurrence_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn recalculate_cooccurrence_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
     match db::recalculate_tag_cooccurrence(&state.pool).await {
         Ok(()) => (
             StatusCode::OK,
@@ -756,6 +808,183 @@ async fn recalculate_cooccurrence_handler(State(state): State<Arc<AppState>>) ->
             )
                 .into_response()
         }
+    }
+}
+
+// Authentication API handlers
+
+fn check_session(state: &AppState, jar: &axum_extra::extract::CookieJar) -> Option<auth::Session> {
+    let session_cookie = jar.get("admin_session")?;
+    let session_id = ulid::Ulid::from_string(session_cookie.value()).ok()?;
+    state.session_manager.validate_session(session_id)
+}
+
+fn require_auth_response() -> impl IntoResponse {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(serde_json::json!({
+            "error": "Unauthorized",
+            "message": "Authentication required"
+        })),
+    )
+}
+
+#[derive(serde::Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(serde::Serialize)]
+struct LoginResponse {
+    success: bool,
+    username: String,
+}
+
+#[derive(serde::Serialize)]
+struct SessionResponse {
+    authenticated: bool,
+    username: String,
+}
+
+async fn api_login_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+    Json(payload): Json<LoginRequest>,
+) -> Result<(axum_extra::extract::CookieJar, Json<LoginResponse>), impl IntoResponse> {
+    let user = match auth::get_admin_user(&state.pool, &payload.username).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({
+                    "error": "Invalid credentials",
+                    "message": "Username or password incorrect"
+                })),
+            ));
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch admin user");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to authenticate"
+                })),
+            ));
+        }
+    };
+
+    let password_valid = match auth::verify_password(&payload.password, &user.password_hash) {
+        Ok(valid) => valid,
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to verify password");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to authenticate"
+                })),
+            ));
+        }
+    };
+
+    if !password_valid {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({
+                "error": "Invalid credentials",
+                "message": "Username or password incorrect"
+            })),
+        ));
+    }
+
+    let session = match state
+        .session_manager
+        .create_session(user.id, user.username.clone())
+        .await
+    {
+        Ok(session) => session,
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to create session");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to create session"
+                })),
+            ));
+        }
+    };
+
+    let cookie =
+        axum_extra::extract::cookie::Cookie::build(("admin_session", session.id.to_string()))
+            .path("/")
+            .http_only(true)
+            .same_site(axum_extra::extract::cookie::SameSite::Lax)
+            .max_age(time::Duration::days(7))
+            .build();
+
+    let jar = jar.add(cookie);
+
+    tracing::info!(username = %user.username, "User logged in");
+
+    Ok((
+        jar,
+        Json(LoginResponse {
+            success: true,
+            username: user.username,
+        }),
+    ))
+}
+
+async fn api_logout_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+) -> (axum_extra::extract::CookieJar, StatusCode) {
+    if let Some(cookie) = jar.get("admin_session") {
+        if let Ok(session_id) = ulid::Ulid::from_string(cookie.value()) {
+            if let Err(e) = state.session_manager.delete_session(session_id).await {
+                tracing::error!(error = %e, "Failed to delete session during logout");
+            }
+        }
+    }
+
+    let cookie = axum_extra::extract::cookie::Cookie::build(("admin_session", ""))
+        .path("/")
+        .max_age(time::Duration::ZERO)
+        .build();
+
+    (jar.add(cookie), StatusCode::OK)
+}
+
+async fn api_session_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    let session_cookie = jar.get("admin_session");
+
+    let session_id = session_cookie.and_then(|cookie| ulid::Ulid::from_string(cookie.value()).ok());
+
+    let session = session_id.and_then(|id| state.session_manager.validate_session(id));
+
+    match session {
+        Some(session) => (
+            StatusCode::OK,
+            Json(SessionResponse {
+                authenticated: true,
+                username: session.username,
+            }),
+        )
+            .into_response(),
+        None => (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({
+                "error": "Unauthorized",
+                "message": "No valid session"
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -806,8 +1035,12 @@ struct AddProjectTagRequest {
 async fn add_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(id): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
     Json(payload): Json<AddProjectTagRequest>,
 ) -> impl IntoResponse {
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
     let project_id = match uuid::Uuid::parse_str(&id) {
         Ok(id) => id,
         Err(_) => {
@@ -869,7 +1102,11 @@ async fn add_project_tag_handler(
 async fn remove_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path((id, tag_id)): axum::extract::Path<(String, String)>,
+    jar: axum_extra::extract::CookieJar,
 ) -> impl IntoResponse {
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
     let project_id = match uuid::Uuid::parse_str(&id) {
         Ok(id) => id,
         Err(_) => {
@@ -1011,9 +1248,43 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
         format!("{}{}?{}", state.downstream_url, path, query)
     };
 
+    // Build trusted headers to forward to downstream
+    let mut forward_headers = HeaderMap::new();
+
+    // SECURITY: Strip any X-Session-User header from incoming request to prevent spoofing
+    // (We will add it ourselves if session is valid)
+
+    // Extract and validate session from cookie
+    if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
+        if let Ok(cookie_str) = cookie_header.to_str() {
+            // Parse cookies manually to find admin_session
+            for cookie_pair in cookie_str.split(';') {
+                let cookie_pair = cookie_pair.trim();
+                if let Some((name, value)) = cookie_pair.split_once('=') {
+                    if name == "admin_session" {
+                        // Found session cookie, validate it
+                        if let Ok(session_id) = ulid::Ulid::from_string(value) {
+                            if let Some(session) =
+                                state.session_manager.validate_session(session_id)
+                            {
+                                // Session is valid - add trusted header
+                                if let Ok(username_value) =
+                                    axum::http::HeaderValue::from_str(&session.username)
+                                {
+                                    forward_headers.insert("x-session-user", username_value);
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     let start = std::time::Instant::now();
 
-    match proxy_to_bun(&bun_url, state.clone()).await {
+    match proxy_to_bun(&bun_url, state.clone(), forward_headers).await {
         Ok((status, headers, body)) => {
             let duration_ms = start.elapsed().as_millis() as u64;
             let cache = "miss";
@@ -1096,6 +1367,7 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
 async fn proxy_to_bun(
     url: &str,
     state: Arc<AppState>,
+    forward_headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, axum::body::Bytes), ProxyError> {
     let client = if state.unix_client.is_some() {
         state.unix_client.as_ref().unwrap()
@@ -1103,7 +1375,13 @@ async fn proxy_to_bun(
         &state.http_client
     };
 
-    let response = client.get(url).send().await.map_err(ProxyError::Network)?;
+    // Build request with forwarded headers
+    let mut request_builder = client.get(url);
+    for (name, value) in forward_headers.iter() {
+        request_builder = request_builder.header(name, value);
+    }
+
+    let response = request_builder.send().await.map_err(ProxyError::Network)?;
 
     let status = StatusCode::from_u16(response.status().as_u16())
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);

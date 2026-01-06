@@ -7,7 +7,7 @@
   import { getAdminStats } from "$lib/api";
   import type { AdminStats } from "$lib/admin-types";
 
-  let { children } = $props();
+  let { children, data } = $props();
 
   let stats = $state<AdminStats | null>(null);
   let loading = $state(true);
@@ -27,6 +27,13 @@
       loading = false;
     }
   }
+
+  // Sync authStore with server session on mount
+  $effect(() => {
+    if (data?.session?.authenticated && data.session.username && !authStore.isAuthenticated) {
+      authStore.setSession(data.session.username);
+    }
+  });
 
   // Load stats when component mounts or when authentication changes
   $effect(() => {

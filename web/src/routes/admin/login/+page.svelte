@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import AppWrapper from "$lib/components/AppWrapper.svelte";
@@ -19,7 +20,8 @@
       const success = await authStore.login(username, password);
       
       if (success) {
-        goto("/admin");
+        const nextUrl = $page.url.searchParams.get("next") || "/admin";
+        goto(nextUrl);
       } else {
         error = "Invalid username or password";
       }
@@ -36,7 +38,7 @@
   <title>Admin Login | xevion.dev</title>
 </svelte:head>
 
-<AppWrapper bgColor="bg-admin-bg">
+<AppWrapper>
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md space-y-4">
       <!-- Login Form -->
@@ -69,10 +71,6 @@
               {error}
             </div>
           {/if}
-
-          <div class="text-xs text-admin-text-muted">
-            Mock credentials: <code class="rounded bg-admin-bg px-1 py-0.5">admin</code> / <code class="rounded bg-admin-bg px-1 py-0.5">password</code>
-          </div>
 
           <Button
             type="submit"
