@@ -1,42 +1,24 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-import { cwd } from "node:process";
+import { read } from "$app/server";
 import type { SatoriOptions } from "satori";
+
+// Import fonts as URLs - Vite will copy them to build output
+import hankenGroteskUrl from "@fontsource/hanken-grotesk/files/hanken-grotesk-latin-900-normal.woff?url";
+import schibstedGroteskUrl from "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff?url";
+import interUrl from "@fontsource/inter/files/inter-latin-500-normal.woff?url";
 
 /**
  * Load fonts for OG image generation.
- * Fonts are loaded directly from node_modules using fs.readFile for production compatibility.
- * Must be called on each request (fonts can't be cached globally in server context).
+ * Uses SvelteKit's read() to access fonts from build output.
+ * Works in all deployment environments (Docker, edge, serverless).
  *
  * Note: Only WOFF/TTF/OTF formats are supported by Satori (not WOFF2).
  */
 export async function loadOGFonts(): Promise<SatoriOptions["fonts"]> {
-  // In production, the server runs from web/build, so node_modules is at ../node_modules
-  // In dev, we're already in web/ directory
-  const workingDir = cwd();
-  const nodeModulesPath = workingDir.endsWith("/build")
-    ? join(workingDir, "..", "node_modules")
-    : join(workingDir, "node_modules");
-
+  // Use SvelteKit's read() - works in all deployment environments
   const [hankenGrotesk, schibstedGrotesk, inter] = await Promise.all([
-    readFile(
-      join(
-        nodeModulesPath,
-        "@fontsource/hanken-grotesk/files/hanken-grotesk-latin-900-normal.woff",
-      ),
-    ),
-    readFile(
-      join(
-        nodeModulesPath,
-        "@fontsource/schibsted-grotesk/files/schibsted-grotesk-latin-400-normal.woff",
-      ),
-    ),
-    readFile(
-      join(
-        nodeModulesPath,
-        "@fontsource/inter/files/inter-latin-500-normal.woff",
-      ),
-    ),
+    read(hankenGroteskUrl).arrayBuffer(),
+    read(schibstedGroteskUrl).arrayBuffer(),
+    read(interUrl).arrayBuffer(),
   ]);
 
   return [

@@ -77,8 +77,9 @@ RUN apk add --no-cache ca-certificates tzdata
 # Copy Rust binary
 COPY --from=final-builder /build/target/release/api ./api
 
-# Copy Bun SSR server
+# Copy Bun SSR server and client assets (including fonts for OG images)
 COPY --from=frontend /build/build/server ./web/build/server
+COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/*.js ./web/build/
 COPY web/console-logger.js ./web/
 
