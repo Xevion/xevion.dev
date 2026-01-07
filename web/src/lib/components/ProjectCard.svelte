@@ -56,7 +56,8 @@
     {#each project.tags as tag (tag.name)}
       <!-- TODO: Add link to project search with tag filtering -->
       <span
-        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-300 border-l-3 border-l-cyan-500"
+        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-300 border-l-3"
+        style="border-left-color: #{tag.color || '06b6d4'}"
       >
         {#if tag.iconSvg}
           <span class="size-4.25 sm:size-3.75 [&>svg]:w-full [&>svg]:h-full">

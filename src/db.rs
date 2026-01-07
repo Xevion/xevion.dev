@@ -37,6 +37,7 @@ pub struct DbTag {
     pub id: Uuid,
     pub slug: String,
     pub name: String,
+    pub color: Option<String>,
     pub created_at: OffsetDateTime,
 }
 
@@ -78,6 +79,8 @@ pub struct ApiTag {
     pub id: String,
     pub slug: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +111,7 @@ impl DbTag {
             id: self.id.to_string(),
             slug: self.slug.clone(),
             name: self.name.clone(),
+            color: self.color.clone(),
         }
     }
 }
@@ -211,6 +215,7 @@ pub async fn create_tag(
     pool: &PgPool,
     name: &str,
     slug_override: Option<&str>,
+    color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
     let slug = slug_override
         .map(|s| slugify(s))
@@ -219,12 +224,13 @@ pub async fn create_tag(
     sqlx::query_as!(
         DbTag,
         r#"
-        INSERT INTO tags (slug, name)
-        VALUES ($1, $2)
-        RETURNING id, slug, name, created_at
+        INSERT INTO tags (slug, name, color)
+        VALUES ($1, $2, $3)
+        RETURNING id, slug, name, color, created_at
         "#,
         slug,
-        name
+        name,
+        color
     )
     .fetch_one(pool)
     .await
@@ -234,7 +240,7 @@ pub async fn get_tag_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbTag>, sql
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, created_at
+        SELECT id, slug, name, color, created_at
         FROM tags
         WHERE id = $1
         "#,
@@ -248,7 +254,7 @@ pub async fn get_tag_by_slug(pool: &PgPool, slug: &str) -> Result<Option<DbTag>,
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, created_at
+        SELECT id, slug, name, color, created_at
         FROM tags
         WHERE slug = $1
         "#,
@@ -262,7 +268,7 @@ pub async fn get_all_tags(pool: &PgPool) -> Result<Vec<DbTag>, sqlx::Error> {
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, created_at
+        SELECT id, slug, name, color, created_at
         FROM tags
         ORDER BY name ASC
         "#
@@ -277,12 +283,13 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
         SELECT 
             t.id, 
             t.slug, 
-            t.name, 
+            t.name,
+            t.color,
             t.created_at,
             COUNT(pt.project_id)::int as "project_count!"
         FROM tags t
         LEFT JOIN project_tags pt ON t.id = pt.tag_id
-        GROUP BY t.id, t.slug, t.name, t.created_at
+        GROUP BY t.id, t.slug, t.name, t.color, t.created_at
         ORDER BY t.name ASC
         "#
     )
@@ -296,6 +303,7 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
                 id: row.id,
                 slug: row.slug,
                 name: row.name,
+                color: row.color,
                 created_at: row.created_at,
             };
             (tag, row.project_count)
@@ -308,6 +316,7 @@ pub async fn update_tag(
     id: Uuid,
     name: &str,
     slug_override: Option<&str>,
+    color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
     let slug = slug_override
         .map(|s| slugify(s))
@@ -317,13 +326,14 @@ pub async fn update_tag(
         DbTag,
         r#"
         UPDATE tags
-        SET slug = $2, name = $3
+        SET slug = $2, name = $3, color = $4
         WHERE id = $1
-        RETURNING id, slug, name, created_at
+        RETURNING id, slug, name, color, created_at
         "#,
         id,
         slug,
-        name
+        name,
+        color
     )
     .fetch_one(pool)
     .await
@@ -405,7 +415,7 @@ pub async fn get_tags_for_project(
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT t.id, t.slug, t.name, t.created_at
+        SELECT t.id, t.slug, t.name, t.color, t.created_at
         FROM tags t
         JOIN project_tags pt ON t.id = pt.tag_id
         WHERE pt.project_id = $1
@@ -487,7 +497,8 @@ pub async fn get_related_tags(
         SELECT 
             t.id, 
             t.slug, 
-            t.name, 
+            t.name,
+            t.color,
             t.created_at,
             tc.count
         FROM tag_cooccurrence tc
@@ -509,6 +520,7 @@ pub async fn get_related_tags(
                 id: row.id,
                 slug: row.slug,
                 name: row.name,
+                color: row.color,
                 created_at: row.created_at,
             };
             (tag, row.count)

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, slug, name, created_at\n        FROM tags\n        WHERE slug = $1\n        ",
+  "query": "\n        SELECT t.id, t.slug, t.name, t.color, t.created_at\n        FROM tags t\n        JOIN project_tags pt ON t.id = pt.tag_id\n        WHERE pt.project_id = $1\n        ORDER BY t.name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -20,21 +20,27 @@
       },
       {
         "ordinal": 3,
+        "name": "color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "baffa1674306622fbc4cb3cae9e351517f4d595c11364ec797666bab05444120"
+  "hash": "0851e9cb9d471e713b0af09fc81c2b997f96562334359531d163bfeefe184a68"
 }

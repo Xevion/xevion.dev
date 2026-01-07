@@ -610,10 +610,16 @@ async fn list_tags_handler(State(state): State<Arc<AppState>>) -> impl IntoRespo
     }
 }
 
+/// Validate hex color format (6 characters, no hash, no alpha)
+fn validate_hex_color(color: &str) -> bool {
+    color.len() == 6 && color.chars().all(|c| c.is_ascii_hexdigit())
+}
+
 #[derive(serde::Deserialize)]
 struct CreateTagRequest {
     name: String,
     slug: Option<String>,
+    color: Option<String>,
 }
 
 async fn create_tag_handler(
@@ -635,7 +641,28 @@ async fn create_tag_handler(
             .into_response();
     }
 
-    match db::create_tag(&state.pool, &payload.name, payload.slug.as_deref()).await {
+    // Validate color if provided
+    if let Some(ref color) = payload.color {
+        if !validate_hex_color(color) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Validation error",
+                    "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
+                })),
+            )
+                .into_response();
+        }
+    }
+
+    match db::create_tag(
+        &state.pool,
+        &payload.name,
+        payload.slug.as_deref(),
+        payload.color.as_deref(),
+    )
+    .await
+    {
         Ok(tag) => (StatusCode::CREATED, Json(tag.to_api_tag())).into_response(),
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
             StatusCode::CONFLICT,
@@ -710,6 +737,7 @@ async fn get_tag_handler(
 struct UpdateTagRequest {
     name: String,
     slug: Option<String>,
+    color: Option<String>,
 }
 
 async fn update_tag_handler(
@@ -730,6 +758,20 @@ async fn update_tag_handler(
             })),
         )
             .into_response();
+    }
+
+    // Validate color if provided
+    if let Some(ref color) = payload.color {
+        if !validate_hex_color(color) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Validation error",
+                    "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
+                })),
+            )
+                .into_response();
+        }
     }
 
     let tag = match db::get_tag_by_slug(&state.pool, &slug).await {
@@ -757,7 +799,15 @@ async fn update_tag_handler(
         }
     };
 
-    match db::update_tag(&state.pool, tag.id, &payload.name, payload.slug.as_deref()).await {
+    match db::update_tag(
+        &state.pool,
+        tag.id,
+        &payload.name,
+        payload.slug.as_deref(),
+        payload.color.as_deref(),
+    )
+    .await
+    {
         Ok(updated_tag) => Json(updated_tag.to_api_tag()).into_response(),
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
             StatusCode::CONFLICT,

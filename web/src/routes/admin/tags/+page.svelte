@@ -3,6 +3,7 @@
   import Input from "$lib/components/admin/Input.svelte";
   import Table from "$lib/components/admin/Table.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
+  import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import {
     getAdminTags,
     createAdminTag,
@@ -24,12 +25,14 @@
   let showCreateForm = $state(false);
   let createName = $state("");
   let createSlug = $state("");
+  let createColor = $state<string | undefined>(undefined);
   let creating = $state(false);
 
   // Edit state
   let editingId = $state<string | null>(null);
   let editName = $state("");
   let editSlug = $state("");
+  let editColor = $state<string | undefined>(undefined);
   let updating = $state(false);
 
   // Delete state
@@ -60,11 +63,13 @@
       const data: CreateTagData = {
         name: createName,
         slug: createSlug || undefined,
+        color: createColor,
       };
       await createAdminTag(data);
       await loadTags();
       createName = "";
       createSlug = "";
+      createColor = undefined;
       showCreateForm = false;
     } catch (error) {
       console.error("Failed to create tag:", error);
@@ -78,12 +83,14 @@
     editingId = tag.id;
     editName = tag.name;
     editSlug = tag.slug;
+    editColor = tag.color;
   }
 
   function cancelEdit() {
     editingId = null;
     editName = "";
     editSlug = "";
+    editColor = undefined;
   }
 
   async function handleUpdate() {
@@ -95,6 +102,7 @@
         id: editingId,
         name: editName,
         slug: editSlug || undefined,
+        color: editColor,
       };
       await updateAdminTag(data);
       await loadTags();
@@ -191,6 +199,9 @@
           placeholder="Leave empty to auto-generate"
         />
       </div>
+      <div class="mt-4">
+        <ColorPicker bind:selectedColor={createColor} />
+      </div>
       <div class="mt-4 flex justify-end gap-2">
         <Button variant="secondary" onclick={() => (showCreateForm = false)}>
           Cancel
@@ -227,6 +238,9 @@
             Slug
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+            Color
+          </th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
             Projects
           </th>
           <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500">
@@ -252,6 +266,19 @@
                   bind:value={editSlug}
                   placeholder="tag-slug"
                 />
+              </td>
+              <td class="px-4 py-3">
+                {#if editColor}
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="size-6 rounded border border-zinc-700"
+                      style="background-color: #{editColor}"
+                    />
+                    <span class="text-xs text-zinc-500">#{editColor}</span>
+                  </div>
+                {:else}
+                  <span class="text-xs text-zinc-500">No color</span>
+                {/if}
               </td>
               <td class="px-4 py-3 text-admin-text">
                 {tag.projectCount}
@@ -283,6 +310,19 @@
               </td>
               <td class="px-4 py-3 text-zinc-500">
                 {tag.slug}
+              </td>
+              <td class="px-4 py-3">
+                {#if tag.color}
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="size-6 rounded border border-zinc-700"
+                      style="background-color: #{tag.color}"
+                    />
+                    <span class="text-xs text-zinc-500">#{tag.color}</span>
+                  </div>
+                {:else}
+                  <span class="text-xs text-zinc-500">No color</span>
+                {/if}
               </td>
               <td class="px-4 py-3 text-zinc-300">
                 {tag.projectCount}

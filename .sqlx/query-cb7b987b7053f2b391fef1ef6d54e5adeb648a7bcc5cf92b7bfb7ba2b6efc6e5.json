@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO tags (slug, name)\n        VALUES ($1, $2)\n        RETURNING id, slug, name, created_at\n        ",
+  "query": "\n        UPDATE tags\n        SET slug = $2, name = $3, color = $4\n        WHERE id = $1\n        RETURNING id, slug, name, color, created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -20,22 +20,30 @@
       },
       {
         "ordinal": 3,
+        "name": "color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text",
-        "Text"
+        "Text",
+        "Varchar"
       ]
     },
     "nullable": [
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "de9ba22c6a50b35761097abc410d22a6c5e6c307bca8d7ba8d2aa5a08c4ce91f"
+  "hash": "cb7b987b7053f2b391fef1ef6d54e5adeb648a7bcc5cf92b7bfb7ba2b6efc6e5"
 }

@@ -32,7 +32,7 @@ check:
 
       await proc.exited;
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-      
+
       return { ...check, stdout, stderr, exitCode: proc.exitCode, elapsed };
     });
 
@@ -64,6 +64,10 @@ check:
     clearInterval(interval);
     process.stderr.write(`\r\x1b[K`);
     process.exit(anyFailed ? 1 : 0);
+
+format:
+    bun run --cwd web format --list-different
+    cargo fmt --all
 
 build:
     bun run --cwd web build
@@ -99,26 +103,26 @@ docker-run-json port="8080":
 [script("bun")]
 seed:
     const { spawnSync } = await import("child_process");
-    
+
     // Ensure DB is running
     const db = spawnSync("just", ["db"], { stdio: "inherit" });
     if (db.status !== 0) process.exit(db.status);
-    
+
     // Run migrations
     const migrate = spawnSync("sqlx", ["migrate", "run"], { stdio: "inherit" });
     if (migrate.status !== 0) process.exit(migrate.status);
-    
+
     // Seed data
     const seed = spawnSync("cargo", ["run", "--bin", "seed"], { stdio: "inherit" });
     if (seed.status !== 0) process.exit(seed.status);
-    
+
     console.log("✅ Database ready with seed data");
 
 [script("bun")]
 db cmd="start":
     const fs = await import("fs/promises");
     const { spawnSync } = await import("child_process");
-    
+
     const NAME = "xevion-postgres";
     const USER = "xevion";
     const PASS = "dev";
@@ -126,18 +130,18 @@ db cmd="start":
     const PORT = "5432";
     const ENV_FILE = ".env";
     const CMD = "{{cmd}}";
-    
+
     const run = (args) => spawnSync("docker", args, { encoding: "utf8" });
     const getContainer = () => {
       const res = run(["ps", "-a", "--filter", `name=^${NAME}$`, "--format", "json"]);
       return res.stdout.trim() ? JSON.parse(res.stdout) : null;
     };
-    
+
     const updateEnv = async () => {
       const url = `postgresql://${USER}:${PASS}@localhost:${PORT}/${DB}`;
       try {
         let content = await fs.readFile(ENV_FILE, "utf8");
-        content = content.includes("DATABASE_URL=") 
+        content = content.includes("DATABASE_URL=")
           ? content.replace(/DATABASE_URL=.*$/m, `DATABASE_URL=${url}`)
           : content.trim() + `\nDATABASE_URL=${url}\n`;
         await fs.writeFile(ENV_FILE, content);
@@ -145,16 +149,16 @@ db cmd="start":
         await fs.writeFile(ENV_FILE, `DATABASE_URL=${url}\n`);
       }
     };
-    
+
     const create = () => {
-      run(["run", "-d", "--name", NAME, "-e", `POSTGRES_USER=${USER}`, 
+      run(["run", "-d", "--name", NAME, "-e", `POSTGRES_USER=${USER}`,
            "-e", `POSTGRES_PASSWORD=${PASS}`, "-e", `POSTGRES_DB=${DB}`,
            "-p", `${PORT}:5432`, "postgres:16-alpine"]);
       console.log("✅ created");
     };
-    
+
     const container = getContainer();
-    
+
     if (CMD === "rm") {
       if (!container) process.exit(0);
       run(["stop", NAME]);

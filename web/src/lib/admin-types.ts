@@ -6,6 +6,7 @@ export interface AdminTag {
   id: string;
   slug: string;
   name: string;
+  color?: string;
   createdAt: string;
 }
 
@@ -48,6 +49,7 @@ export interface UpdateProjectData extends CreateProjectData {
 export interface CreateTagData {
   name: string;
   slug?: string;
+  color?: string;
 }
 
 export interface UpdateTagData extends CreateTagData {
