@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.title, \n            p.description, \n            p.status as \"status: ProjectStatus\", \n            p.github_repo, \n            p.demo_url, \n            p.priority, \n            p.icon, \n            p.last_github_activity, \n            p.created_at, \n            p.updated_at\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY p.priority DESC, p.created_at DESC\n        ",
+  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.name,\n            p.short_description,\n            p.description, \n            p.status as \"status: ProjectStatus\", \n            p.github_repo, \n            p.demo_url, \n            p.last_github_activity, \n            p.created_at, \n            p.updated_at\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY p.updated_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -15,16 +15,21 @@
       },
       {
         "ordinal": 2,
-        "name": "title",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "description",
+        "name": "short_description",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "status: ProjectStatus",
         "type_info": {
           "Custom": {
@@ -41,37 +46,27 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "github_repo",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "demo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
-        "name": "priority",
-        "type_info": "Int4"
-      },
-      {
         "ordinal": 8,
-        "name": "icon",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 9,
         "name": "last_github_activity",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -87,14 +82,13 @@
       false,
       false,
       false,
-      true,
-      true,
       false,
+      true,
       true,
       true,
       false,
       false
     ]
   },
-  "hash": "c7dd8cd6c4e50e1e0f327c040a9497d8427848e8754778fbaf5f22e656e04e12"
+  "hash": "42723e40f3adff9eb24a701347c5b9c331ac7914b527ca6a98865fe4fb8a793c"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, slug, name, color, created_at\n        FROM tags\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, slug, name, icon, color, created_at\n        FROM tags\n        ORDER BY name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -20,27 +20,31 @@
       },
       {
         "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "color",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
       false,
       true,
+      true,
       false
     ]
   },
-  "hash": "120b55f03836eb7a3f2c3569bc736a07d08b0e44a129e209cdfead695453245e"
+  "hash": "d50291c2483aa95fa6a734d69dcd83fc4a68d4917721cbca149bc841b39a9481"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id, \n            slug, \n            title, \n            description, \n            status as \"status: ProjectStatus\", \n            github_repo, \n            demo_url, \n            priority, \n            icon, \n            last_github_activity, \n            created_at, \n            updated_at\n        FROM projects\n        WHERE status != 'hidden'\n        ORDER BY priority DESC, created_at DESC\n        ",
+  "query": "\n        SELECT \n            id, \n            slug, \n            name,\n            short_description,\n            description, \n            status as \"status: ProjectStatus\", \n            github_repo, \n            demo_url, \n\n            last_github_activity, \n            created_at, \n            updated_at\n        FROM projects\n        WHERE slug = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -15,16 +15,21 @@
       },
       {
         "ordinal": 2,
-        "name": "title",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "description",
+        "name": "short_description",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "status: ProjectStatus",
         "type_info": {
           "Custom": {
@@ -41,43 +46,35 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "github_repo",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "demo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
-        "name": "priority",
-        "type_info": "Int4"
-      },
-      {
         "ordinal": 8,
-        "name": "icon",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 9,
         "name": "last_github_activity",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -85,14 +82,13 @@
       false,
       false,
       false,
-      true,
-      true,
       false,
+      true,
       true,
       true,
       false,
       false
     ]
   },
-  "hash": "8adc48c833126d2cd690612a83c1637347e8bdfd230bf46c60ceef8fa096391e"
+  "hash": "e3c4842a1151f51f3871212c3e591103d04a7ff27b27d7d197fbd53593c06b74"
 }

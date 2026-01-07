@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO tags (slug, name)\n            VALUES ($1, $2)\n            RETURNING id\n            ",
+  "query": "\n            INSERT INTO tags (slug, name, icon)\n            VALUES ($1, $2, $3)\n            RETURNING id\n            ",
   "describe": {
     "columns": [
       {
@@ -12,6 +12,7 @@
     "parameters": {
       "Left": [
         "Text",
+        "Text",
         "Text"
       ]
     },
@@ -19,5 +20,5 @@
       false
     ]
   },
-  "hash": "7f51a4655f0c523554b1e57fd70cfd7d8930909c64495b2ae1c1f44f905ce44e"
+  "hash": "1a6f4d858c200757c1d25c22279ef0a6eb8589bb6dff47afe1554850c1bead57"
 }

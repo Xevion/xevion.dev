@@ -6,8 +6,9 @@ export interface AdminTag {
   id: string;
   slug: string;
   name: string;
+  icon?: string;
   color?: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface AdminTagWithCount extends AdminTag {
@@ -17,28 +18,27 @@ export interface AdminTagWithCount extends AdminTag {
 export interface AdminProject {
   id: string;
   slug: string;
-  title: string;
+  name: string;
+  shortDescription: string;
   description: string;
   status: ProjectStatus;
-  githubRepo: string | null;
-  demoUrl: string | null;
-  priority: number;
-  icon: string | null;
-  lastGithubActivity: string | null;
+  links: Array<{ url: string; title?: string }>;
+  tags: AdminTag[];
+  githubRepo?: string | null;
+  demoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
-  tags: AdminTag[];
+  lastGithubActivity?: string | null;
 }
 
 export interface CreateProjectData {
-  title: string;
+  name: string;
   slug?: string;
+  shortDescription: string;
   description: string;
   status: ProjectStatus;
   githubRepo?: string;
   demoUrl?: string;
-  priority: number;
-  icon?: string;
   tagIds: string[];
 }
 
@@ -71,8 +71,6 @@ export interface AdminStats {
   totalProjects: number;
   projectsByStatus: Record<ProjectStatus, number>;
   totalTags: number;
-  eventsToday: number;
-  errorsToday: number;
 }
 
 export interface AuthSession {

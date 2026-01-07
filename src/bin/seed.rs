@@ -9,7 +9,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🌱 Seeding database...");
 
-    // Clear existing data
+    // Clear existing data (tags will cascade delete project_tags and tag_cooccurrence)
+    sqlx::query("DELETE FROM tags").execute(&pool).await?;
     sqlx::query("DELETE FROM projects").execute(&pool).await?;
 
     // Seed projects with diverse data
@@ -17,82 +18,75 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         (
             "xevion-dev",
             "xevion.dev",
+            "Personal portfolio and project showcase",
             "Personal portfolio site with fuzzy tag discovery and ISR caching",
             "active",
             Some("Xevion/xevion.dev"),
             None,
-            10,
-            Some("lucide:globe"),
         ),
         (
             "contest",
             "Contest",
+            "Competitive programming archive",
             "Archive and analysis platform for competitive programming problems",
             "active",
             Some("Xevion/contest"),
             Some("https://contest.xevion.dev"),
-            9,
-            Some("lucide:trophy"),
         ),
         (
             "reforge",
             "Reforge",
+            "Rocket League replay parser",
             "Rust library for parsing and manipulating Replay files from Rocket League",
             "maintained",
             Some("Xevion/reforge"),
             None,
-            8,
-            Some("lucide:file-code"),
         ),
         (
             "algorithms",
             "Algorithms",
+            "Algorithm implementations in Python",
             "Collection of algorithm implementations and data structures in Python",
             "archived",
             Some("Xevion/algorithms"),
             None,
-            5,
-            Some("lucide:brain"),
         ),
         (
             "wordplay",
             "WordPlay",
+            "Real-time multiplayer word game",
             "Interactive word game with real-time multiplayer using WebSockets",
             "maintained",
             Some("Xevion/wordplay"),
             Some("https://wordplay.example.com"),
-            7,
-            Some("lucide:gamepad-2"),
         ),
         (
             "dotfiles",
             "Dotfiles",
+            "Development environment configs",
             "Personal configuration files and development environment setup scripts",
             "active",
             Some("Xevion/dotfiles"),
             None,
-            6,
-            Some("lucide:terminal"),
         ),
     ];
 
     let project_count = projects.len();
 
-    for (slug, title, desc, status, repo, demo, priority, icon) in projects {
+    for (slug, name, short_desc, desc, status, repo, demo) in projects {
         sqlx::query(
             r#"
-            INSERT INTO projects (slug, title, description, status, github_repo, demo_url, priority, icon)
-            VALUES ($1, $2, $3, $4::project_status, $5, $6, $7, $8)
+            INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)
+            VALUES ($1, $2, $3, $4, $5::project_status, $6, $7)
             "#,
         )
         .bind(slug)
-        .bind(title)
+        .bind(name)
+        .bind(short_desc)
         .bind(desc)
         .bind(status)
         .bind(repo)
         .bind(demo)
-        .bind(priority)
-        .bind(icon)
         .execute(&pool)
         .await?;
     }
@@ -101,31 +95,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Seed tags
     let tags = vec![
-        ("rust", "Rust"),
-        ("python", "Python"),
-        ("typescript", "TypeScript"),
-        ("javascript", "JavaScript"),
-        ("web", "Web"),
-        ("cli", "CLI"),
-        ("library", "Library"),
-        ("game", "Game"),
-        ("data-structures", "Data Structures"),
-        ("algorithms", "Algorithms"),
-        ("multiplayer", "Multiplayer"),
-        ("config", "Config"),
+        ("rust", "Rust", "simple-icons:rust"),
+        ("python", "Python", "simple-icons:python"),
+        ("typescript", "TypeScript", "simple-icons:typescript"),
+        ("javascript", "JavaScript", "simple-icons:javascript"),
+        ("web", "Web", "lucide:globe"),
+        ("cli", "CLI", "lucide:terminal"),
+        ("library", "Library", "lucide:package"),
+        ("game", "Game", "lucide:gamepad-2"),
+        ("data-structures", "Data Structures", "lucide:database"),
+        ("algorithms", "Algorithms", "lucide:cpu"),
+        ("multiplayer", "Multiplayer", "lucide:users"),
+        ("config", "Config", "lucide:settings"),
     ];
 
     let mut tag_ids = std::collections::HashMap::new();
 
-    for (slug, name) in tags {
+    for (slug, name, icon) in tags {
         let result = sqlx::query!(
             r#"
-            INSERT INTO tags (slug, name)
-            VALUES ($1, $2)
+            INSERT INTO tags (slug, name, icon)
+            VALUES ($1, $2, $3)
             RETURNING id
             "#,
             slug,
-            name
+            name,
+            icon
         )
         .fetch_one(&pool)
         .await?;

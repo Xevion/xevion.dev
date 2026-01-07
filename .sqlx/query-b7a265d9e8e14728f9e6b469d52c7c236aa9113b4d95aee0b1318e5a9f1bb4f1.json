@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.color,\n            t.created_at,\n            tc.count\n        FROM tag_cooccurrence tc\n        JOIN tags t ON (tc.tag_a = t.id OR tc.tag_b = t.id)\n        WHERE (tc.tag_a = $1 OR tc.tag_b = $1) AND t.id != $1\n        ORDER BY tc.count DESC, t.name ASC\n        LIMIT $2\n        ",
+  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.icon,\n            t.color,\n            t.created_at,\n            tc.count\n        FROM tag_cooccurrence tc\n        JOIN tags t ON (tc.tag_a = t.id OR tc.tag_b = t.id)\n        WHERE (tc.tag_a = $1 OR tc.tag_b = $1) AND t.id != $1\n        ORDER BY tc.count DESC, t.name ASC\n        LIMIT $2\n        ",
   "describe": {
     "columns": [
       {
@@ -20,16 +20,21 @@
       },
       {
         "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "color",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "count",
         "type_info": "Int4"
       }
@@ -45,9 +50,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "e41f28efcfaf2efee773dc6e7261d2f63eb81886f7f73e989807d6e4d64a01ea"
+  "hash": "b7a265d9e8e14728f9e6b469d52c7c236aa9113b4d95aee0b1318e5a9f1bb4f1"
 }

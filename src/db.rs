@@ -19,13 +19,12 @@ pub enum ProjectStatus {
 pub struct DbProject {
     pub id: Uuid,
     pub slug: String,
-    pub title: String,
+    pub name: String,
+    pub short_description: String,
     pub description: String,
     pub status: ProjectStatus,
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
-    pub priority: i32,
-    pub icon: Option<String>,
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
@@ -37,6 +36,7 @@ pub struct DbTag {
     pub id: Uuid,
     pub slug: String,
     pub name: String,
+    pub icon: Option<String>,
     pub color: Option<String>,
     pub created_at: OffsetDateTime,
 }
@@ -69,8 +69,6 @@ pub struct ApiProject {
     pub name: String,
     #[serde(rename = "shortDescription")]
     pub short_description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
     pub links: Vec<ApiProjectLink>,
 }
 
@@ -79,6 +77,8 @@ pub struct ApiTag {
     pub id: String,
     pub slug: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
 }
@@ -111,6 +111,7 @@ impl DbTag {
             id: self.id.to_string(),
             slug: self.slug.clone(),
             name: self.name.clone(),
+            icon: self.icon.clone(),
             color: self.color.clone(),
         }
     }
@@ -138,9 +139,8 @@ impl DbProject {
         ApiProject {
             id: self.id.to_string(),
             slug: self.slug.clone(),
-            name: self.title.clone(),
-            short_description: self.description.clone(),
-            icon: self.icon.clone(),
+            name: self.name.clone(),
+            short_description: self.short_description.clone(),
             links,
         }
     }
@@ -163,23 +163,36 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
         SELECT 
             id, 
             slug, 
-            title, 
+            name,
+            short_description,
             description, 
             status as "status: ProjectStatus", 
             github_repo, 
             demo_url, 
-            priority, 
-            icon, 
             last_github_activity, 
             created_at, 
             updated_at
         FROM projects
         WHERE status != 'hidden'
-        ORDER BY priority DESC, created_at DESC
+        ORDER BY updated_at DESC
         "#
     )
     .fetch_all(pool)
     .await
+}
+
+pub async fn get_public_projects_with_tags(
+    pool: &PgPool,
+) -> Result<Vec<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+    let projects = get_public_projects(pool).await?;
+
+    let mut result = Vec::new();
+    for project in projects {
+        let tags = get_tags_for_project(pool, project.id).await?;
+        result.push((project, tags));
+    }
+
+    Ok(result)
 }
 
 pub async fn health_check(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -215,6 +228,7 @@ pub async fn create_tag(
     pool: &PgPool,
     name: &str,
     slug_override: Option<&str>,
+    icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
     let slug = slug_override
@@ -224,12 +238,13 @@ pub async fn create_tag(
     sqlx::query_as!(
         DbTag,
         r#"
-        INSERT INTO tags (slug, name, color)
-        VALUES ($1, $2, $3)
-        RETURNING id, slug, name, color, created_at
+        INSERT INTO tags (slug, name, icon, color)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, slug, name, icon, color, created_at
         "#,
         slug,
         name,
+        icon,
         color
     )
     .fetch_one(pool)
@@ -240,7 +255,7 @@ pub async fn get_tag_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbTag>, sql
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, color, created_at
+        SELECT id, slug, name, icon, color, created_at
         FROM tags
         WHERE id = $1
         "#,
@@ -254,7 +269,7 @@ pub async fn get_tag_by_slug(pool: &PgPool, slug: &str) -> Result<Option<DbTag>,
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, color, created_at
+        SELECT id, slug, name, icon, color, created_at
         FROM tags
         WHERE slug = $1
         "#,
@@ -268,7 +283,7 @@ pub async fn get_all_tags(pool: &PgPool) -> Result<Vec<DbTag>, sqlx::Error> {
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, color, created_at
+        SELECT id, slug, name, icon, color, created_at
         FROM tags
         ORDER BY name ASC
         "#
@@ -284,12 +299,13 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
             t.id, 
             t.slug, 
             t.name,
+            t.icon,
             t.color,
             t.created_at,
             COUNT(pt.project_id)::int as "project_count!"
         FROM tags t
         LEFT JOIN project_tags pt ON t.id = pt.tag_id
-        GROUP BY t.id, t.slug, t.name, t.color, t.created_at
+        GROUP BY t.id, t.slug, t.name, t.icon, t.color, t.created_at
         ORDER BY t.name ASC
         "#
     )
@@ -303,6 +319,7 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
                 id: row.id,
                 slug: row.slug,
                 name: row.name,
+                icon: row.icon,
                 color: row.color,
                 created_at: row.created_at,
             };
@@ -316,6 +333,7 @@ pub async fn update_tag(
     id: Uuid,
     name: &str,
     slug_override: Option<&str>,
+    icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
     let slug = slug_override
@@ -326,13 +344,14 @@ pub async fn update_tag(
         DbTag,
         r#"
         UPDATE tags
-        SET slug = $2, name = $3, color = $4
+        SET slug = $2, name = $3, icon = $4, color = $5
         WHERE id = $1
-        RETURNING id, slug, name, color, created_at
+        RETURNING id, slug, name, icon, color, created_at
         "#,
         id,
         slug,
         name,
+        icon,
         color
     )
     .fetch_one(pool)
@@ -415,7 +434,7 @@ pub async fn get_tags_for_project(
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT t.id, t.slug, t.name, t.color, t.created_at
+        SELECT t.id, t.slug, t.name, t.icon, t.color, t.created_at
         FROM tags t
         JOIN project_tags pt ON t.id = pt.tag_id
         WHERE pt.project_id = $1
@@ -437,20 +456,19 @@ pub async fn get_projects_for_tag(
         SELECT 
             p.id, 
             p.slug, 
-            p.title, 
+            p.name,
+            p.short_description,
             p.description, 
             p.status as "status: ProjectStatus", 
             p.github_repo, 
             p.demo_url, 
-            p.priority, 
-            p.icon, 
             p.last_github_activity, 
             p.created_at, 
             p.updated_at
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1
-        ORDER BY p.priority DESC, p.created_at DESC
+        ORDER BY p.updated_at DESC
         "#,
         tag_id
     )
@@ -498,6 +516,7 @@ pub async fn get_related_tags(
             t.id, 
             t.slug, 
             t.name,
+            t.icon,
             t.color,
             t.created_at,
             tc.count
@@ -520,10 +539,368 @@ pub async fn get_related_tags(
                 id: row.id,
                 slug: row.slug,
                 name: row.name,
+                icon: row.icon,
                 color: row.color,
                 created_at: row.created_at,
             };
             (tag, row.count)
         })
         .collect())
+}
+
+// Project CRUD request/response types
+
+#[derive(Debug, Deserialize)]
+pub struct CreateProjectRequest {
+    pub name: String,
+    pub slug: Option<String>,
+    pub short_description: String,
+    pub description: String,
+    pub status: ProjectStatus,
+    pub github_repo: Option<String>,
+    pub demo_url: Option<String>,
+    pub tag_ids: Vec<String>, // UUID strings
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProjectRequest {
+    pub name: String,
+    pub slug: Option<String>,
+    pub short_description: String,
+    pub description: String,
+    pub status: ProjectStatus,
+    pub github_repo: Option<String>,
+    pub demo_url: Option<String>,
+    pub tag_ids: Vec<String>, // UUID strings
+}
+
+// Response type for admin project list/detail (includes tags and metadata)
+#[derive(Debug, Clone, Serialize)]
+pub struct ApiAdminProject {
+    #[serde(flatten)]
+    pub project: ApiProject,
+    pub tags: Vec<ApiTag>,
+    pub status: String,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_repo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub demo_url: Option<String>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String, // ISO 8601
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String, // ISO 8601
+    #[serde(rename = "lastGithubActivity", skip_serializing_if = "Option::is_none")]
+    pub last_github_activity: Option<String>, // ISO 8601
+}
+
+impl DbProject {
+    pub fn to_api_admin_project(&self, tags: Vec<DbTag>) -> ApiAdminProject {
+        ApiAdminProject {
+            project: self.to_api_project(),
+            tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
+            status: format!("{:?}", self.status).to_lowercase(),
+            description: self.description.clone(),
+            github_repo: self.github_repo.clone(),
+            demo_url: self.demo_url.clone(),
+            created_at: self
+                .created_at
+                .format(&time::format_description::well_known::Rfc3339)
+                .unwrap(),
+            updated_at: self
+                .updated_at
+                .format(&time::format_description::well_known::Rfc3339)
+                .unwrap(),
+            last_github_activity: self.last_github_activity.map(|dt| {
+                dt.format(&time::format_description::well_known::Rfc3339)
+                    .unwrap()
+            }),
+        }
+    }
+}
+
+// Admin stats response
+#[derive(Debug, Serialize)]
+pub struct AdminStats {
+    #[serde(rename = "totalProjects")]
+    pub total_projects: i32,
+    #[serde(rename = "projectsByStatus")]
+    pub projects_by_status: serde_json::Value,
+    #[serde(rename = "totalTags")]
+    pub total_tags: i32,
+}
+
+// Project CRUD queries
+
+/// Get all projects (admin view - includes hidden)
+pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::Error> {
+    sqlx::query_as!(
+        DbProject,
+        r#"
+        SELECT 
+            id, 
+            slug, 
+            name,
+            short_description,
+            description, 
+            status as "status: ProjectStatus", 
+            github_repo, 
+            demo_url, 
+            last_github_activity, 
+            created_at, 
+            updated_at
+        FROM projects
+        ORDER BY updated_at DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Get all projects with tags (admin view)
+pub async fn get_all_projects_with_tags_admin(
+    pool: &PgPool,
+) -> Result<Vec<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+    let projects = get_all_projects_admin(pool).await?;
+
+    let mut result = Vec::new();
+    for project in projects {
+        let tags = get_tags_for_project(pool, project.id).await?;
+        result.push((project, tags));
+    }
+
+    Ok(result)
+}
+
+/// Get single project by ID
+pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProject>, sqlx::Error> {
+    sqlx::query_as!(
+        DbProject,
+        r#"
+        SELECT 
+            id, 
+            slug, 
+            name,
+            short_description,
+            description, 
+            status as "status: ProjectStatus", 
+            github_repo, 
+            demo_url, 
+
+            last_github_activity, 
+            created_at, 
+            updated_at
+        FROM projects
+        WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Get single project by ID with tags
+pub async fn get_project_by_id_with_tags(
+    pool: &PgPool,
+    id: Uuid,
+) -> Result<Option<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+    let project = get_project_by_id(pool, id).await?;
+
+    match project {
+        Some(p) => {
+            let tags = get_tags_for_project(pool, p.id).await?;
+            Ok(Some((p, tags)))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Get single project by slug
+pub async fn get_project_by_slug(
+    pool: &PgPool,
+    slug: &str,
+) -> Result<Option<DbProject>, sqlx::Error> {
+    sqlx::query_as!(
+        DbProject,
+        r#"
+        SELECT 
+            id, 
+            slug, 
+            name,
+            short_description,
+            description, 
+            status as "status: ProjectStatus", 
+            github_repo, 
+            demo_url, 
+
+            last_github_activity, 
+            created_at, 
+            updated_at
+        FROM projects
+        WHERE slug = $1
+        "#,
+        slug
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Create project (without tags - tags handled separately)
+pub async fn create_project(
+    pool: &PgPool,
+    name: &str,
+    slug_override: Option<&str>,
+    short_description: &str,
+    description: &str,
+    status: ProjectStatus,
+    github_repo: Option<&str>,
+    demo_url: Option<&str>,
+) -> Result<DbProject, sqlx::Error> {
+    let slug = slug_override
+        .map(|s| slugify(s))
+        .unwrap_or_else(|| slugify(name));
+
+    sqlx::query_as!(
+        DbProject,
+        r#"
+        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus", 
+                  github_repo, demo_url, last_github_activity, created_at, updated_at
+        "#,
+        slug,
+        name,
+        short_description,
+        description,
+        status as ProjectStatus,
+        github_repo,
+        demo_url
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// Update project (without tags - tags handled separately)
+pub async fn update_project(
+    pool: &PgPool,
+    id: Uuid,
+    name: &str,
+    slug_override: Option<&str>,
+    short_description: &str,
+    description: &str,
+    status: ProjectStatus,
+    github_repo: Option<&str>,
+    demo_url: Option<&str>,
+) -> Result<DbProject, sqlx::Error> {
+    let slug = slug_override
+        .map(|s| slugify(s))
+        .unwrap_or_else(|| slugify(name));
+
+    sqlx::query_as!(
+        DbProject,
+        r#"
+        UPDATE projects
+        SET slug = $2, name = $3, short_description = $4, description = $5, 
+            status = $6, github_repo = $7, demo_url = $8
+        WHERE id = $1
+        RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus", 
+                  github_repo, demo_url, last_github_activity, created_at, updated_at
+        "#,
+        id,
+        slug,
+        name,
+        short_description,
+        description,
+        status as ProjectStatus,
+        github_repo,
+        demo_url
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// Delete project (CASCADE will handle tags)
+pub async fn delete_project(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM projects WHERE id = $1", id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Set project tags (smart diff implementation)
+pub async fn set_project_tags(
+    pool: &PgPool,
+    project_id: Uuid,
+    tag_ids: &[Uuid],
+) -> Result<(), sqlx::Error> {
+    // Get current tags
+    let current_tags = get_tags_for_project(pool, project_id).await?;
+    let current_ids: Vec<Uuid> = current_tags.iter().map(|t| t.id).collect();
+
+    // Find tags to add (in new list but not in current)
+    let to_add: Vec<Uuid> = tag_ids
+        .iter()
+        .filter(|id| !current_ids.contains(id))
+        .copied()
+        .collect();
+
+    // Find tags to remove (in current but not in new list)
+    let to_remove: Vec<Uuid> = current_ids
+        .iter()
+        .filter(|id| !tag_ids.contains(id))
+        .copied()
+        .collect();
+
+    // Add new tags
+    for tag_id in to_add {
+        add_tag_to_project(pool, project_id, tag_id).await?;
+    }
+
+    // Remove old tags
+    for tag_id in to_remove {
+        remove_tag_from_project(pool, project_id, tag_id).await?;
+    }
+
+    Ok(())
+}
+
+/// Get admin stats
+pub async fn get_admin_stats(pool: &PgPool) -> Result<AdminStats, sqlx::Error> {
+    // Get project counts by status
+    let status_counts = sqlx::query!(
+        r#"
+        SELECT 
+            status as "status!: ProjectStatus",
+            COUNT(*)::int as "count!"
+        FROM projects
+        GROUP BY status
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut projects_by_status = serde_json::json!({
+        "active": 0,
+        "maintained": 0,
+        "archived": 0,
+        "hidden": 0,
+    });
+
+    let mut total_projects = 0;
+    for row in status_counts {
+        let status_str = format!("{:?}", row.status).to_lowercase();
+        projects_by_status[status_str] = serde_json::json!(row.count);
+        total_projects += row.count;
+    }
+
+    // Get total tags
+    let tag_count = sqlx::query!("SELECT COUNT(*)::int as \"count!\" FROM tags")
+        .fetch_one(pool)
+        .await?;
+
+    Ok(AdminStats {
+        total_projects,
+        projects_by_status,
+        total_tags: tag_count.count,
+    })
 }

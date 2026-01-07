@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.color,\n            t.created_at,\n            COUNT(pt.project_id)::int as \"project_count!\"\n        FROM tags t\n        LEFT JOIN project_tags pt ON t.id = pt.tag_id\n        GROUP BY t.id, t.slug, t.name, t.color, t.created_at\n        ORDER BY t.name ASC\n        ",
+  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.icon,\n            t.color,\n            t.created_at,\n            COUNT(pt.project_id)::int as \"project_count!\"\n        FROM tags t\n        LEFT JOIN project_tags pt ON t.id = pt.tag_id\n        GROUP BY t.id, t.slug, t.name, t.icon, t.color, t.created_at\n        ORDER BY t.name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -20,16 +20,21 @@
       },
       {
         "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "color",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "project_count!",
         "type_info": "Int4"
       }
@@ -42,9 +47,10 @@
       false,
       false,
       true,
+      true,
       false,
       null
     ]
   },
-  "hash": "5fb630ce115b4f9cdc7325a20cedb6a527fad52bc964e9904cfa965c7cbd7d12"
+  "hash": "82c27809a4e88b594c41b65c573c4c28aeceba2cc20b1c16cbdfb8c7ea4b23c0"
 }

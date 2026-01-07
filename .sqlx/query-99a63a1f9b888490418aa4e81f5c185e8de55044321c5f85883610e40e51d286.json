@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, slug, name, color, created_at\n        FROM tags\n        WHERE slug = $1\n        ",
+  "query": "\n        INSERT INTO tags (slug, name, icon, color)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, slug, name, icon, color, created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -20,18 +20,26 @@
       },
       {
         "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "color",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Text",
+        "Varchar"
       ]
     },
     "nullable": [
@@ -39,8 +47,9 @@
       false,
       false,
       true,
+      true,
       false
     ]
   },
-  "hash": "19003c2f88aa2aeeeb2b6288eb09268d143568ef811d3d4e17fcef6e42f26985"
+  "hash": "99a63a1f9b888490418aa4e81f5c185e8de55044321c5f85883610e40e51d286"
 }

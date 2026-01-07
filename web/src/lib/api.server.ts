@@ -10,7 +10,7 @@ const baseUrl = isUnixSocket ? "http://localhost" : upstreamUrl;
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit,
+  init?: RequestInit & { fetch?: typeof fetch },
 ): Promise<T> {
   if (!upstreamUrl) {
     logger.error("UPSTREAM_URL environment variable not set");
@@ -19,11 +19,17 @@ export async function apiFetch<T>(
 
   const url = `${baseUrl}${path}`;
   const method = init?.method ?? "GET";
+  
+  // Unix sockets require Bun's native fetch (SvelteKit's fetch doesn't support it)
+  const fetchFn = isUnixSocket ? fetch : (init?.fetch ?? fetch);
 
   const fetchOptions: RequestInit & { unix?: string } = {
     ...init,
     signal: init?.signal ?? AbortSignal.timeout(30_000),
   };
+
+  // Remove custom fetch property from options
+  delete (fetchOptions as any).fetch;
 
   if (isUnixSocket) {
     fetchOptions.unix = upstreamUrl;
@@ -38,7 +44,7 @@ export async function apiFetch<T>(
   });
 
   try {
-    const response = await fetch(url, fetchOptions);
+    const response = await fetchFn(url, fetchOptions);
 
     if (!response.ok) {
       logger.error("API request failed", {

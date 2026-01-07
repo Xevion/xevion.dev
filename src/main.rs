@@ -350,8 +350,18 @@ fn api_routes() -> Router<Arc<AppState>> {
         .route("/login", axum::routing::post(api_login_handler))
         .route("/logout", axum::routing::post(api_logout_handler))
         .route("/session", axum::routing::get(api_session_handler))
-        // Projects - GET is public, other methods require auth
-        .route("/projects", axum::routing::get(projects_handler))
+        // Projects - GET is public (shows all for admin, only non-hidden for public)
+        // POST/PUT/DELETE require authentication
+        .route(
+            "/projects",
+            axum::routing::get(projects_handler).post(create_project_handler),
+        )
+        .route(
+            "/projects/{id}",
+            axum::routing::get(get_project_handler)
+                .put(update_project_handler)
+                .delete(delete_project_handler),
+        )
         // Project tags - authentication checked in handlers
         .route(
             "/projects/{id}/tags",
@@ -378,6 +388,8 @@ fn api_routes() -> Router<Arc<AppState>> {
             "/tags/recalculate-cooccurrence",
             axum::routing::post(recalculate_cooccurrence_handler),
         )
+        // Admin stats - requires authentication
+        .route("/stats", axum::routing::get(get_admin_stats_handler))
         // Icon API - proxy to SvelteKit (authentication handled by SvelteKit)
         .route("/icons/{*path}", axum::routing::get(proxy_icons_handler))
         .fallback(api_404_and_method_handler)
@@ -510,23 +522,55 @@ async fn api_404_handler(uri: axum::http::Uri) -> impl IntoResponse {
     api_404_and_method_handler(req).await
 }
 
-async fn projects_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    match db::get_public_projects(&state.pool).await {
-        Ok(projects) => {
-            let api_projects: Vec<db::ApiProject> =
-                projects.into_iter().map(|p| p.to_api_project()).collect();
-            Json(api_projects).into_response()
+async fn projects_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    let is_admin = check_session(&state, &jar).is_some();
+
+    if is_admin {
+        // Admin view: return all projects with tags
+        match db::get_all_projects_with_tags_admin(&state.pool).await {
+            Ok(projects_with_tags) => {
+                let response: Vec<db::ApiAdminProject> = projects_with_tags
+                    .into_iter()
+                    .map(|(project, tags)| project.to_api_admin_project(tags))
+                    .collect();
+                Json(response).into_response()
+            }
+            Err(err) => {
+                tracing::error!(error = %err, "Failed to fetch admin projects");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Internal server error",
+                        "message": "Failed to fetch projects"
+                    })),
+                )
+                    .into_response()
+            }
         }
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to fetch projects from database");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to fetch projects"
-                })),
-            )
-                .into_response()
+    } else {
+        // Public view: return non-hidden projects with tags
+        match db::get_public_projects_with_tags(&state.pool).await {
+            Ok(projects_with_tags) => {
+                let response: Vec<db::ApiAdminProject> = projects_with_tags
+                    .into_iter()
+                    .map(|(project, tags)| project.to_api_admin_project(tags))
+                    .collect();
+                Json(response).into_response()
+            }
+            Err(err) => {
+                tracing::error!(error = %err, "Failed to fetch public projects");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Internal server error",
+                        "message": "Failed to fetch projects"
+                    })),
+                )
+                    .into_response()
+            }
         }
     }
 }
@@ -575,6 +619,458 @@ async fn proxy_icons_handler(
                 StatusCode::BAD_GATEWAY,
                 Json(serde_json::json!({
                     "error": "Failed to fetch icon data"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Project CRUD handlers
+
+async fn get_project_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let is_admin = check_session(&state, &jar).is_some();
+
+    match db::get_project_by_id_with_tags(&state.pool, project_id).await {
+        Ok(Some((project, tags))) => {
+            // If project is hidden and user is not admin, return 404
+            if project.status == db::ProjectStatus::Hidden && !is_admin {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({
+                        "error": "Not found",
+                        "message": "Project not found"
+                    })),
+                )
+                    .into_response();
+            }
+
+            // Return full project details
+            Json(project.to_api_admin_project(tags)).into_response()
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Not found",
+                "message": "Project not found"
+            })),
+        )
+            .into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn create_project_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+    Json(payload): Json<db::CreateProjectRequest>,
+) -> impl IntoResponse {
+    // Check auth
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
+
+    // Validate request
+    if payload.name.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Project name cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    if payload.short_description.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Project short description cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    // Parse tag UUIDs
+    let tag_ids: Result<Vec<uuid::Uuid>, _> = payload
+        .tag_ids
+        .iter()
+        .map(|id| uuid::Uuid::parse_str(id))
+        .collect();
+
+    let tag_ids = match tag_ids {
+        Ok(ids) => ids,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Validation error",
+                    "message": "Invalid tag UUID format"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Create project
+    let project = match db::create_project(
+        &state.pool,
+        &payload.name,
+        payload.slug.as_deref(),
+        &payload.short_description,
+        &payload.description,
+        payload.status,
+        payload.github_repo.as_deref(),
+        payload.demo_url.as_deref(),
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
+            return (
+                StatusCode::CONFLICT,
+                Json(serde_json::json!({
+                    "error": "Conflict",
+                    "message": "A project with this slug already exists"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to create project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to create project"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Set tags
+    if let Err(err) = db::set_project_tags(&state.pool, project.id, &tag_ids).await {
+        tracing::error!(error = %err, project_id = %project.id, "Failed to set project tags");
+    }
+
+    // Fetch project with tags to return
+    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project.id).await {
+        Ok(Some(data)) => data,
+        Ok(None) => {
+            tracing::error!(project_id = %project.id, "Project not found after creation");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch created project"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, project_id = %project.id, "Failed to fetch created project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch created project"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    tracing::info!(project_id = %project.id, project_name = %project.name, "Project created");
+
+    (
+        StatusCode::CREATED,
+        Json(project.to_api_admin_project(tags)),
+    )
+        .into_response()
+}
+
+async fn update_project_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
+    Json(payload): Json<db::UpdateProjectRequest>,
+) -> impl IntoResponse {
+    // Check auth
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
+
+    // Parse project ID
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Validate exists
+    if db::get_project_by_id(&state.pool, project_id)
+        .await
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error": "Not found",
+                "message": "Project not found"
+            })),
+        )
+            .into_response();
+    }
+
+    // Validate request
+    if payload.name.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Project name cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    if payload.short_description.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Project short description cannot be empty"
+            })),
+        )
+            .into_response();
+    }
+
+    // Parse tag UUIDs
+    let tag_ids: Result<Vec<uuid::Uuid>, _> = payload
+        .tag_ids
+        .iter()
+        .map(|id| uuid::Uuid::parse_str(id))
+        .collect();
+
+    let tag_ids = match tag_ids {
+        Ok(ids) => ids,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Validation error",
+                    "message": "Invalid tag UUID format"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Update project
+    let project = match db::update_project(
+        &state.pool,
+        project_id,
+        &payload.name,
+        payload.slug.as_deref(),
+        &payload.short_description,
+        &payload.description,
+        payload.status,
+        payload.github_repo.as_deref(),
+        payload.demo_url.as_deref(),
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
+            return (
+                StatusCode::CONFLICT,
+                Json(serde_json::json!({
+                    "error": "Conflict",
+                    "message": "A project with this slug already exists"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to update project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to update project"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Update tags (smart diff)
+    if let Err(err) = db::set_project_tags(&state.pool, project.id, &tag_ids).await {
+        tracing::error!(error = %err, project_id = %project.id, "Failed to update project tags");
+    }
+
+    // Fetch updated project with tags
+    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project.id).await {
+        Ok(Some(data)) => data,
+        Ok(None) => {
+            tracing::error!(project_id = %project.id, "Project not found after update");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch updated project"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, project_id = %project.id, "Failed to fetch updated project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch updated project"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    tracing::info!(project_id = %project.id, project_name = %project.name, "Project updated");
+
+    Json(project.to_api_admin_project(tags)).into_response()
+}
+
+async fn delete_project_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    // Check auth
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
+
+    // Parse project ID
+    let project_id = match uuid::Uuid::parse_str(&id) {
+        Ok(id) => id,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Invalid project ID",
+                    "message": "Project ID must be a valid UUID"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Fetch project before deletion to return it
+    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project_id).await {
+        Ok(Some(data)) => data,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project before deletion");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to delete project"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Delete project (CASCADE handles tags)
+    match db::delete_project(&state.pool, project_id).await {
+        Ok(()) => {
+            tracing::info!(project_id = %project_id, project_name = %project.name, "Project deleted");
+            Json(project.to_api_admin_project(tags)).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to delete project");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to delete project"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn get_admin_stats_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    // Check auth
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
+
+    match db::get_admin_stats(&state.pool).await {
+        Ok(stats) => Json(stats).into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch admin stats");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch statistics"
                 })),
             )
                 .into_response()
@@ -659,6 +1155,7 @@ async fn create_tag_handler(
         &state.pool,
         &payload.name,
         payload.slug.as_deref(),
+        None, // icon - not yet supported in admin UI
         payload.color.as_deref(),
     )
     .await
@@ -804,6 +1301,7 @@ async fn update_tag_handler(
         tag.id,
         &payload.name,
         payload.slug.as_deref(),
+        None, // icon - not yet supported in admin UI
         payload.color.as_deref(),
     )
     .await

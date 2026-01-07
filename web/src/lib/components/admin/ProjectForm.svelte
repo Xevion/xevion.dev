@@ -2,7 +2,6 @@
   import Button from "./Button.svelte";
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
-  import IconPicker from "./IconPicker.svelte";
   import type {
     AdminProject,
     AdminTag,
@@ -25,27 +24,25 @@
   }: Props = $props();
 
   // Form state
-  let title = $state("");
+  let name = $state("");
   let slug = $state("");
+  let shortDescription = $state("");
   let description = $state("");
   let status = $state<ProjectStatus>("active");
   let githubRepo = $state("");
   let demoUrl = $state("");
-  let icon = $state("");
-  let priority = $state(0);
   let selectedTagIds = $state<string[]>([]);
 
   // Initialize form from project prop
   $effect(() => {
     if (project) {
-      title = project.title;
+      name = project.name;
       slug = project.slug;
+      shortDescription = project.shortDescription;
       description = project.description;
       status = project.status;
       githubRepo = project.githubRepo ?? "";
       demoUrl = project.demoUrl ?? "";
-      icon = project.icon ?? "";
-      priority = project.priority;
       selectedTagIds = project.tags.map((t) => t.id);
     }
   });
@@ -59,9 +56,9 @@
     { value: "hidden", label: "Hidden" },
   ];
 
-  // Auto-generate slug placeholder from title
+  // Auto-generate slug placeholder from name
   const slugPlaceholder = $derived(
-    title
+    name
       .toLowerCase()
       .replace(/[^\w\s-]/g, "")
       .replace(/[\s_-]+/g, "-")
@@ -78,14 +75,13 @@
 
     try {
       await onsubmit({
-        title,
+        name,
         slug: slug || slugPlaceholder,
+        shortDescription,
         description,
         status,
         githubRepo: githubRepo || undefined,
         demoUrl: demoUrl || undefined,
-        icon: icon || undefined,
-        priority,
         tagIds: selectedTagIds,
       });
     } catch (error) {
@@ -101,9 +97,9 @@
   <!-- Title & Slug -->
   <div class="grid gap-6 md:grid-cols-2">
     <Input
-      label="Title"
+      label="Name"
       type="text"
-      bind:value={title}
+      bind:value={name}
       required
       placeholder="My Awesome Project"
       help="The display name of your project"
@@ -119,6 +115,16 @@
     />
   </div>
 
+  <!-- Short Description -->
+  <Input
+    label="Short Description"
+    type="text"
+    bind:value={shortDescription}
+    required
+    placeholder="A concise one-line summary"
+    help="Brief description shown in project cards"
+  />
+
   <!-- Description -->
   <Input
     label="Description"
@@ -126,28 +132,18 @@
     bind:value={description}
     required
     rows={6}
-    placeholder="A brief description of your project..."
-    help="Plain text description (markdown not supported yet)"
+    placeholder="A detailed description of your project..."
+    help="Full project description (markdown not supported yet)"
   />
 
-  <!-- Status & Priority -->
-  <div class="grid gap-6 md:grid-cols-2">
-    <Input
-      label="Status"
-      type="select"
-      bind:value={status}
-      options={statusOptions}
-      help="Project visibility and state"
-    />
-
-    <Input
-      label="Priority"
-      type="number"
-      bind:value={priority}
-      placeholder="0"
-      help="Higher numbers appear first (e.g., 100, 50, 10)"
-    />
-  </div>
+  <!-- Status -->
+  <Input
+    label="Status"
+    type="select"
+    bind:value={status}
+    options={statusOptions}
+    help="Project visibility and state"
+  />
 
   <!-- Links -->
   <div class="grid gap-6 md:grid-cols-2">
@@ -167,13 +163,6 @@
       help="Live demo or project website"
     />
   </div>
-
-  <!-- Icon -->
-  <IconPicker
-    label="Icon"
-    bind:selectedIcon={icon}
-    placeholder="Search icons... (e.g., lucide:home or simple-icons:react)"
-  />
 
   <!-- Tags -->
   <TagPicker
@@ -198,7 +187,7 @@
   <!-- Actions -->
   <div class="flex justify-end gap-3 pt-4 border-t border-admin-border">
     <Button variant="secondary" href="/admin/projects">Cancel</Button>
-    <Button type="submit" variant="primary" disabled={submitting || !title}>
+    <Button type="submit" variant="primary" disabled={submitting || !name}>
       {submitting ? "Saving..." : submitLabel}
     </Button>
   </div>

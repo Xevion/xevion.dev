@@ -107,16 +107,13 @@
       <thead class="bg-zinc-900/50">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
-            Title
+            Name
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
             Status
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
             Tags
-          </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
-            Priority
           </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
             Updated
@@ -133,7 +130,7 @@
               <div class="flex items-center gap-3">
                 <div>
                   <div class="font-medium text-zinc-200">
-                    {project.title}
+                    {project.name}
                   </div>
                   <div class="text-xs text-zinc-500">
                     {project.slug}
@@ -155,9 +152,6 @@
                   <Badge variant="default">+{project.tags.length - 3}</Badge>
                 {/if}
               </div>
-            </td>
-            <td class="px-4 py-3 text-zinc-300">
-              {project.priority}
             </td>
             <td class="px-4 py-3 text-zinc-500 text-sm">
               {formatDate(project.updatedAt)}
@@ -199,7 +193,7 @@
 >
   {#if deleteTarget}
     <div class="rounded-md bg-zinc-800/50 border border-zinc-700 p-3">
-      <p class="font-medium text-zinc-200">{deleteTarget.title}</p>
+      <p class="font-medium text-zinc-200">{deleteTarget.name}</p>
       <p class="text-sm text-zinc-500">{deleteTarget.slug}</p>
     </div>
   {/if}

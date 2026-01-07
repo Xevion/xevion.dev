@@ -1,13 +1,19 @@
 <script lang="ts">
   import { cn } from "$lib/utils";
-  import type { MockProject } from "$lib/mock-data/projects";
+  import type { AdminProject } from "$lib/admin-types";
 
   interface Props {
-    project: MockProject;
+    project: AdminProject & {
+      tags: Array<{ iconSvg?: string; name: string; color?: string }>;
+      clockIconSvg?: string;
+    };
     class?: string;
   }
 
   let { project, class: className }: Props = $props();
+
+  // Prefer demo URL, fallback to GitHub repo
+  const projectUrl = project.demoUrl || (project.githubRepo ? `https://github.com/${project.githubRepo}` : null);
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -27,8 +33,9 @@
   }
 </script>
 
+{#if projectUrl}
 <a
-  href={project.url}
+  href={projectUrl}
   target="_blank"
   rel="noopener noreferrer"
   class={cn(
@@ -48,7 +55,7 @@
       </span>
     </div>
     <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-400">
-      {project.description}
+      {project.shortDescription}
     </p>
   </div>
 
@@ -70,3 +77,44 @@
     {/each}
   </div>
 </a>
+{:else}
+<div
+  class={cn(
+    "flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3",
+    className,
+  )}
+>
+  <div class="flex flex-col gap-1">
+    <div class="flex items-start justify-between gap-2">
+      <h3
+        class="truncate font-medium text-lg sm:text-base text-zinc-100"
+      >
+        {project.name}
+      </h3>
+      <span class="shrink-0 sm:text-[0.83rem] text-zinc-300">
+        {formatDate(project.updatedAt)}
+      </span>
+    </div>
+    <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-400">
+      {project.shortDescription}
+    </p>
+  </div>
+
+  <div class="mt-auto flex flex-wrap gap-1">
+    {#each project.tags as tag (tag.name)}
+      <span
+        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-300 border-l-3"
+        style="border-left-color: #{tag.color || '06b6d4'}"
+      >
+        {#if tag.iconSvg}
+          <span class="size-4.25 sm:size-3.75 [&>svg]:w-full [&>svg]:h-full">
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+            {@html tag.iconSvg}
+          </span>
+        {/if}
+        <span>{tag.name}</span>
+      </span>
+    {/each}
+  </div>
+</div>
+{/if}
