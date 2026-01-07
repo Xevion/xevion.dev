@@ -23,7 +23,7 @@ mod middleware;
 mod og;
 mod r2;
 mod tarpit;
-use assets::{serve_embedded_asset, try_serve_embedded_asset};
+use assets::{serve_embedded_asset, try_serve_embedded_asset, try_serve_prerendered_page};
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 use health::HealthChecker;
@@ -1925,6 +1925,13 @@ async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Respon
             return response;
         }
         // If not found in embedded assets, continue to proxy (might be in Bun's static dir)
+    }
+
+    // Check if this is a prerendered page (routes with `export const prerender = true`)
+    // This handles pages like /pgp, /about, etc. that are pre-built at compile time
+    if let Some(response) = try_serve_prerendered_page(path) {
+        tracing::debug!(path = %path, "Serving prerendered page");
+        return response;
     }
 
     let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")

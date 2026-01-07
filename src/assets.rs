@@ -6,6 +6,7 @@ use include_dir::{Dir, include_dir};
 
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
 static ERROR_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered/errors");
+static PRERENDERED_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered");
 
 pub async fn serve_embedded_asset(uri: Uri) -> Response {
     let path = uri.path();
@@ -83,4 +84,57 @@ pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
 pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
     let filename = format!("{}.html", status_code);
     ERROR_PAGES.get_file(&filename).map(|f| f.contents())
+}
+
+/// Serve a prerendered page by path, if it exists.
+///
+/// Prerendered pages are built by SvelteKit at compile time and embedded.
+/// This handles various path patterns:
+/// - `/path` → looks for `path.html`
+/// - `/path/` → looks for `path.html` or `path/index.html`
+///
+/// # Arguments
+/// * `path` - Request path (e.g., "/pgp", "/about/")
+///
+/// # Returns
+/// * `Some(Response)` - HTML response if prerendered page exists
+/// * `None` - If no prerendered page exists for this path
+pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
+    let path = path.strip_prefix('/').unwrap_or(path);
+    let path = path.strip_suffix('/').unwrap_or(path);
+
+    // Try direct HTML file first: "pgp" -> "pgp.html"
+    let html_filename = format!("{}.html", path);
+    if let Some(file) = PRERENDERED_PAGES.get_file(&html_filename) {
+        return Some(serve_html_response(file.contents()));
+    }
+
+    // Try index.html pattern: "path" -> "path/index.html"
+    let index_filename = format!("{}/index.html", path);
+    if let Some(file) = PRERENDERED_PAGES.get_file(&index_filename) {
+        return Some(serve_html_response(file.contents()));
+    }
+
+    // Try root index: "" -> "index.html"
+    if path.is_empty() {
+        if let Some(file) = PRERENDERED_PAGES.get_file("index.html") {
+            return Some(serve_html_response(file.contents()));
+        }
+    }
+
+    None
+}
+
+fn serve_html_response(content: &'static [u8]) -> Response {
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    headers.insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("public, max-age=3600"),
+    );
+
+    (StatusCode::OK, headers, content).into_response()
 }
