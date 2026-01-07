@@ -19,7 +19,7 @@ export async function apiFetch<T>(
 
   const url = `${baseUrl}${path}`;
   const method = init?.method ?? "GET";
-  
+
   // Unix sockets require Bun's native fetch (SvelteKit's fetch doesn't support it)
   const fetchFn = isUnixSocket ? fetch : (init?.fetch ?? fetch);
 

@@ -83,7 +83,10 @@
       transition:scale={{ duration: 200, start: 0.95 }}
     >
       <div class="flex items-start justify-between mb-4">
-        <h2 id="pgp-modal-title" class="text-xl font-semibold text-zinc-900 dark:text-white">
+        <h2
+          id="pgp-modal-title"
+          class="text-xl font-semibold text-zinc-900 dark:text-white"
+        >
           PGP Public Key
         </h2>
         <button
@@ -109,17 +112,23 @@
       </div>
 
       <!-- Fingerprint -->
-      <div class="mb-4 p-3 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700">
+      <div
+        class="mb-4 p-3 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700"
+      >
         <div class="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
           Fingerprint
         </div>
-        <div class="font-mono text-sm text-zinc-900 dark:text-zinc-100 break-all">
+        <div
+          class="font-mono text-sm text-zinc-900 dark:text-zinc-100 break-all"
+        >
           {PGP_KEY_METADATA.fingerprint}
         </div>
       </div>
 
       <!-- Key Content -->
-      <div class="mb-4 border border-zinc-200 dark:border-zinc-700 rounded overflow-hidden">
+      <div
+        class="mb-4 border border-zinc-200 dark:border-zinc-700 rounded overflow-hidden"
+      >
         {#if loading}
           <div class="p-4 text-center text-zinc-600 dark:text-zinc-400">
             Loading key...
@@ -156,7 +165,9 @@
           class="flex items-center gap-2 px-4 py-2 rounded-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
         >
           <IconCopy class="size-4" />
-          <span class="text-sm font-medium">{copySuccess ? "Copied!" : "Copy to Clipboard"}</span>
+          <span class="text-sm font-medium"
+            >{copySuccess ? "Copied!" : "Copy to Clipboard"}</span
+          >
         </button>
       </div>
     </div>

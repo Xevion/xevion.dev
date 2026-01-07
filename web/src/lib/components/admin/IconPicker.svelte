@@ -211,7 +211,9 @@
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selectedIconSvg}
         {:else}
-          <div class="size-6 animate-pulse rounded bg-admin-surface-hover"></div>
+          <div
+            class="size-6 animate-pulse rounded bg-admin-surface-hover"
+          ></div>
         {/if}
       </div>
       <div class="flex-1">

@@ -231,19 +231,29 @@
     <Table>
       <thead class="bg-admin-surface/50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Name
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Slug
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Color
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Projects
           </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted"
+          >
             Actions
           </th>
         </tr>
@@ -274,7 +284,9 @@
                       class="size-6 rounded border border-admin-border"
                       style="background-color: #{editColor}"
                     />
-                    <span class="text-xs text-admin-text-muted">#{editColor}</span>
+                    <span class="text-xs text-admin-text-muted"
+                      >#{editColor}</span
+                    >
                   </div>
                 {:else}
                   <span class="text-xs text-admin-text-muted">No color</span>
@@ -318,7 +330,9 @@
                       class="size-6 rounded border border-admin-border"
                       style="background-color: #{tag.color}"
                     />
-                    <span class="text-xs text-admin-text-muted">#{tag.color}</span>
+                    <span class="text-xs text-admin-text-muted"
+                      >#{tag.color}</span
+                    >
                   </div>
                 {:else}
                   <span class="text-xs text-admin-text-muted">No color</span>
@@ -364,7 +378,9 @@
   oncancel={cancelDelete}
 >
   {#if deleteTarget}
-    <div class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3">
+    <div
+      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+    >
       <p class="font-medium text-admin-text">{deleteTarget.name}</p>
       <p class="text-sm text-admin-text-secondary">
         Used in {deleteTarget.projectCount} project{deleteTarget.projectCount ===

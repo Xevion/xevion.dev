@@ -57,7 +57,6 @@ impl R2Client {
             .cloned()
     }
 
-    #[allow(dead_code)]
     pub async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
         let result = self
             .client
@@ -93,7 +92,6 @@ impl R2Client {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub async fn object_exists(&self, key: &str) -> bool {
         self.client
             .head_object()

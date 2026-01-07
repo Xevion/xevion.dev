@@ -34,10 +34,13 @@
       class="max-w-2xl mx-4 border-b border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-200 dark:divide-zinc-700 sm:mx-6"
     >
       <div class="flex flex-col pb-4">
-        <span class="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl"
+        <span
+          class="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl"
           >{settings.identity.displayName},</span
         >
-        <span class="text-xl font-normal text-zinc-600 dark:text-zinc-400 sm:text-2xl">
+        <span
+          class="text-xl font-normal text-zinc-600 dark:text-zinc-400 sm:text-2xl"
+        >
           {settings.identity.occupation}
         </span>
       </div>
@@ -61,7 +64,8 @@
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   {@html link.iconSvg}
                 </span>
-                <span class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
+                <span
+                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
                   >{link.label}</span
                 >
               </a>
@@ -75,7 +79,8 @@
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   {@html link.iconSvg}
                 </span>
-                <span class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
+                <span
+                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
                   >{link.label}</span
                 >
               </button>
@@ -88,7 +93,8 @@
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
                   {@html link.iconSvg}
                 </span>
-                <span class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
+                <span
+                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
                   >{link.label}</span
                 >
               </a>
@@ -100,8 +106,13 @@
             class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
             onclick={() => (pgpModalOpen = true)}
           >
-            <MaterialSymbolsVpnKey class="size-4.5 text-zinc-600 dark:text-zinc-300" />
-            <span class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100">PGP Key</span>
+            <MaterialSymbolsVpnKey
+              class="size-4.5 text-zinc-600 dark:text-zinc-300"
+            />
+            <span
+              class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
+              >PGP Key</span
+            >
           </button>
         </div>
       </div>

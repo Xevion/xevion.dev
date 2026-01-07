@@ -78,10 +78,14 @@
 >
   <div class="flex h-full flex-col">
     <!-- Logo -->
-    <div class="border-b border-admin-border px-4 py-5 flex items-center justify-between">
+    <div
+      class="border-b border-admin-border px-4 py-5 flex items-center justify-between"
+    >
       <h1 class="text-base font-semibold text-admin-text">
         xevion.dev
-        <span class="text-xs font-normal text-admin-text-muted ml-1.5">Admin</span>
+        <span class="text-xs font-normal text-admin-text-muted ml-1.5"
+          >Admin</span
+        >
       </h1>
       <ThemeToggle />
     </div>
@@ -110,7 +114,9 @@
     </nav>
 
     <!-- Bottom actions -->
-    <div class="space-y-0.5 border-t border-admin-border bg-admin-surface/50 p-3">
+    <div
+      class="space-y-0.5 border-t border-admin-border bg-admin-surface/50 p-3"
+    >
       <a
         href="/"
         class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-admin-text-muted transition-all hover:text-admin-text hover:bg-admin-surface-hover/50"

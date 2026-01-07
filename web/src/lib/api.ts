@@ -16,10 +16,7 @@ import type {
 // ============================================================================
 
 // Client-side fetch wrapper for browser requests
-async function clientApiFetch<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     credentials: "same-origin", // Include cookies for auth
@@ -83,9 +80,10 @@ export async function deleteAdminProject(id: string): Promise<AdminProject> {
 
 // Admin Tags API
 export async function getAdminTags(): Promise<AdminTagWithCount[]> {
-  const tags = await clientApiFetch<
-    Array<AdminTag & { project_count: number }>
-  >("/api/tags");
+  const tags =
+    await clientApiFetch<Array<AdminTag & { project_count: number }>>(
+      "/api/tags",
+    );
 
   // Transform snake_case to camelCase
   return tags.map((item) => ({

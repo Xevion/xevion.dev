@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
 
-use crate::{AppState, r2::R2Client};
+use crate::{r2::R2Client, state::AppState};
 
 /// Discriminated union matching TypeScript's `OGImageSpec` in web/src/lib/og-types.ts
 ///
@@ -74,7 +74,6 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
 }
 
 /// Check if an OG image exists in R2
-#[allow(dead_code)]
 pub async fn og_image_exists(spec: &OGImageSpec) -> bool {
     if let Some(r2) = R2Client::get().await {
         r2.object_exists(&spec.r2_key()).await
@@ -84,7 +83,6 @@ pub async fn og_image_exists(spec: &OGImageSpec) -> bool {
 }
 
 /// Ensure an OG image exists, generating if necessary
-#[allow(dead_code)]
 pub async fn ensure_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Result<(), String> {
     if og_image_exists(spec).await {
         tracing::debug!(r2_key = spec.r2_key(), "OG image already exists");
@@ -94,23 +92,24 @@ pub async fn ensure_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Result
 }
 
 /// Regenerate common OG images (index, projects) on server startup
+/// Uses ensure_og_image to skip regeneration if images already exist
 pub async fn regenerate_common_images(state: Arc<AppState>) {
     // Wait 2 seconds before starting
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    tracing::info!("Regenerating common OG images");
+    tracing::info!("Ensuring common OG images exist");
     let specs = vec![OGImageSpec::Index, OGImageSpec::Projects];
 
     for spec in specs {
-        match generate_og_image(&spec, state.clone()).await {
+        match ensure_og_image(&spec, state.clone()).await {
             Ok(()) => {
-                tracing::info!(r2_key = spec.r2_key(), "Successfully regenerated OG image");
+                tracing::info!(r2_key = spec.r2_key(), "Common OG image ready");
             }
             Err(e) => {
-                tracing::error!(r2_key = spec.r2_key(), error = %e, "Failed to regenerate OG image");
+                tracing::error!(r2_key = spec.r2_key(), error = %e, "Failed to ensure OG image");
             }
         }
     }
 
-    tracing::info!("Finished regenerating common OG images");
+    tracing::info!("Finished ensuring common OG images");
 }

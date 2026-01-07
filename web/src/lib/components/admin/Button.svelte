@@ -33,7 +33,8 @@
       "bg-transparent text-admin-text border border-admin-border hover:border-admin-border-hover hover:bg-admin-surface-hover/50 focus-visible:ring-admin-accent",
     danger:
       "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm hover:shadow",
-    ghost: "text-admin-text hover:bg-admin-surface-hover focus-visible:ring-admin-accent",
+    ghost:
+      "text-admin-text hover:bg-admin-surface-hover focus-visible:ring-admin-accent",
   };
 
   const sizeStyles = {

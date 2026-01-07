@@ -64,7 +64,9 @@
                 {event.message}
               </span>
               <span class="text-admin-text-muted shrink-0">
-                target=<span class="text-admin-text-secondary">{event.target}</span>
+                target=<span class="text-admin-text-secondary"
+                  >{event.target}</span
+                >
               </span>
             </div>
             <div class="flex items-center gap-3 shrink-0">
@@ -88,7 +90,8 @@
               class="bg-admin-surface border border-admin-border rounded p-3 text-[11px]"
             >
               <p class="text-admin-text-muted mb-2 font-medium">Metadata:</p>
-              <pre class="text-admin-text-secondary overflow-x-auto">{JSON.stringify(
+              <pre
+                class="text-admin-text-secondary overflow-x-auto">{JSON.stringify(
                   event.metadata,
                   null,
                   2,

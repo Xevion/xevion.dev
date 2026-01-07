@@ -241,3 +241,26 @@ pub async fn ensure_admin_user(pool: &PgPool) -> Result<(), Box<dyn std::error::
 
     Ok(())
 }
+
+/// Check if the request has a valid admin session (from AppState)
+pub fn check_session(
+    state: &crate::state::AppState,
+    jar: &axum_extra::extract::CookieJar,
+) -> Option<Session> {
+    let session_cookie = jar.get("admin_session")?;
+    let session_id = ulid::Ulid::from_string(session_cookie.value()).ok()?;
+    state.session_manager.validate_session(session_id)
+}
+
+/// Return a 401 Unauthorized response for API endpoints
+pub fn require_auth_response() -> impl axum::response::IntoResponse {
+    use axum::{Json, http::StatusCode};
+
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(serde_json::json!({
+            "error": "Unauthorized",
+            "message": "Authentication required"
+        })),
+    )
+}

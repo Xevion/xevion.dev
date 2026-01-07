@@ -84,7 +84,9 @@
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-xl font-semibold text-admin-text">Projects</h1>
-      <p class="mt-1 text-sm text-admin-text-muted">Manage your project portfolio</p>
+      <p class="mt-1 text-sm text-admin-text-muted">
+        Manage your project portfolio
+      </p>
     </div>
     <Button variant="primary" href="/admin/projects/new">
       <IconPlus class="w-4 h-4 mr-2" />
@@ -94,7 +96,9 @@
 
   <!-- Projects Table -->
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">Loading projects...</div>
+    <div class="text-center py-12 text-admin-text-muted">
+      Loading projects...
+    </div>
   {:else if projects.length === 0}
     <div class="text-center py-12">
       <p class="text-admin-text-muted mb-4">No projects yet</p>
@@ -106,19 +110,29 @@
     <Table>
       <thead class="bg-admin-surface/50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Name
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Status
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Tags
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
             Updated
           </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted">
+          <th
+            class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted"
+          >
             Actions
           </th>
         </tr>
@@ -192,7 +206,9 @@
   oncancel={cancelDelete}
 >
   {#if deleteTarget}
-    <div class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3">
+    <div
+      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+    >
       <p class="font-medium text-admin-text">{deleteTarget.name}</p>
       <p class="text-sm text-admin-text-secondary">{deleteTarget.slug}</p>
     </div>

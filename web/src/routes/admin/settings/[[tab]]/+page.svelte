@@ -257,7 +257,11 @@
       >
         Cancel
       </Button>
-      <Button variant="primary" onclick={handleSave} disabled={!hasChanges || saving}>
+      <Button
+        variant="primary"
+        onclick={handleSave}
+        disabled={!hasChanges || saving}
+      >
         {saving ? "Saving..." : "Save Changes"}
       </Button>
     </div>

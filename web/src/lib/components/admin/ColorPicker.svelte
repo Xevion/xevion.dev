@@ -117,7 +117,8 @@
   <div class="flex items-start gap-2">
     <div class="flex-1">
       <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted"
+        <span
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted"
           >#</span
         >
         <input

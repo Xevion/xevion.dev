@@ -19,9 +19,19 @@
   } = $props();
 </script>
 
-<div class={cn("pointer-events-none fixed inset-0 -z-20 bg-white dark:bg-black transition-colors duration-300", bgColor)}></div>
+<div
+  class={cn(
+    "pointer-events-none fixed inset-0 -z-20 bg-white dark:bg-black transition-colors duration-300",
+    bgColor,
+  )}
+></div>
 <Dots class={[backgroundClass]} />
-<main class={cn("relative min-h-screen text-zinc-900 dark:text-zinc-50 transition-colors duration-300", className)}>
+<main
+  class={cn(
+    "relative min-h-screen text-zinc-900 dark:text-zinc-50 transition-colors duration-300",
+    className,
+  )}
+>
   {#if showThemeToggle}
     <div class="absolute top-5 right-6 z-50">
       <ThemeToggle />

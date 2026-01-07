@@ -63,7 +63,9 @@
       <div
         class="flex items-center justify-between px-6 py-3.5 bg-admin-surface-hover/30 border-b border-admin-border"
       >
-        <h2 class="text-sm font-medium text-admin-text-secondary">Recent Events</h2>
+        <h2 class="text-sm font-medium text-admin-text-secondary">
+          Recent Events
+        </h2>
         <a
           href={resolve("/admin/events")}
           class="text-sm text-admin-accent hover:text-admin-accent-hover transition-colors"
@@ -73,7 +75,9 @@
       </div>
 
       {#if recentEvents.length === 0}
-        <p class="text-sm text-admin-text-muted text-center py-8">No events yet</p>
+        <p class="text-sm text-admin-text-muted text-center py-8">
+          No events yet
+        </p>
       {:else}
         <EventLog events={recentEvents} maxHeight="400px" />
       {/if}
