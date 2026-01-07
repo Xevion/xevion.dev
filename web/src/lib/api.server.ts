@@ -3,68 +3,86 @@ import { env } from "$env/dynamic/private";
 
 const logger = getLogger(["ssr", "lib", "api"]);
 
-const upstreamUrl = env.UPSTREAM_URL;
-const isUnixSocket =
-  upstreamUrl?.startsWith("/") || upstreamUrl?.startsWith("./");
-const baseUrl = isUnixSocket ? "http://localhost" : upstreamUrl;
+interface FetchOptions extends RequestInit {
+  fetch?: typeof fetch;
+}
 
-export async function apiFetch<T>(
-  path: string,
-  init?: RequestInit & { fetch?: typeof fetch },
-): Promise<T> {
+interface BunFetchOptions extends RequestInit {
+  unix?: string;
+}
+
+/**
+ * Create a socket-aware fetch function
+ * Automatically handles Unix socket vs TCP based on UPSTREAM_URL
+ */
+function createSmartFetch(upstreamUrl: string | undefined) {
   if (!upstreamUrl) {
-    logger.error("UPSTREAM_URL environment variable not set");
-    throw new Error("UPSTREAM_URL environment variable not set");
+    const error = "UPSTREAM_URL environment variable not set";
+    logger.error(error);
+    throw new Error(error);
   }
 
-  const url = `${baseUrl}${path}`;
-  const method = init?.method ?? "GET";
+  const isUnixSocket =
+    upstreamUrl.startsWith("/") || upstreamUrl.startsWith("./");
+  const baseUrl = isUnixSocket ? "http://localhost" : upstreamUrl;
 
-  // Unix sockets require Bun's native fetch (SvelteKit's fetch doesn't support it)
-  const fetchFn = isUnixSocket ? fetch : (init?.fetch ?? fetch);
+  return async function smartFetch<T>(
+    path: string,
+    options?: FetchOptions,
+  ): Promise<T> {
+    const url = `${baseUrl}${path}`;
+    const method = options?.method ?? "GET";
 
-  const fetchOptions: RequestInit & { unix?: string } = {
-    ...init,
-    signal: init?.signal ?? AbortSignal.timeout(30_000),
-  };
+    // Unix sockets require Bun's native fetch
+    // SvelteKit's fetch doesn't support the 'unix' option
+    const fetchFn = isUnixSocket ? fetch : (options?.fetch ?? fetch);
 
-  // Remove custom fetch property from options
-  delete (fetchOptions as Record<string, unknown>).fetch;
+    const fetchOptions: BunFetchOptions = {
+      ...options,
+      signal: options?.signal ?? AbortSignal.timeout(30_000),
+    };
 
-  if (isUnixSocket) {
-    fetchOptions.unix = upstreamUrl;
-  }
+    // Remove custom fetch property from options (not part of standard RequestInit)
+    delete (fetchOptions as Record<string, unknown>).fetch;
 
-  logger.debug("API request", {
-    method,
-    url,
-    path,
-    isUnixSocket,
-    upstreamUrl,
-  });
-
-  try {
-    const response = await fetchFn(url, fetchOptions);
-
-    if (!response.ok) {
-      logger.error("API request failed", {
-        method,
-        url,
-        status: response.status,
-        statusText: response.statusText,
-      });
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    // Add Unix socket path if needed
+    if (isUnixSocket) {
+      fetchOptions.unix = upstreamUrl;
     }
 
-    const data = await response.json();
-    logger.debug("API response", { method, url, status: response.status });
-    return data;
-  } catch (error) {
-    logger.error("API request exception", {
+    logger.debug("API request", {
       method,
       url,
-      error: error instanceof Error ? error.message : String(error),
+      path,
+      isUnixSocket,
     });
-    throw error;
-  }
+
+    try {
+      const response = await fetchFn(url, fetchOptions);
+
+      if (!response.ok) {
+        logger.error("API request failed", {
+          method,
+          url,
+          status: response.status,
+          statusText: response.statusText,
+        });
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.debug("API response", { method, url, status: response.status });
+      return data;
+    } catch (error) {
+      logger.error("API request exception", {
+        method,
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  };
 }
+
+// Export the configured smart fetch function
+export const apiFetch = createSmartFetch(env.UPSTREAM_URL);

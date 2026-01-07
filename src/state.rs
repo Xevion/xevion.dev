@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
-use crate::{auth::SessionManager, health::HealthChecker, tarpit::TarpitState};
+use crate::{auth::SessionManager, health::HealthChecker, http::HttpClient, tarpit::TarpitState};
 
 /// Application state shared across all handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub downstream_url: String,
-    pub http_client: reqwest::Client,
-    pub unix_client: Option<reqwest::Client>,
+    pub client: HttpClient,
     pub health_checker: Arc<HealthChecker>,
     pub tarpit_state: Arc<TarpitState>,
     pub pool: sqlx::PgPool,

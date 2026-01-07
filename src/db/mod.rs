@@ -7,7 +7,7 @@ pub use projects::*;
 pub use settings::*;
 pub use tags::*;
 
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{PgPool, postgres::PgPoolOptions, query};
 
 /// Database connection pool creation
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
@@ -20,7 +20,7 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
 
 /// Health check query
 pub async fn health_check(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query!("SELECT 1 as check")
+    query!("SELECT 1 as check")
         .fetch_one(pool)
         .await
         .map(|_| ())

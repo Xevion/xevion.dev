@@ -36,17 +36,9 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
     tracing::Span::current().record("r2_key", &r2_key);
 
     // Call Bun's internal endpoint
-    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
-    {
-        "http://localhost/internal/ogp/generate".to_string()
-    } else {
-        format!("{}/internal/ogp/generate", state.downstream_url)
-    };
-
-    let client = state.unix_client.as_ref().unwrap_or(&state.http_client);
-
-    let response = client
-        .post(&bun_url)
+    let response = state
+        .client
+        .post("/internal/ogp/generate")
         .json(spec)
         .timeout(Duration::from_secs(30))
         .send()

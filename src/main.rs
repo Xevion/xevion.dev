@@ -1,6 +1,5 @@
 use clap::Parser;
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer};
@@ -13,6 +12,7 @@ mod db;
 mod formatter;
 mod handlers;
 mod health;
+mod http;
 mod middleware;
 mod og;
 mod proxy;
@@ -125,50 +125,18 @@ async fn main() {
         std::process::exit(1);
     }
 
-    // Create HTTP client for TCP connections with optimized pool settings
-    let http_client = reqwest::Client::builder()
-        .pool_max_idle_per_host(8)
-        .pool_idle_timeout(Duration::from_secs(600)) // 10 minutes
-        .tcp_keepalive(Some(Duration::from_secs(60)))
-        .timeout(Duration::from_secs(5)) // Default timeout for SSR
-        .connect_timeout(Duration::from_secs(3))
-        .redirect(reqwest::redirect::Policy::none()) // Don't follow redirects - pass them through
-        .build()
-        .expect("Failed to create HTTP client");
-
-    // Create Unix socket client if downstream is a Unix socket
-    let unix_client = if args.downstream.starts_with('/') || args.downstream.starts_with("./") {
-        let path = PathBuf::from(&args.downstream);
-        Some(
-            reqwest::Client::builder()
-                .pool_max_idle_per_host(8)
-                .pool_idle_timeout(Duration::from_secs(600)) // 10 minutes
-                .timeout(Duration::from_secs(5)) // Default timeout for SSR
-                .connect_timeout(Duration::from_secs(3))
-                .redirect(reqwest::redirect::Policy::none()) // Don't follow redirects - pass them through
-                .unix_socket(path)
-                .build()
-                .expect("Failed to create Unix socket client"),
-        )
-    } else {
-        None
-    };
+    // Create socket-aware HTTP client
+    let client = http::HttpClient::new(&args.downstream).expect("Failed to create HTTP client");
 
     // Create health checker
-    let downstream_url_for_health = args.downstream.clone();
-    let http_client_for_health = http_client.clone();
-    let unix_client_for_health = unix_client.clone();
+    let client_for_health = client.clone();
     let pool_for_health = pool.clone();
 
     let health_checker = Arc::new(HealthChecker::new(move || {
-        let downstream_url = downstream_url_for_health.clone();
-        let http_client = http_client_for_health.clone();
-        let unix_client = unix_client_for_health.clone();
+        let client = client_for_health.clone();
         let pool = pool_for_health.clone();
 
-        async move {
-            proxy::perform_health_check(downstream_url, http_client, unix_client, Some(pool)).await
-        }
+        async move { proxy::perform_health_check(client, Some(pool)).await }
     }));
 
     let tarpit_config = TarpitConfig::from_env();
@@ -186,9 +154,7 @@ async fn main() {
     );
 
     let state = Arc::new(AppState {
-        downstream_url: args.downstream.clone(),
-        http_client,
-        unix_client,
+        client,
         health_checker,
         tarpit_state,
         pool: pool.clone(),

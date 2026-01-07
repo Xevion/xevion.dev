@@ -1,5 +1,5 @@
 use axum::{
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
 
@@ -34,7 +34,7 @@ pub fn is_page_route(path: &str) -> bool {
 
 /// Check if the request accepts HTML responses
 pub fn accepts_html(headers: &HeaderMap) -> bool {
-    if let Some(accept) = headers.get(axum::http::header::ACCEPT) {
+    if let Some(accept) = headers.get(header::ACCEPT) {
         if let Ok(accept_str) = accept.to_str() {
             return accept_str.contains("text/html") || accept_str.contains("*/*");
         }
@@ -46,7 +46,7 @@ pub fn accepts_html(headers: &HeaderMap) -> bool {
 /// Determines if request prefers raw content (CLI tools) over HTML
 pub fn prefers_raw_content(headers: &HeaderMap) -> bool {
     // Check User-Agent for known CLI tools first (most reliable)
-    if let Some(ua) = headers.get(axum::http::header::USER_AGENT) {
+    if let Some(ua) = headers.get(header::USER_AGENT) {
         if let Ok(ua_str) = ua.to_str() {
             let ua_lower = ua_str.to_lowercase();
             if ua_lower.starts_with("curl/")
@@ -60,7 +60,7 @@ pub fn prefers_raw_content(headers: &HeaderMap) -> bool {
     }
 
     // Check Accept header - if it explicitly prefers text/html, serve HTML
-    if let Some(accept) = headers.get(axum::http::header::ACCEPT) {
+    if let Some(accept) = headers.get(header::ACCEPT) {
         if let Ok(accept_str) = accept.to_str() {
             // If text/html appears before */* in the list, they prefer HTML
             if let Some(html_pos) = accept_str.find("text/html") {
@@ -88,12 +88,12 @@ pub fn serve_error_page(status: StatusCode) -> Response {
     if let Some(html) = assets::get_error_page(status_code) {
         let mut headers = HeaderMap::new();
         headers.insert(
-            axum::http::header::CONTENT_TYPE,
-            axum::http::HeaderValue::from_static("text/html; charset=utf-8"),
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/html; charset=utf-8"),
         );
         headers.insert(
-            axum::http::header::CACHE_CONTROL,
-            axum::http::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("no-cache, no-store, must-revalidate"),
         );
 
         (status, headers, html).into_response()
@@ -107,12 +107,12 @@ pub fn serve_error_page(status: StatusCode) -> Response {
         if let Some(fallback_html) = assets::get_error_page(500) {
             let mut headers = HeaderMap::new();
             headers.insert(
-                axum::http::header::CONTENT_TYPE,
-                axum::http::HeaderValue::from_static("text/html; charset=utf-8"),
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/html; charset=utf-8"),
             );
             headers.insert(
-                axum::http::header::CACHE_CONTROL,
-                axum::http::HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache, no-store, must-revalidate"),
             );
 
             (status, headers, fallback_html).into_response()

@@ -60,17 +60,10 @@ pub async fn proxy_icons_handler(
     let full_path = format!("/api/icons/{}", path);
     let query = req.uri().query().unwrap_or("");
 
-    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
-    {
-        if query.is_empty() {
-            format!("http://localhost{}", full_path)
-        } else {
-            format!("http://localhost{}?{}", full_path, query)
-        }
-    } else if query.is_empty() {
-        format!("{}{}", state.downstream_url, full_path)
+    let path_with_query = if query.is_empty() {
+        full_path.clone()
     } else {
-        format!("{}{}?{}", state.downstream_url, full_path, query)
+        format!("{full_path}?{query}")
     };
 
     // Build trusted headers with session info
@@ -86,7 +79,7 @@ pub async fn proxy_icons_handler(
         }
     }
 
-    match proxy::proxy_to_bun(&bun_url, state, forward_headers).await {
+    match proxy::proxy_to_bun(&path_with_query, state, forward_headers).await {
         Ok((status, headers, body)) => (status, headers, body).into_response(),
         Err(err) => {
             tracing::error!(error = %err, path = %full_path, "Failed to proxy icon request");

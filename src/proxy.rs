@@ -72,17 +72,10 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         return response;
     }
 
-    let bun_url = if state.downstream_url.starts_with('/') || state.downstream_url.starts_with("./")
-    {
-        if query.is_empty() {
-            format!("http://localhost{path}")
-        } else {
-            format!("http://localhost{path}?{query}")
-        }
-    } else if query.is_empty() {
-        format!("{}{}", state.downstream_url, path)
+    let path_with_query = if query.is_empty() {
+        path.to_string()
     } else {
-        format!("{}{}?{}", state.downstream_url, path, query)
+        format!("{path}?{query}")
     };
 
     // Build trusted headers to forward to downstream
@@ -120,7 +113,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
 
     let start = std::time::Instant::now();
 
-    match proxy_to_bun(&bun_url, state.clone(), forward_headers).await {
+    match proxy_to_bun(&path_with_query, state.clone(), forward_headers).await {
         Ok((status, headers, body)) => {
             let duration_ms = start.elapsed().as_millis() as u64;
             let cache = "miss";
@@ -182,7 +175,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
             let duration_ms = start.elapsed().as_millis() as u64;
             tracing::error!(
                 error = %err,
-                url = %bun_url,
+                path = %path_with_query,
                 duration_ms,
                 "Failed to proxy to Bun"
             );
@@ -203,18 +196,12 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
 
 /// Proxy a request to Bun SSR
 pub async fn proxy_to_bun(
-    url: &str,
+    path: &str,
     state: Arc<AppState>,
     forward_headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, axum::body::Bytes), ProxyError> {
-    let client = if state.unix_client.is_some() {
-        state.unix_client.as_ref().unwrap()
-    } else {
-        &state.http_client
-    };
-
     // Build request with forwarded headers
-    let mut request_builder = client.get(url);
+    let mut request_builder = state.client.get(path);
     for (name, value) in forward_headers.iter() {
         request_builder = request_builder.header(name, value);
     }
@@ -247,44 +234,34 @@ pub async fn proxy_to_bun(
 
 /// Perform health check on Bun SSR and database
 pub async fn perform_health_check(
-    downstream_url: String,
-    http_client: reqwest::Client,
-    unix_client: Option<reqwest::Client>,
+    client: crate::http::HttpClient,
     pool: Option<sqlx::PgPool>,
 ) -> bool {
-    let url = if downstream_url.starts_with('/') || downstream_url.starts_with("./") {
-        "http://localhost/internal/health".to_string()
-    } else {
-        format!("{downstream_url}/internal/health")
+    let bun_healthy = match tokio::time::timeout(
+        Duration::from_secs(5),
+        client.get("/internal/health").send(),
+    )
+    .await
+    {
+        Ok(Ok(response)) => {
+            let is_success = response.status().is_success();
+            if !is_success {
+                tracing::warn!(
+                    status = response.status().as_u16(),
+                    "Health check failed: Bun returned non-success status"
+                );
+            }
+            is_success
+        }
+        Ok(Err(err)) => {
+            tracing::error!(error = %err, "Health check failed: cannot reach Bun");
+            false
+        }
+        Err(_) => {
+            tracing::error!("Health check failed: timeout after 5s");
+            false
+        }
     };
-
-    let client = if unix_client.is_some() {
-        unix_client.as_ref().unwrap()
-    } else {
-        &http_client
-    };
-
-    let bun_healthy =
-        match tokio::time::timeout(Duration::from_secs(5), client.get(&url).send()).await {
-            Ok(Ok(response)) => {
-                let is_success = response.status().is_success();
-                if !is_success {
-                    tracing::warn!(
-                        status = response.status().as_u16(),
-                        "Health check failed: Bun returned non-success status"
-                    );
-                }
-                is_success
-            }
-            Ok(Err(err)) => {
-                tracing::error!(error = %err, "Health check failed: cannot reach Bun");
-                false
-            }
-            Err(_) => {
-                tracing::error!("Health check failed: timeout after 5s");
-                false
-            }
-        };
 
     // Check database
     let db_healthy = if let Some(pool) = pool {
@@ -307,33 +284,32 @@ fn should_tarpit(state: &TarpitState, path: &str) -> bool {
     state.config.enabled && tarpit::is_malicious_path(path)
 }
 
+/// Common handler logic for requests with optional peer info
+async fn handle_request_with_optional_peer(
+    state: Arc<AppState>,
+    peer: Option<SocketAddr>,
+    req: Request,
+) -> Response {
+    let path = req.uri().path();
+
+    if should_tarpit(&state.tarpit_state, path) {
+        let peer_info = peer.map(ConnectInfo);
+        tarpit::tarpit_handler(State(state.tarpit_state.clone()), peer_info, req).await
+    } else {
+        isr_handler(State(state), req).await
+    }
+}
+
 /// Fallback handler for TCP connections (has access to peer IP)
 pub async fn fallback_handler_tcp(
     State(state): State<Arc<AppState>>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
     req: Request,
 ) -> Response {
-    let path = req.uri().path();
-
-    if should_tarpit(&state.tarpit_state, path) {
-        tarpit::tarpit_handler(
-            State(state.tarpit_state.clone()),
-            Some(ConnectInfo(peer)),
-            req,
-        )
-        .await
-    } else {
-        isr_handler(State(state), req).await
-    }
+    handle_request_with_optional_peer(state, Some(peer), req).await
 }
 
 /// Fallback handler for Unix sockets (no peer IP available)
 pub async fn fallback_handler_unix(State(state): State<Arc<AppState>>, req: Request) -> Response {
-    let path = req.uri().path();
-
-    if should_tarpit(&state.tarpit_state, path) {
-        tarpit::tarpit_handler(State(state.tarpit_state.clone()), None, req).await
-    } else {
-        isr_handler(State(state), req).await
-    }
+    handle_request_with_optional_peer(state, None, req).await
 }
