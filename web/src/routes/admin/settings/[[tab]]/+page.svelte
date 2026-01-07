@@ -4,15 +4,10 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
-  import type { SiteSettings, SocialLink } from "$lib/admin-types";
+  import type { SiteSettings } from "$lib/admin-types";
   import { cn } from "$lib/utils";
-  import IconGithub from "~icons/simple-icons/github";
-  import IconLinkedin from "~icons/simple-icons/linkedin";
-  import IconDiscord from "~icons/simple-icons/discord";
-  import IconMail from "~icons/material-symbols/mail-rounded";
-  import IconKey from "~icons/material-symbols/vpn-key";
 
-  type Tab = "identity" | "social" | "admin";
+  type Tab = "identity" | "social";
 
   let settings = $state<SiteSettings | null>(null);
   let loading = $state(true);
@@ -22,13 +17,17 @@
   let activeTab = $derived.by(() => {
     const params = $page.params as { tab?: string };
     const tab = params.tab as Tab | undefined;
-    return tab && ["identity", "social", "admin"].includes(tab)
-      ? tab
-      : "identity";
+    return tab && ["identity", "social"].includes(tab) ? tab : "identity";
   });
 
   // Form state - will be populated when settings load
   let formData = $state<SiteSettings | null>(null);
+
+  // Deep equality check for change detection
+  const hasChanges = $derived.by(() => {
+    if (!settings || !formData) return false;
+    return JSON.stringify(settings) !== JSON.stringify(formData);
+  });
 
   async function loadSettings() {
     try {
@@ -47,7 +46,7 @@
   });
 
   async function handleSave() {
-    if (!formData) return;
+    if (!formData || !hasChanges) return;
 
     saving = true;
     try {
@@ -69,36 +68,6 @@
     }
   }
 
-  function getSocialIcon(platform: SocialLink["platform"]) {
-    switch (platform) {
-      case "github":
-        return IconGithub;
-      case "linkedin":
-        return IconLinkedin;
-      case "discord":
-        return IconDiscord;
-      case "email":
-        return IconMail;
-      case "pgp":
-        return IconKey;
-    }
-  }
-
-  function getSocialPlaceholder(platform: SocialLink["platform"]) {
-    switch (platform) {
-      case "github":
-        return "https://github.com/username";
-      case "linkedin":
-        return "https://linkedin.com/in/username";
-      case "discord":
-        return "username";
-      case "email":
-        return "your.email@example.com";
-      case "pgp":
-        return "https://example.com/pgp-key.asc";
-    }
-  }
-
   function navigateToTab(tab: Tab) {
     goto(`/admin/settings/${tab}`, { replaceState: true });
   }
@@ -113,12 +82,14 @@
   <div>
     <h1 class="text-xl font-semibold text-admin-text">Settings</h1>
     <p class="mt-1 text-sm text-admin-text-muted">
-      Configure your site identity, social links, and admin preferences
+      Configure your site identity and social links
     </p>
   </div>
 
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">Loading settings...</div>
+    <div class="text-center py-12 text-admin-text-muted">
+      Loading settings...
+    </div>
   {:else if formData}
     <!-- Tabs -->
     <div class="border-b border-admin-border">
@@ -146,18 +117,6 @@
           onclick={() => navigateToTab("social")}
         >
           Social Links
-        </button>
-        <button
-          type="button"
-          class={cn(
-            "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
-            activeTab === "admin"
-              ? "border-admin-accent text-admin-text"
-              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
-          )}
-          onclick={() => navigateToTab("admin")}
-        >
-          Admin Preferences
         </button>
       </nav>
     </div>
@@ -191,7 +150,7 @@
             bind:value={formData.identity.bio}
             placeholder="A brief description about yourself..."
             rows={6}
-            help="Supports Markdown (rendered on the index page)"
+            help="Plain text for now (Markdown support coming later)"
           />
           <Input
             label="Site Title"
@@ -204,39 +163,81 @@
         </div>
       {:else if activeTab === "social"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-admin-text mb-4">Social Links</h3>
+          <h3 class="text-base font-medium text-admin-text mb-4">
+            Social Links
+          </h3>
           <p class="text-sm text-admin-text-muted mb-4">
-            Configure your social media presence on the index page
+            Configure your social media presence on the homepage. Display order
+            and icon identifiers can be edited here.
           </p>
 
           <div class="space-y-3">
             {#each formData.socialLinks as link (link.id)}
-              {@const Icon = getSocialIcon(link.platform)}
               <div
                 class="rounded-lg border border-admin-border bg-admin-surface-hover/50 p-4 hover:border-admin-border-hover transition-colors"
               >
                 <div class="flex items-start gap-4">
-                  <div class="mt-2">
-                    <Icon class="w-5 h-5 text-admin-text-muted" />
-                  </div>
                   <div class="flex-1 space-y-3">
                     <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium text-admin-text"
-                        >{link.label}</span
-                      >
-                      <label class="flex items-center gap-2 cursor-pointer">
-                        <span class="text-xs text-admin-text-muted">Visible</span>
-                        <input
-                          type="checkbox"
-                          bind:checked={link.visible}
-                          class="w-4 h-4 rounded border-admin-border bg-admin-bg-secondary text-admin-accent focus:ring-2 focus:ring-admin-accent focus:ring-offset-0 cursor-pointer"
+                      <div class="flex items-center gap-3">
+                        <Input
+                          label="Label"
+                          type="text"
+                          bind:value={link.label}
+                          placeholder="GitHub"
+                          class="w-32"
                         />
-                      </label>
+                        <label
+                          class="flex items-center gap-2 cursor-pointer pt-6"
+                        >
+                          <span class="text-xs text-admin-text-muted"
+                            >Visible</span
+                          >
+                          <input
+                            type="checkbox"
+                            bind:checked={link.visible}
+                            class="w-4 h-4 rounded border-admin-border bg-admin-bg-secondary text-admin-accent focus:ring-2 focus:ring-admin-accent focus:ring-offset-0 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Platform"
+                        type="text"
+                        bind:value={link.platform}
+                        placeholder="github"
+                        help="Platform identifier (github, linkedin, discord, email, etc.)"
+                      />
+                      <Input
+                        label="Display Order"
+                        type="number"
+                        bind:value={link.displayOrder}
+                        placeholder="1"
+                        help="Lower numbers appear first"
+                      />
                     </div>
                     <Input
+                      label="Icon"
+                      type="text"
+                      bind:value={link.icon}
+                      placeholder="simple-icons:github"
+                      help="Icon identifier (e.g., 'simple-icons:github', 'lucide:mail')"
+                    />
+                    <Input
+                      label="Value"
                       type={link.platform === "email" ? "email" : "text"}
                       bind:value={link.value}
-                      placeholder={getSocialPlaceholder(link.platform)}
+                      placeholder={link.platform === "github"
+                        ? "https://github.com/username"
+                        : link.platform === "email"
+                          ? "your.email@example.com"
+                          : "value"}
+                      help={link.platform === "discord"
+                        ? "Discord username (copied to clipboard on click)"
+                        : link.platform === "email"
+                          ? "Email address (opens mailto: link)"
+                          : "URL to link to"}
                     />
                   </div>
                 </div>
@@ -244,45 +245,19 @@
             {/each}
           </div>
         </div>
-      {:else if activeTab === "admin"}
-        <div class="space-y-4">
-          <h3 class="text-base font-medium text-admin-text mb-4">
-            Admin Preferences
-          </h3>
-          <Input
-            label="Session Timeout"
-            type="number"
-            bind:value={formData.adminPreferences.sessionTimeoutMinutes}
-            placeholder="60"
-            help="Minutes of inactivity before automatic logout (5-1440)"
-          />
-          <Input
-            label="Event Log Retention"
-            type="number"
-            bind:value={formData.adminPreferences.eventsRetentionDays}
-            placeholder="30"
-            help="Number of days to retain event logs (1-365)"
-          />
-          <Input
-            label="Dashboard Default Tab"
-            type="select"
-            bind:value={formData.adminPreferences.dashboardDefaultTab}
-            options={[
-              { label: "Overview", value: "overview" },
-              { label: "Events", value: "events" },
-            ]}
-            help="Which tab to show by default when visiting the dashboard"
-          />
-        </div>
       {/if}
     </div>
 
     <!-- Actions -->
     <div class="flex justify-end gap-3">
-      <Button variant="secondary" onclick={handleCancel} disabled={saving}>
+      <Button
+        variant="secondary"
+        onclick={handleCancel}
+        disabled={!hasChanges || saving}
+      >
         Cancel
       </Button>
-      <Button variant="primary" onclick={handleSave} disabled={saving}>
+      <Button variant="primary" onclick={handleSave} disabled={!hasChanges || saving}>
         {saving ? "Saving..." : "Save Changes"}
       </Button>
     </div>

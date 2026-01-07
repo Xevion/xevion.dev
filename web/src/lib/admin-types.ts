@@ -78,19 +78,14 @@ export interface AuthSession {
   expiresAt: string; // ISO 8601
 }
 
-export type SocialPlatform =
-  | "github"
-  | "linkedin"
-  | "discord"
-  | "email"
-  | "pgp";
-
 export interface SocialLink {
   id: string;
-  platform: SocialPlatform;
+  platform: string; // Not an enum for extensibility
   label: string;
   value: string; // URL, username, or email address
+  icon: string; // Icon identifier (e.g., 'simple-icons:github')
   visible: boolean;
+  displayOrder: number;
 }
 
 export interface SiteIdentity {
@@ -100,14 +95,7 @@ export interface SiteIdentity {
   siteTitle: string;
 }
 
-export interface AdminPreferences {
-  sessionTimeoutMinutes: number;
-  eventsRetentionDays: number;
-  dashboardDefaultTab: "overview" | "events";
-}
-
 export interface SiteSettings {
   identity: SiteIdentity;
   socialLinks: SocialLink[];
-  adminPreferences: AdminPreferences;
 }

@@ -134,51 +134,17 @@ export async function getAdminStats(): Promise<AdminStats> {
   return clientApiFetch<AdminStats>("/api/stats");
 }
 
-// Settings API (currently mocked - no backend implementation yet)
+// Settings API
 export async function getSettings(): Promise<SiteSettings> {
-  // TODO: Implement when settings system is added
-  // For now, return default settings
-  return {
-    identity: {
-      displayName: "Ryan Walters",
-      occupation: "Full-Stack Software Engineer",
-      bio: "A fanatical software engineer with expertise and passion for sound, scalable and high-performance applications. I'm always working on something new.\nSometimes innovative — sometimes crazy.",
-      siteTitle: "Xevion.dev",
-    },
-    socialLinks: [
-      {
-        id: "social-1",
-        platform: "github",
-        label: "GitHub",
-        value: "https://github.com/Xevion",
-        visible: true,
-      },
-      {
-        id: "social-2",
-        platform: "linkedin",
-        label: "LinkedIn",
-        value: "https://linkedin.com/in/ryancwalters",
-        visible: true,
-      },
-      {
-        id: "social-3",
-        platform: "discord",
-        label: "Discord",
-        value: "xevion",
-        visible: true,
-      },
-    ],
-    adminPreferences: {
-      sessionTimeoutMinutes: 60,
-      eventsRetentionDays: 30,
-      dashboardDefaultTab: "overview",
-    },
-  };
+  return clientApiFetch<SiteSettings>("/api/settings");
 }
 
 export async function updateSettings(
   settings: SiteSettings,
 ): Promise<SiteSettings> {
-  // TODO: Implement when settings system is added
-  return settings;
+  return clientApiFetch<SiteSettings>("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
 }

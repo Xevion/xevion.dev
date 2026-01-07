@@ -395,6 +395,11 @@ fn api_routes() -> Router<Arc<AppState>> {
         )
         // Admin stats - requires authentication
         .route("/stats", axum::routing::get(get_admin_stats_handler))
+        // Site settings - GET is public, PUT requires authentication
+        .route(
+            "/settings",
+            axum::routing::get(get_settings_handler).put(update_settings_handler),
+        )
         // Icon API - proxy to SvelteKit (authentication handled by SvelteKit)
         .route("/icons/{*path}", axum::routing::get(proxy_icons_handler))
         .fallback(api_404_and_method_handler)
@@ -1153,6 +1158,56 @@ async fn get_admin_stats_handler(
                 Json(serde_json::json!({
                     "error": "Internal server error",
                     "message": "Failed to fetch statistics"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+// Site settings handlers
+
+async fn get_settings_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    match db::get_site_settings(&state.pool).await {
+        Ok(settings) => Json(settings).into_response(),
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch site settings");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch settings"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
+async fn update_settings_handler(
+    State(state): State<Arc<AppState>>,
+    jar: axum_extra::extract::CookieJar,
+    Json(payload): Json<db::UpdateSiteSettingsRequest>,
+) -> impl IntoResponse {
+    // Check authentication
+    if check_session(&state, &jar).is_none() {
+        return require_auth_response().into_response();
+    }
+
+    match db::update_site_settings(&state.pool, &payload).await {
+        Ok(settings) => {
+            // TODO: Invalidate ISR cache for homepage and affected routes when ISR is implemented
+            // TODO: Add event log entry for settings update when events table is implemented
+            tracing::info!("Site settings updated");
+            Json(settings).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to update site settings");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to update settings"
                 })),
             )
                 .into_response()
