@@ -19,11 +19,8 @@
   async function loadEvents() {
     loading = true;
     try {
-      const filters: { level?: string; target?: string } = {};
-      if (filterLevel) filters.level = filterLevel;
-      if (filterTarget) filters.target = filterTarget;
-
-      events = await getAdminEvents(filters);
+      // TODO: Pass filters when backend implementation is complete
+      events = await getAdminEvents();
     } catch (error) {
       console.error("Failed to load events:", error);
     } finally {

@@ -11,7 +11,7 @@
 
   async function loadDashboard() {
     try {
-      const eventsData = await getAdminEvents({ limit: 10 });
+      const eventsData = await getAdminEvents();
       recentEvents = eventsData;
     } catch (error) {
       console.error("Failed to load dashboard:", error);

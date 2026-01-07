@@ -118,12 +118,9 @@ export async function deleteAdminTag(id: string): Promise<void> {
 }
 
 // Admin Events API (currently mocked - no backend implementation yet)
-export async function getAdminEvents(filters?: {
-  level?: string;
-  target?: string;
-  limit?: number;
-}): Promise<AdminEvent[]> {
+export async function getAdminEvents(): Promise<AdminEvent[]> {
   // TODO: Implement when events table is added to backend
+  // filters parameter will be added when backend implementation is complete
   return [];
 }
 

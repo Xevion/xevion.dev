@@ -77,7 +77,7 @@
 
 <div class={cn("space-y-3", className)}>
   {#if label}
-    <label class="block text-sm font-medium text-admin-text">{label}</label>
+    <div class="block text-sm font-medium text-admin-text">{label}</div>
   {/if}
 
   <!-- Preset Palette -->
@@ -94,7 +94,7 @@
         style="background-color: #{preset.value}"
         title={preset.name}
         onclick={() => selectPreset(preset.value)}
-      />
+      ></button>
     {/each}
 
     <!-- Clear button -->
@@ -147,7 +147,7 @@
         class="size-10 shrink-0 rounded-md border-2 border-admin-border"
         style="background-color: #{selectedColor}"
         title="#{selectedColor}"
-      />
+      ></div>
     {/if}
   </div>
 </div>

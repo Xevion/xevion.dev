@@ -2,7 +2,7 @@ import type { RequestHandler } from "./$types";
 import type { OGImageSpec } from "$lib/og-types";
 import { loadOGFonts } from "$lib/og-fonts";
 import { apiFetch } from "$lib/api.server";
-import type { Project } from "../../../projects/+page.server";
+import type { AdminProject } from "$lib/admin-types";
 import { getLogger } from "@logtape/logtape";
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
@@ -154,7 +154,7 @@ async function getTemplateData(spec: OGImageSpec): Promise<{
       };
     case "project":
       try {
-        const projects = await apiFetch<Project[]>("/api/projects");
+        const projects = await apiFetch<AdminProject[]>("/api/projects");
         const project = projects.find((p) => p.id === spec.id);
         if (project) {
           return {

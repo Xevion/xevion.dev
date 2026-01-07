@@ -283,7 +283,7 @@
                     <div
                       class="size-6 rounded border border-admin-border"
                       style="background-color: #{editColor}"
-                    />
+                    ></div>
                     <span class="text-xs text-admin-text-muted"
                       >#{editColor}</span
                     >
@@ -329,7 +329,7 @@
                     <div
                       class="size-6 rounded border border-admin-border"
                       style="background-color: #{tag.color}"
-                    />
+                    ></div>
                     <span class="text-xs text-admin-text-muted"
                       >#{tag.color}</span
                     >

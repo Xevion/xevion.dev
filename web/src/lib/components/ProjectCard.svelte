@@ -12,10 +12,11 @@
 
   let { project, class: className }: Props = $props();
 
-  // Prefer demo URL, fallback to GitHub repo
-  const projectUrl =
+  // Prefer demo URL, fallback to GitHub repo (use $derived to react to project changes)
+  const projectUrl = $derived(
     project.demoUrl ||
-    (project.githubRepo ? `https://github.com/${project.githubRepo}` : null);
+      (project.githubRepo ? `https://github.com/${project.githubRepo}` : null),
+  );
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);

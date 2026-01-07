@@ -29,7 +29,7 @@ export async function apiFetch<T>(
   };
 
   // Remove custom fetch property from options
-  delete (fetchOptions as any).fetch;
+  delete (fetchOptions as Record<string, unknown>).fetch;
 
   if (isUnixSocket) {
     fetchOptions.unix = upstreamUrl;

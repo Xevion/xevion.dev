@@ -3,16 +3,24 @@
   import ProjectCard from "$lib/components/ProjectCard.svelte";
   import PgpKeyModal from "$lib/components/PgpKeyModal.svelte";
   import type { PageData } from "./$types";
-  import type { SiteSettings } from "$lib/admin-types";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
 
-  let { data }: { data: PageData } = $props();
-  const projects = data.projects;
-  // Type assertion needed until types are regenerated
-  const socialLinksWithIcons = (data as any).socialLinksWithIcons;
+  interface ExtendedPageData extends PageData {
+    socialLinksWithIcons: Array<{
+      id: string;
+      platform: string;
+      label: string;
+      value: string;
+      icon: string;
+      iconSvg: string;
+      visible: boolean;
+      displayOrder: number;
+    }>;
+  }
 
-  // Get settings from parent layout
-  const settings = (data as any).settings as SiteSettings;
+  let { data }: { data: ExtendedPageData } = $props();
+  const projects = $derived(data.projects);
+  const socialLinksWithIcons = $derived(data.socialLinksWithIcons);
 
   // Filter visible social links
   const visibleSocialLinks = $derived(
@@ -36,18 +44,18 @@
       <div class="flex flex-col pb-4">
         <span
           class="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl"
-          >{settings.identity.displayName},</span
+          >{data.settings.identity.displayName},</span
         >
         <span
           class="text-xl font-normal text-zinc-600 dark:text-zinc-400 sm:text-2xl"
         >
-          {settings.identity.occupation}
+          {data.settings.identity.occupation}
         </span>
       </div>
 
       <div class="py-4 text-zinc-700 dark:text-zinc-200">
         <p class="sm:text-[0.95em] whitespace-pre-line">
-          {settings.identity.bio}
+          {data.settings.identity.bio}
         </p>
       </div>
 
@@ -62,6 +70,7 @@
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                   {@html link.iconSvg}
                 </span>
                 <span
@@ -77,6 +86,7 @@
                 onclick={() => handleDiscordClick(link.value)}
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                   {@html link.iconSvg}
                 </span>
                 <span
@@ -91,6 +101,7 @@
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
               >
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                   {@html link.iconSvg}
                 </span>
                 <span
