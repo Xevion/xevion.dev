@@ -24,12 +24,12 @@
 <AppWrapper>
   <div class="flex min-h-screen items-center justify-center">
     <div class="mx-4 max-w-2xl text-center">
-      <h1 class="mb-4 font-hanken text-8xl text-zinc-200">{status}</h1>
-      <p class="mb-8 text-2xl text-zinc-400">{message}</p>
+      <h1 class="mb-4 font-hanken text-8xl text-text-secondary">{status}</h1>
+      <p class="mb-8 text-2xl text-text-tertiary">{message}</p>
       {#if showHomeLink}
         <a
           href={resolve("/")}
-          class="inline-block rounded-sm bg-zinc-900 px-4 py-2 text-zinc-100 transition-colors hover:bg-zinc-800"
+          class="inline-block rounded-sm bg-surface px-4 py-2 text-text-primary transition-colors hover:bg-surface-hover"
         >
           Return home
         </a>

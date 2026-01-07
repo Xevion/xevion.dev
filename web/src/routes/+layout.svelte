@@ -6,6 +6,7 @@
   import "../app.css";
   import { OverlayScrollbars } from "overlayscrollbars";
   import { onMount } from "svelte";
+  import { themeStore } from "$lib/stores/theme.svelte";
 
   let { children, data } = $props();
 
@@ -20,6 +21,9 @@
   const metadata = $derived(data?.metadata ?? defaultMetadata);
 
   onMount(() => {
+    // Initialize theme store
+    themeStore.init();
+
     // Initialize overlay scrollbars on the body element
     const osInstance = OverlayScrollbars(document.body, {
       scrollbars: {

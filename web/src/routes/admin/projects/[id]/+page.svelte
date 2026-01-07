@@ -78,13 +78,13 @@
       <p class="text-admin-text-muted mb-4">Project not found</p>
       <a
         href={resolve("/admin/projects")}
-        class="text-blue-400 hover:text-blue-300"
+        class="text-admin-accent hover:text-admin-accent-hover"
       >
         ← Back to projects
       </a>
     </div>
   {:else}
-    <div class="rounded-lg border border-admin-border bg-admin-panel p-6">
+    <div class="rounded-lg border border-admin-border bg-admin-surface p-6">
       <ProjectForm
         {project}
         availableTags={tags}

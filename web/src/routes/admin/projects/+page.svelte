@@ -83,8 +83,8 @@
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-xl font-semibold text-zinc-50">Projects</h1>
-      <p class="mt-1 text-sm text-zinc-500">Manage your project portfolio</p>
+      <h1 class="text-xl font-semibold text-admin-text">Projects</h1>
+      <p class="mt-1 text-sm text-admin-text-muted">Manage your project portfolio</p>
     </div>
     <Button variant="primary" href="/admin/projects/new">
       <IconPlus class="w-4 h-4 mr-2" />
@@ -94,45 +94,45 @@
 
   <!-- Projects Table -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">Loading projects...</div>
+    <div class="text-center py-12 text-admin-text-muted">Loading projects...</div>
   {:else if projects.length === 0}
     <div class="text-center py-12">
-      <p class="text-zinc-500 mb-4">No projects yet</p>
+      <p class="text-admin-text-muted mb-4">No projects yet</p>
       <Button variant="primary" href="/admin/projects/new"
         >Create your first project</Button
       >
     </div>
   {:else}
     <Table>
-      <thead class="bg-zinc-900/50">
+      <thead class="bg-admin-surface/50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Name
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Status
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Tags
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Updated
           </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted">
             Actions
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-zinc-800/50">
+      <tbody class="divide-y divide-admin-border/50">
         {#each projects as project (project.id)}
-          <tr class="hover:bg-zinc-800/30 transition-colors">
+          <tr class="hover:bg-admin-surface-hover/30 transition-colors">
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
                 <div>
-                  <div class="font-medium text-zinc-200">
+                  <div class="font-medium text-admin-text">
                     {project.name}
                   </div>
-                  <div class="text-xs text-zinc-500">
+                  <div class="text-xs text-admin-text-muted">
                     {project.slug}
                   </div>
                 </div>
@@ -153,7 +153,7 @@
                 {/if}
               </div>
             </td>
-            <td class="px-4 py-3 text-zinc-500 text-sm">
+            <td class="px-4 py-3 text-admin-text-secondary text-sm">
               {formatDate(project.updatedAt)}
             </td>
             <td class="px-4 py-3 text-right">
@@ -192,9 +192,9 @@
   oncancel={cancelDelete}
 >
   {#if deleteTarget}
-    <div class="rounded-md bg-zinc-800/50 border border-zinc-700 p-3">
-      <p class="font-medium text-zinc-200">{deleteTarget.name}</p>
-      <p class="text-sm text-zinc-500">{deleteTarget.slug}</p>
+    <div class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3">
+      <p class="font-medium text-admin-text">{deleteTarget.name}</p>
+      <p class="text-sm text-admin-text-secondary">{deleteTarget.slug}</p>
     </div>
   {/if}
 </Modal>

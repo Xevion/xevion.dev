@@ -39,22 +39,22 @@
   target="_blank"
   rel="noopener noreferrer"
   class={cn(
-    "group flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 transition-all hover:border-zinc-700 hover:bg-zinc-800/70",
+    "group flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800/70",
     className,
   )}
 >
   <div class="flex flex-col gap-1">
     <div class="flex items-start justify-between gap-2">
       <h3
-        class="truncate font-medium text-lg sm:text-base text-zinc-100 transition-colors group-hover:text-white"
+        class="truncate font-medium text-lg sm:text-base text-zinc-900 dark:text-zinc-100 transition-colors group-hover:text-zinc-950 dark:group-hover:text-white"
       >
         {project.name}
       </h3>
-      <span class="shrink-0 sm:text-[0.83rem] text-zinc-300">
+      <span class="shrink-0 sm:text-[0.83rem] text-zinc-600 dark:text-zinc-300">
         {formatDate(project.updatedAt)}
       </span>
     </div>
-    <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-400">
+    <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
       {project.shortDescription}
     </p>
   </div>
@@ -63,7 +63,7 @@
     {#each project.tags as tag (tag.name)}
       <!-- TODO: Add link to project search with tag filtering -->
       <span
-        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-300 border-l-3"
+        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3"
         style="border-left-color: #{tag.color || '06b6d4'}"
       >
         {#if tag.iconSvg}
@@ -80,22 +80,22 @@
 {:else}
 <div
   class={cn(
-    "flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-800 bg-zinc-900/50 p-3",
+    "flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3",
     className,
   )}
 >
   <div class="flex flex-col gap-1">
     <div class="flex items-start justify-between gap-2">
       <h3
-        class="truncate font-medium text-lg sm:text-base text-zinc-100"
+        class="truncate font-medium text-lg sm:text-base text-zinc-900 dark:text-zinc-100"
       >
         {project.name}
       </h3>
-      <span class="shrink-0 sm:text-[0.83rem] text-zinc-300">
+      <span class="shrink-0 sm:text-[0.83rem] text-zinc-600 dark:text-zinc-300">
         {formatDate(project.updatedAt)}
       </span>
     </div>
-    <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-400">
+    <p class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
       {project.shortDescription}
     </p>
   </div>
@@ -103,7 +103,7 @@
   <div class="mt-auto flex flex-wrap gap-1">
     {#each project.tags as tag (tag.name)}
       <span
-        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-300 border-l-3"
+        class="inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3"
         style="border-left-color: #{tag.color || '06b6d4'}"
       >
         {#if tag.iconSvg}

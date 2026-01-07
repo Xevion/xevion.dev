@@ -70,7 +70,7 @@
   <div class="relative">
     <!-- Selected tags display -->
     <div
-      class="min-h-[42px] w-full rounded-md border border-admin-border bg-admin-panel px-3 py-2"
+      class="min-h-[42px] w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2"
     >
       <div class="flex flex-wrap gap-2">
         {#each selectedTags as tag (tag.id)}
@@ -106,12 +106,12 @@
     <!-- Dropdown -->
     {#if dropdownOpen && filteredTags.length > 0}
       <div
-        class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-admin-border bg-admin-panel py-1 shadow-lg"
+        class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-admin-border bg-admin-surface py-1 shadow-lg"
       >
         {#each filteredTags as tag (tag.id)}
           <button
             type="button"
-            class="w-full px-3 py-2 text-left text-sm text-admin-text hover:bg-admin-hover transition-colors"
+            class="w-full px-3 py-2 text-left text-sm text-admin-text hover:bg-admin-surface-hover transition-colors"
             onclick={() => addTag(tag.id)}
           >
             {tag.name}

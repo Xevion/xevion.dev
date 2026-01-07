@@ -28,12 +28,12 @@
 
   const variantStyles = {
     primary:
-      "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500 shadow-sm hover:shadow",
+      "bg-admin-accent text-white hover:bg-admin-accent-hover focus-visible:ring-admin-accent shadow-sm hover:shadow",
     secondary:
-      "bg-transparent text-admin-text border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/50 focus-visible:ring-zinc-500",
+      "bg-transparent text-admin-text border border-admin-border hover:border-admin-border-hover hover:bg-admin-surface-hover/50 focus-visible:ring-admin-accent",
     danger:
       "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm hover:shadow",
-    ghost: "text-admin-text hover:bg-zinc-800/50 focus-visible:ring-zinc-500",
+    ghost: "text-admin-text hover:bg-admin-surface-hover focus-visible:ring-admin-accent",
   };
 
   const sizeStyles = {

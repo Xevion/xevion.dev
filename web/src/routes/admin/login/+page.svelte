@@ -43,7 +43,7 @@
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md space-y-4">
       <!-- Login Form -->
-      <div class="rounded-lg bg-admin-panel p-8 shadow-2xl shadow-zinc-500/20">
+      <div class="rounded-lg bg-admin-surface border border-admin-border p-8 shadow-2xl shadow-black/10 dark:shadow-zinc-500/20">
         <form onsubmit={handleSubmit} class="space-y-6">
           <Input
             label="Username"

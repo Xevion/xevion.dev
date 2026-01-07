@@ -55,7 +55,7 @@
   {@render children()}
 {:else}
   <!-- Admin layout with sidebar and dots shader -->
-  <AppWrapper bgColor="bg-admin-bg">
+  <AppWrapper bgColor="bg-admin-bg" showThemeToggle={false}>
     <Sidebar
       projectCount={stats?.totalProjects ?? 0}
       tagCount={stats?.totalTags ?? 0}

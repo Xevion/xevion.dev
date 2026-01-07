@@ -39,7 +39,7 @@
   defer
   style="max-height: {maxHeight}"
 >
-  <div class="divide-y divide-zinc-800/50 bg-zinc-950">
+  <div class="divide-y divide-admin-border/50 bg-admin-bg">
     {#each events as event (event.id)}
       {@const levelColors = {
         info: "text-cyan-500/60",
@@ -51,7 +51,7 @@
         warning: "WARN",
         error: "ERR",
       }}
-      <div class="hover:bg-zinc-900/50 transition-colors">
+      <div class="hover:bg-admin-surface-hover/50 transition-colors">
         <div class="px-4 py-1.5">
           <div class="flex items-center justify-between gap-4 text-xs">
             <div class="flex items-center gap-2.5 flex-1 min-w-0">
@@ -60,23 +60,23 @@
               >
                 {levelLabels[event.level]}
               </span>
-              <span class="text-zinc-300 truncate">
+              <span class="text-admin-text truncate">
                 {event.message}
               </span>
-              <span class="text-zinc-500 shrink-0">
-                target=<span class="text-zinc-400">{event.target}</span>
+              <span class="text-admin-text-muted shrink-0">
+                target=<span class="text-admin-text-secondary">{event.target}</span>
               </span>
             </div>
             <div class="flex items-center gap-3 shrink-0">
               {#if showMetadata && event.metadata}
                 <button
-                  class="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                  class="text-[11px] text-admin-accent hover:text-admin-accent-hover transition-colors"
                   onclick={() => toggleMetadata(event.id)}
                 >
                   {expandedEventId === event.id ? "hide" : "show"}
                 </button>
               {/if}
-              <span class="text-zinc-600 text-[11px] tabular-nums">
+              <span class="text-admin-text-muted text-[11px] tabular-nums">
                 {formatTimestamp(event.timestamp)}
               </span>
             </div>
@@ -85,10 +85,10 @@
         {#if showMetadata && expandedEventId === event.id && event.metadata}
           <div class="px-4 pb-2">
             <div
-              class="bg-zinc-900 border border-zinc-800 rounded p-3 text-[11px]"
+              class="bg-admin-surface border border-admin-border rounded p-3 text-[11px]"
             >
-              <p class="text-zinc-500 mb-2 font-medium">Metadata:</p>
-              <pre class="text-zinc-400 overflow-x-auto">{JSON.stringify(
+              <p class="text-admin-text-muted mb-2 font-medium">Metadata:</p>
+              <pre class="text-admin-text-secondary overflow-x-auto">{JSON.stringify(
                   event.metadata,
                   null,
                   2,

@@ -77,7 +77,7 @@
 
 <div class={cn("space-y-3", className)}>
   {#if label}
-    <label class="block text-sm font-medium text-zinc-300">{label}</label>
+    <label class="block text-sm font-medium text-admin-text">{label}</label>
   {/if}
 
   <!-- Preset Palette -->
@@ -88,8 +88,8 @@
         class={cn(
           "size-8 rounded border-2 transition-all hover:scale-110",
           selectedColor === preset.value
-            ? "border-white ring-2 ring-white/20"
-            : "border-zinc-700 hover:border-zinc-500",
+            ? "border-admin-accent ring-2 ring-admin-accent/20"
+            : "border-admin-border hover:border-admin-border-hover",
         )}
         style="background-color: #{preset.value}"
         title={preset.name}
@@ -103,13 +103,13 @@
       class={cn(
         "size-8 rounded border-2 transition-all hover:scale-110 flex items-center justify-center",
         !selectedColor
-          ? "border-white ring-2 ring-white/20 bg-zinc-800"
-          : "border-zinc-700 hover:border-zinc-500 bg-zinc-900",
+          ? "border-admin-accent ring-2 ring-admin-accent/20 bg-admin-surface-hover"
+          : "border-admin-border hover:border-admin-border-hover bg-admin-surface",
       )}
       title="No color"
       onclick={clearColor}
     >
-      <span class="text-zinc-500 text-xs">✕</span>
+      <span class="text-admin-text-muted text-xs">✕</span>
     </button>
   </div>
 
@@ -117,7 +117,7 @@
   <div class="flex items-start gap-2">
     <div class="flex-1">
       <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted"
           >#</span
         >
         <input
@@ -127,11 +127,11 @@
           placeholder="3b82f6"
           maxlength="6"
           class={cn(
-            "w-full rounded-md border bg-zinc-900 px-3 py-2 pl-7 text-sm text-zinc-100",
-            "placeholder:text-zinc-600 focus:outline-none focus:ring-2",
+            "w-full rounded-md border bg-admin-bg-secondary px-3 py-2 pl-7 text-sm text-admin-text",
+            "placeholder:text-admin-text-muted focus:outline-none focus:ring-2",
             validationError
               ? "border-red-500 focus:ring-red-500/20"
-              : "border-zinc-700 focus:border-zinc-600 focus:ring-zinc-500/20",
+              : "border-admin-border focus:border-admin-border-hover focus:ring-admin-accent/20",
           )}
         />
       </div>
@@ -143,7 +143,7 @@
     <!-- Color Preview -->
     {#if selectedColor && validateHexColor(selectedColor)}
       <div
-        class="size-10 shrink-0 rounded-md border-2 border-zinc-700"
+        class="size-10 shrink-0 rounded-md border-2 border-admin-border"
         style="background-color: #{selectedColor}"
         title="#{selectedColor}"
       />

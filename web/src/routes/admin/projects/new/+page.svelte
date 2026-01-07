@@ -57,7 +57,7 @@
   {#if loading}
     <div class="text-center py-12 text-admin-text-muted">Loading...</div>
   {:else}
-    <div class="rounded-lg border border-admin-border bg-admin-panel p-6">
+    <div class="rounded-lg border border-admin-border bg-admin-surface p-6">
       <ProjectForm
         availableTags={tags}
         onsubmit={handleSubmit}

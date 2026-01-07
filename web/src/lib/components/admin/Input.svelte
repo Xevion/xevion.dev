@@ -42,7 +42,7 @@
   const inputId = `input-${Math.random().toString(36).substring(2, 11)}`;
 
   const inputStyles =
-    "block w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50 transition-colors";
+    "block w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2 text-sm text-admin-text placeholder:text-admin-text-muted focus:border-admin-accent focus:outline-none focus:ring-1 focus:ring-admin-accent disabled:cursor-not-allowed disabled:opacity-50 transition-colors";
 
   const errorStyles = $derived(
     error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "",

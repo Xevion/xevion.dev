@@ -211,7 +211,7 @@
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selectedIconSvg}
         {:else}
-          <div class="size-6 animate-pulse rounded bg-zinc-700"></div>
+          <div class="size-6 animate-pulse rounded bg-admin-surface-hover"></div>
         {/if}
       </div>
       <div class="flex-1">
@@ -234,8 +234,8 @@
       class={cn(
         "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
         selectedCollection === "all"
-          ? "bg-indigo-600 text-white"
-          : "bg-admin-panel text-admin-text-muted hover:bg-admin-hover hover:text-admin-text",
+          ? "bg-admin-accent text-white"
+          : "bg-admin-surface text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text",
       )}
       onclick={() => (selectedCollection = "all")}
     >
@@ -247,8 +247,8 @@
         class={cn(
           "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
           selectedCollection === collection.id
-            ? "bg-indigo-600 text-white"
-            : "bg-admin-panel text-admin-text-muted hover:bg-admin-hover hover:text-admin-text",
+            ? "bg-admin-accent text-white"
+            : "bg-admin-surface text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text",
         )}
         onclick={() => (selectedCollection = collection.id)}
       >
@@ -265,7 +265,7 @@
       type="text"
       bind:value={searchQuery}
       {placeholder}
-      class="w-full rounded-md border border-admin-border bg-admin-panel px-3 py-2 text-sm text-admin-text placeholder:text-admin-text-muted focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+      class="w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2 text-sm text-admin-text placeholder:text-admin-text-muted focus:border-admin-accent focus:outline-none focus:ring-1 focus:ring-admin-accent"
       onfocus={handleInputFocus}
       onblur={handleInputBlur}
     />
@@ -273,7 +273,7 @@
     <!-- Search results dropdown -->
     {#if showDropdown && searchResults.length > 0}
       <div
-        class="absolute z-10 mt-1 max-h-96 w-full overflow-auto rounded-md border border-admin-border bg-admin-panel shadow-lg"
+        class="absolute z-10 mt-1 max-h-96 w-full overflow-auto rounded-md border border-admin-border bg-admin-surface shadow-lg"
       >
         <!-- Grid layout for icons -->
         <div class="grid grid-cols-8 gap-1 p-2">
@@ -293,14 +293,14 @@
                   {@html cachedSvg}
                 {:else}
                   <div
-                    class="size-full animate-pulse rounded bg-zinc-700"
+                    class="size-full animate-pulse rounded bg-admin-surface-hover"
                   ></div>
                 {/if}
               </div>
 
               <!-- Tooltip on hover -->
               <div
-                class="pointer-events-none absolute -top-8 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded bg-zinc-900 px-2 py-1 text-xs text-white group-hover:block"
+                class="pointer-events-none absolute -top-8 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded bg-admin-surface border border-admin-border px-2 py-1 text-xs text-admin-text group-hover:block"
               >
                 {result.name}
               </div>
@@ -318,7 +318,7 @@
       </div>
     {:else if showDropdown && searchQuery && !isLoading}
       <div
-        class="absolute z-10 mt-1 w-full rounded-md border border-admin-border bg-admin-panel p-3 text-center text-sm text-admin-text-muted shadow-lg"
+        class="absolute z-10 mt-1 w-full rounded-md border border-admin-border bg-admin-surface p-3 text-center text-sm text-admin-text-muted shadow-lg"
       >
         No icons found for "{searchQuery}"
       </div>

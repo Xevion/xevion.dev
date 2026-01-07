@@ -51,18 +51,18 @@
     tabindex="-1"
   >
     <div
-      class="relative w-full max-w-md rounded-xl bg-zinc-900 border border-zinc-800 p-8 shadow-xl shadow-black/50"
+      class="relative w-full max-w-md rounded-xl bg-admin-surface border border-admin-border p-8 shadow-xl shadow-black/20 dark:shadow-black/50"
       role="dialog"
       aria-modal="true"
     >
       {#if title}
-        <h2 class="text-lg font-semibold text-zinc-50 mb-2">
+        <h2 class="text-lg font-semibold text-admin-text mb-2">
           {title}
         </h2>
       {/if}
 
       {#if description}
-        <p class="text-sm text-zinc-400 mb-4">
+        <p class="text-sm text-admin-text-secondary mb-4">
           {description}
         </p>
       {/if}

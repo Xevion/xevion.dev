@@ -111,25 +111,25 @@
 <div class="space-y-6">
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-zinc-50">Settings</h1>
-    <p class="mt-1 text-sm text-zinc-500">
+    <h1 class="text-xl font-semibold text-admin-text">Settings</h1>
+    <p class="mt-1 text-sm text-admin-text-muted">
       Configure your site identity, social links, and admin preferences
     </p>
   </div>
 
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">Loading settings...</div>
+    <div class="text-center py-12 text-admin-text-muted">Loading settings...</div>
   {:else if formData}
     <!-- Tabs -->
-    <div class="border-b border-zinc-800">
+    <div class="border-b border-admin-border">
       <nav class="flex gap-6" aria-label="Settings tabs">
         <button
           type="button"
           class={cn(
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "identity"
-              ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
+              ? "border-admin-accent text-admin-text"
+              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
           )}
           onclick={() => navigateToTab("identity")}
         >
@@ -140,8 +140,8 @@
           class={cn(
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "social"
-              ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
+              ? "border-admin-accent text-admin-text"
+              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
           )}
           onclick={() => navigateToTab("social")}
         >
@@ -152,8 +152,8 @@
           class={cn(
             "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
             activeTab === "admin"
-              ? "border-indigo-500 text-zinc-50"
-              : "border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700",
+              ? "border-admin-accent text-admin-text"
+              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
           )}
           onclick={() => navigateToTab("admin")}
         >
@@ -164,11 +164,11 @@
 
     <!-- Tab Content -->
     <div
-      class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
     >
       {#if activeTab === "identity"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-zinc-200 mb-4">
+          <h3 class="text-base font-medium text-admin-text mb-4">
             Site Identity
           </h3>
           <Input
@@ -204,8 +204,8 @@
         </div>
       {:else if activeTab === "social"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-zinc-200 mb-4">Social Links</h3>
-          <p class="text-sm text-zinc-500 mb-4">
+          <h3 class="text-base font-medium text-admin-text mb-4">Social Links</h3>
+          <p class="text-sm text-admin-text-muted mb-4">
             Configure your social media presence on the index page
           </p>
 
@@ -213,23 +213,23 @@
             {#each formData.socialLinks as link (link.id)}
               {@const Icon = getSocialIcon(link.platform)}
               <div
-                class="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-700 transition-colors"
+                class="rounded-lg border border-admin-border bg-admin-surface-hover/50 p-4 hover:border-admin-border-hover transition-colors"
               >
                 <div class="flex items-start gap-4">
                   <div class="mt-2">
-                    <Icon class="w-5 h-5 text-zinc-400" />
+                    <Icon class="w-5 h-5 text-admin-text-muted" />
                   </div>
                   <div class="flex-1 space-y-3">
                     <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium text-zinc-200"
+                      <span class="text-sm font-medium text-admin-text"
                         >{link.label}</span
                       >
                       <label class="flex items-center gap-2 cursor-pointer">
-                        <span class="text-xs text-zinc-500">Visible</span>
+                        <span class="text-xs text-admin-text-muted">Visible</span>
                         <input
                           type="checkbox"
                           bind:checked={link.visible}
-                          class="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer"
+                          class="w-4 h-4 rounded border-admin-border bg-admin-bg-secondary text-admin-accent focus:ring-2 focus:ring-admin-accent focus:ring-offset-0 cursor-pointer"
                         />
                       </label>
                     </div>
@@ -246,7 +246,7 @@
         </div>
       {:else if activeTab === "admin"}
         <div class="space-y-4">
-          <h3 class="text-base font-medium text-zinc-200 mb-4">
+          <h3 class="text-base font-medium text-admin-text mb-4">
             Admin Preferences
           </h3>
           <Input

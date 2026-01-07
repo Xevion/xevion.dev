@@ -32,8 +32,8 @@
 <div class="space-y-6">
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-zinc-50">Dashboard</h1>
-    <p class="mt-1 text-sm text-zinc-500">
+    <h1 class="text-xl font-semibold text-admin-text">Dashboard</h1>
+    <p class="mt-1 text-sm text-admin-text-muted">
       Overview of your portfolio and recent activity
     </p>
   </div>
@@ -58,22 +58,22 @@
 
     <!-- Recent Events -->
     <div
-      class="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-sm shadow-black/20"
+      class="rounded-xl border border-admin-border bg-admin-surface/50 overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
     >
       <div
-        class="flex items-center justify-between px-6 py-3.5 bg-zinc-800/30 border-b border-zinc-800"
+        class="flex items-center justify-between px-6 py-3.5 bg-admin-surface-hover/30 border-b border-admin-border"
       >
-        <h2 class="text-sm font-medium text-zinc-300">Recent Events</h2>
+        <h2 class="text-sm font-medium text-admin-text-secondary">Recent Events</h2>
         <a
           href={resolve("/admin/events")}
-          class="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+          class="text-sm text-admin-accent hover:text-admin-accent-hover transition-colors"
         >
           View all →
         </a>
       </div>
 
       {#if recentEvents.length === 0}
-        <p class="text-sm text-zinc-500 text-center py-8">No events yet</p>
+        <p class="text-sm text-admin-text-muted text-center py-8">No events yet</p>
       {:else}
         <EventLog events={recentEvents} maxHeight="400px" />
       {/if}

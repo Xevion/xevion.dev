@@ -46,17 +46,17 @@
 <div class="space-y-6">
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-zinc-50">Event Log</h1>
-    <p class="mt-1 text-sm text-zinc-500">
+    <h1 class="text-xl font-semibold text-admin-text">Event Log</h1>
+    <p class="mt-1 text-sm text-admin-text-muted">
       System activity, errors, and sync operations
     </p>
   </div>
 
   <!-- Filters -->
   <div
-    class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+    class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
   >
-    <h3 class="text-sm font-medium text-zinc-400 mb-4">Filters</h3>
+    <h3 class="text-sm font-medium text-admin-text-secondary mb-4">Filters</h3>
     <div class="grid gap-4 md:grid-cols-2">
       <Input
         label="Level"
@@ -75,19 +75,19 @@
 
   <!-- Events Log -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">Loading events...</div>
+    <div class="text-center py-12 text-admin-text-muted">Loading events...</div>
   {:else if events.length === 0}
     <div class="text-center py-12">
-      <p class="text-zinc-500">No events found</p>
+      <p class="text-admin-text-muted">No events found</p>
     </div>
   {:else}
     <div
-      class="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden shadow-sm shadow-black/20"
+      class="rounded-xl border border-admin-border bg-admin-surface/50 overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
     >
-      <div class="px-6 py-3.5 bg-zinc-800/30 border-b border-zinc-800">
-        <h2 class="text-sm font-medium text-zinc-300">
+      <div class="px-6 py-3.5 bg-admin-surface-hover/30 border-b border-admin-border">
+        <h2 class="text-sm font-medium text-admin-text-secondary">
           Event Log
-          <span class="text-zinc-500 font-normal ml-2">
+          <span class="text-admin-text-muted font-normal ml-2">
             ({events.length} event{events.length === 1 ? "" : "s"})
           </span>
         </h2>

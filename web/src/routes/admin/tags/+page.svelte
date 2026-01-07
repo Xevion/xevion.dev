@@ -160,8 +160,8 @@
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-xl font-semibold text-zinc-50">Tags</h1>
-      <p class="mt-1 text-sm text-zinc-500">
+      <h1 class="text-xl font-semibold text-admin-text">Tags</h1>
+      <p class="mt-1 text-sm text-admin-text-muted">
         Manage project tags and categories
       </p>
     </div>
@@ -181,9 +181,9 @@
   <!-- Create Form -->
   {#if showCreateForm}
     <div
-      class="rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-sm shadow-black/20"
+      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
     >
-      <h3 class="text-base font-medium text-zinc-200 mb-4">Create New Tag</h3>
+      <h3 class="text-base font-medium text-admin-text mb-4">Create New Tag</h3>
       <div class="grid gap-4 md:grid-cols-2">
         <Input
           label="Name"
@@ -219,38 +219,38 @@
 
   <!-- Tags Table -->
   {#if loading}
-    <div class="text-center py-12 text-zinc-500">Loading tags...</div>
+    <div class="text-center py-12 text-admin-text-muted">Loading tags...</div>
   {:else if tags.length === 0}
     <div class="text-center py-12">
-      <p class="text-zinc-500 mb-4">No tags yet</p>
+      <p class="text-admin-text-muted mb-4">No tags yet</p>
       <Button variant="primary" onclick={() => (showCreateForm = true)}>
         Create your first tag
       </Button>
     </div>
   {:else}
     <Table>
-      <thead class="bg-zinc-900/50">
+      <thead class="bg-admin-surface/50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Name
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Slug
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Color
           </th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted">
             Projects
           </th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500">
+          <th class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted">
             Actions
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-zinc-800/50">
+      <tbody class="divide-y divide-admin-border/50">
         {#each tags as tag (tag.id)}
-          <tr class="hover:bg-zinc-800/30 transition-colors">
+          <tr class="hover:bg-admin-surface-hover/30 transition-colors">
             {#if editingId === tag.id}
               <!-- Edit mode -->
               <td class="px-4 py-3">
@@ -271,13 +271,13 @@
                 {#if editColor}
                   <div class="flex items-center gap-2">
                     <div
-                      class="size-6 rounded border border-zinc-700"
+                      class="size-6 rounded border border-admin-border"
                       style="background-color: #{editColor}"
                     />
-                    <span class="text-xs text-zinc-500">#{editColor}</span>
+                    <span class="text-xs text-admin-text-muted">#{editColor}</span>
                   </div>
                 {:else}
-                  <span class="text-xs text-zinc-500">No color</span>
+                  <span class="text-xs text-admin-text-muted">No color</span>
                 {/if}
               </td>
               <td class="px-4 py-3 text-admin-text">
@@ -305,26 +305,26 @@
               </td>
             {:else}
               <!-- View mode -->
-              <td class="px-4 py-3 font-medium text-zinc-200">
+              <td class="px-4 py-3 font-medium text-admin-text">
                 {tag.name}
               </td>
-              <td class="px-4 py-3 text-zinc-500">
+              <td class="px-4 py-3 text-admin-text-secondary">
                 {tag.slug}
               </td>
               <td class="px-4 py-3">
                 {#if tag.color}
                   <div class="flex items-center gap-2">
                     <div
-                      class="size-6 rounded border border-zinc-700"
+                      class="size-6 rounded border border-admin-border"
                       style="background-color: #{tag.color}"
                     />
-                    <span class="text-xs text-zinc-500">#{tag.color}</span>
+                    <span class="text-xs text-admin-text-muted">#{tag.color}</span>
                   </div>
                 {:else}
-                  <span class="text-xs text-zinc-500">No color</span>
+                  <span class="text-xs text-admin-text-muted">No color</span>
                 {/if}
               </td>
-              <td class="px-4 py-3 text-zinc-300">
+              <td class="px-4 py-3 text-admin-text">
                 {tag.projectCount}
               </td>
               <td class="px-4 py-3 text-right">
@@ -364,9 +364,9 @@
   oncancel={cancelDelete}
 >
   {#if deleteTarget}
-    <div class="rounded-md bg-zinc-800/50 border border-zinc-700 p-3">
-      <p class="font-medium text-zinc-200">{deleteTarget.name}</p>
-      <p class="text-sm text-zinc-500">
+    <div class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3">
+      <p class="font-medium text-admin-text">{deleteTarget.name}</p>
+      <p class="text-sm text-admin-text-secondary">
         Used in {deleteTarget.projectCount} project{deleteTarget.projectCount ===
         1
           ? ""
