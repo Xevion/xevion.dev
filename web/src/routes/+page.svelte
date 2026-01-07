@@ -1,6 +1,7 @@
 <script lang="ts">
   import AppWrapper from "$lib/components/AppWrapper.svelte";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
+  import PgpKeyModal from "$lib/components/PgpKeyModal.svelte";
   import type { PageData } from "./$types";
   import IconSimpleIconsGithub from "~icons/simple-icons/github";
   import IconSimpleIconsLinkedin from "~icons/simple-icons/linkedin";
@@ -10,6 +11,7 @@
 
   let { data }: { data: PageData } = $props();
   const projects = data.projects;
+  let pgpModalOpen = $state(false);
 </script>
 
 <AppWrapper class="overflow-x-hidden font-schibsted">
@@ -70,6 +72,7 @@
           <button
             type="button"
             class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+            onclick={() => (pgpModalOpen = true)}
           >
             <MaterialSymbolsVpnKey class="size-4.5 text-zinc-600 dark:text-zinc-300" />
             <span class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100">PGP Key</span>
@@ -87,3 +90,5 @@
     </div>
   </div>
 </AppWrapper>
+
+<PgpKeyModal bind:open={pgpModalOpen} />

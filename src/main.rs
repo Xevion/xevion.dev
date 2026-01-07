@@ -211,6 +211,11 @@ async fn main() {
                 "/_app/{*path}",
                 axum::routing::get(serve_embedded_asset).head(serve_embedded_asset),
             )
+            .route("/pgp", axum::routing::get(handle_pgp_route))
+            .route("/publickey.asc", axum::routing::get(serve_pgp_key))
+            .route("/pgp.asc", axum::routing::get(serve_pgp_key))
+            .route("/.well-known/pgpkey.asc", axum::routing::get(serve_pgp_key))
+            .route("/keys", axum::routing::get(redirect_to_pgp))
     }
 
     fn apply_middleware(
@@ -409,6 +414,44 @@ fn accepts_html(headers: &HeaderMap) -> bool {
     true
 }
 
+/// Determines if request prefers raw content (CLI tools) over HTML
+fn prefers_raw_content(headers: &HeaderMap) -> bool {
+    // Check User-Agent for known CLI tools first (most reliable)
+    if let Some(ua) = headers.get(axum::http::header::USER_AGENT) {
+        if let Ok(ua_str) = ua.to_str() {
+            let ua_lower = ua_str.to_lowercase();
+            if ua_lower.starts_with("curl/")
+                || ua_lower.starts_with("wget/")
+                || ua_lower.starts_with("httpie/")
+                || ua_lower.contains("curlie")
+            {
+                return true;
+            }
+        }
+    }
+
+    // Check Accept header - if it explicitly prefers text/html, serve HTML
+    if let Some(accept) = headers.get(axum::http::header::ACCEPT) {
+        if let Ok(accept_str) = accept.to_str() {
+            // If text/html appears before */* in the list, they prefer HTML
+            if let Some(html_pos) = accept_str.find("text/html") {
+                if let Some(wildcard_pos) = accept_str.find("*/*") {
+                    return html_pos > wildcard_pos;
+                }
+                // Has text/html but no */* → prefers HTML
+                return false;
+            }
+            // Has */* but no text/html → probably a CLI tool
+            if accept_str.contains("*/*") && !accept_str.contains("text/html") {
+                return true;
+            }
+        }
+    }
+
+    // No Accept header → assume browser (safer default)
+    false
+}
+
 fn serve_error_page(status: StatusCode) -> Response {
     let status_code = status.as_u16();
 
@@ -457,6 +500,45 @@ async fn health_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
         (StatusCode::OK, "OK")
     } else {
         (StatusCode::SERVICE_UNAVAILABLE, "Unhealthy")
+    }
+}
+
+async fn serve_pgp_key() -> impl IntoResponse {
+    if let Some(content) = assets::get_static_file("publickey.asc") {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("application/pgp-keys"),
+        );
+        headers.insert(
+            axum::http::header::CONTENT_DISPOSITION,
+            axum::http::HeaderValue::from_static("attachment; filename=\"publickey.asc\""),
+        );
+        headers.insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("public, max-age=86400"),
+        );
+        (StatusCode::OK, headers, content).into_response()
+    } else {
+        (StatusCode::NOT_FOUND, "PGP key not found").into_response()
+    }
+}
+
+async fn redirect_to_pgp() -> impl IntoResponse {
+    axum::response::Redirect::permanent("/pgp")
+}
+
+async fn handle_pgp_route(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    req: Request,
+) -> Response {
+    if prefers_raw_content(&headers) {
+        // Serve raw .asc file for CLI tools
+        serve_pgp_key().await.into_response()
+    } else {
+        // Proxy to Bun for HTML page
+        isr_handler(State(state), req).await
     }
 }
 

@@ -55,6 +55,20 @@ fn serve_asset_by_path(path: &str) -> Response {
     }
 }
 
+/// Get a static file from the embedded CLIENT_ASSETS.
+///
+/// Static files are served from web/static/ and embedded at compile time.
+///
+/// # Arguments
+/// * `path` - Path to the file (e.g., "publickey.asc")
+///
+/// # Returns
+/// * `Some(&[u8])` - File content if file exists
+/// * `None` - If file not found
+pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
+    CLIENT_ASSETS.get_file(path).map(|f| f.contents())
+}
+
 /// Get prerendered error page HTML for a given status code.
 ///
 /// Error pages are prerendered by SvelteKit and embedded at compile time.
