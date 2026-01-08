@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\", \n                  github_repo, demo_url, last_github_activity, created_at, updated_at\n        ",
+  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4, description = $5,\n            status = $6, github_repo = $7, demo_url = $8\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at\n        ",
   "describe": {
     "columns": [
       {
@@ -73,6 +73,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text",
         "Text",
         "Text",
@@ -108,5 +109,5 @@
       false
     ]
   },
-  "hash": "ad86ca2613973d89e49b3bea1b3f0c8cf0885e431aea0cd349998de717c5e776"
+  "hash": "fdd7f3743ad2e6d1d571ee2d3dbd8b4d49074ef2cbe74dc79c6f4f638bdd3a88"
 }

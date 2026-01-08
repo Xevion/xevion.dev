@@ -15,13 +15,7 @@ interface BunFetchOptions extends RequestInit {
  * Create a socket-aware fetch function
  * Automatically handles Unix socket vs TCP based on UPSTREAM_URL
  */
-function createSmartFetch(upstreamUrl: string | undefined) {
-  if (!upstreamUrl) {
-    const error = "UPSTREAM_URL environment variable not set";
-    logger.error(error);
-    throw new Error(error);
-  }
-
+function createSmartFetch(upstreamUrl: string) {
   const isUnixSocket =
     upstreamUrl.startsWith("/") || upstreamUrl.startsWith("./");
   const baseUrl = isUnixSocket ? "http://localhost" : upstreamUrl;
@@ -84,5 +78,20 @@ function createSmartFetch(upstreamUrl: string | undefined) {
   };
 }
 
-// Export the configured smart fetch function
-export const apiFetch = createSmartFetch(env.UPSTREAM_URL);
+// Lazy-initialized fetch function (only throws if UPSTREAM_URL is missing when actually used)
+let cachedFetch: ReturnType<typeof createSmartFetch> | null = null;
+
+export async function apiFetch<T>(
+  path: string,
+  options?: FetchOptions,
+): Promise<T> {
+  if (!cachedFetch) {
+    if (!env.UPSTREAM_URL) {
+      const error = "UPSTREAM_URL environment variable not set";
+      logger.error(error);
+      throw new Error(error);
+    }
+    cachedFetch = createSmartFetch(env.UPSTREAM_URL);
+  }
+  return cachedFetch(path, options);
+}

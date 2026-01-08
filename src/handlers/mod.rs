@@ -19,6 +19,7 @@ pub use tags::*;
 pub struct CreateTagRequest {
     pub name: String,
     pub slug: Option<String>,
+    pub icon: Option<String>,
     pub color: Option<String>,
 }
 
@@ -26,6 +27,7 @@ pub struct CreateTagRequest {
 pub struct UpdateTagRequest {
     pub name: String,
     pub slug: Option<String>,
+    pub icon: Option<String>,
     pub color: Option<String>,
 }
 

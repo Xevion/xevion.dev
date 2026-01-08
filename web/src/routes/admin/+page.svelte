@@ -58,10 +58,10 @@
 
     <!-- Recent Events -->
     <div
-      class="rounded-xl border border-admin-border bg-admin-surface/50 overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
+      class="rounded-xl border border-admin-border bg-admin-surface overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
     >
       <div
-        class="flex items-center justify-between px-6 py-3.5 bg-admin-surface-hover/30 border-b border-admin-border"
+        class="flex items-center justify-between px-6 py-3.5 bg-admin-surface-hover border-b border-admin-border"
       >
         <h2 class="text-sm font-medium text-admin-text-secondary">
           Recent Events

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            id, \n            slug, \n            name,\n            short_description,\n            description, \n            status as \"status: ProjectStatus\", \n            github_repo, \n            demo_url, \n\n            last_github_activity, \n            created_at, \n            updated_at\n        FROM projects\n        WHERE slug = $1\n        ",
+  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at\n        FROM projects\n        WHERE status != 'hidden'\n        ORDER BY updated_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -72,9 +72,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -90,5 +88,5 @@
       false
     ]
   },
-  "hash": "e3c4842a1151f51f3871212c3e591103d04a7ff27b27d7d197fbd53593c06b74"
+  "hash": "92641a97d3f5329df38e2ecb456b1f43392b34bba0b286ab9bd75a8207354fea"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4, description = $5, \n            status = $6, github_repo = $7, demo_url = $8\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\", \n                  github_repo, demo_url, last_github_activity, created_at, updated_at\n        ",
+  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n\n            last_github_activity,\n            created_at,\n            updated_at\n        FROM projects\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -73,26 +73,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "project_status",
-            "kind": {
-              "Enum": [
-                "active",
-                "maintained",
-                "archived",
-                "hidden"
-              ]
-            }
-          }
-        },
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -109,5 +90,5 @@
       false
     ]
   },
-  "hash": "39f5640a8e812c05d62a0c5ab696a60c70a942d8d29af1439c30a5b04ad4fc6b"
+  "hash": "170d08a3b1effa554fe831e43a8d7b640fbddaa348289360fb520057c0ef3272"
 }

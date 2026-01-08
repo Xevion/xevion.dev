@@ -4,6 +4,7 @@
   import Table from "$lib/components/admin/Table.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
+  import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import {
     getAdminTags,
     createAdminTag,
@@ -25,6 +26,7 @@
   let showCreateForm = $state(false);
   let createName = $state("");
   let createSlug = $state("");
+  let createIcon = $state<string>("");
   let createColor = $state<string | undefined>(undefined);
   let creating = $state(false);
 
@@ -32,6 +34,7 @@
   let editingId = $state<string | null>(null);
   let editName = $state("");
   let editSlug = $state("");
+  let editIcon = $state<string>("");
   let editColor = $state<string | undefined>(undefined);
   let updating = $state(false);
 
@@ -63,12 +66,14 @@
       const data: CreateTagData = {
         name: createName,
         slug: createSlug || undefined,
+        icon: createIcon || undefined,
         color: createColor,
       };
       await createAdminTag(data);
       await loadTags();
       createName = "";
       createSlug = "";
+      createIcon = "";
       createColor = undefined;
       showCreateForm = false;
     } catch (error) {
@@ -83,6 +88,7 @@
     editingId = tag.id;
     editName = tag.name;
     editSlug = tag.slug;
+    editIcon = tag.icon || "";
     editColor = tag.color;
   }
 
@@ -90,6 +96,7 @@
     editingId = null;
     editName = "";
     editSlug = "";
+    editIcon = "";
     editColor = undefined;
   }
 
@@ -103,6 +110,7 @@
         name: editName,
         slug: editSlug || undefined,
         color: editColor,
+        icon: editIcon || undefined,
       };
       await updateAdminTag(data);
       await loadTags();
@@ -200,6 +208,9 @@
         />
       </div>
       <div class="mt-4">
+        <IconPicker bind:selectedIcon={createIcon} label="Icon (optional)" />
+      </div>
+      <div class="mt-4">
         <ColorPicker bind:selectedColor={createColor} />
       </div>
       <div class="mt-4 flex justify-end gap-2">
@@ -229,7 +240,7 @@
     </div>
   {:else}
     <Table>
-      <thead class="bg-admin-surface/50">
+      <thead class="bg-admin-surface-hover">
         <tr>
           <th
             class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
@@ -240,6 +251,11 @@
             class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
           >
             Slug
+          </th>
+          <th
+            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
+          >
+            Icon
           </th>
           <th
             class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
@@ -258,9 +274,9 @@
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-admin-border/50">
+      <tbody class="divide-y divide-admin-border">
         {#each tags as tag (tag.id)}
-          <tr class="hover:bg-admin-surface-hover/30 transition-colors">
+          <tr class="hover:bg-admin-surface-hover/50 transition-colors">
             {#if editingId === tag.id}
               <!-- Edit mode -->
               <td class="px-4 py-3">
@@ -276,6 +292,17 @@
                   bind:value={editSlug}
                   placeholder="tag-slug"
                 />
+              </td>
+              <td class="px-4 py-3">
+                {#if editIcon}
+                  <div class="flex items-center gap-2">
+                    <div class="text-admin-text">
+                      <span class="text-xs text-admin-text-muted">{editIcon}</span>
+                    </div>
+                  </div>
+                {:else}
+                  <span class="text-xs text-admin-text-muted">No icon</span>
+                {/if}
               </td>
               <td class="px-4 py-3">
                 {#if editColor}
@@ -322,6 +349,17 @@
               </td>
               <td class="px-4 py-3 text-admin-text-secondary">
                 {tag.slug}
+              </td>
+              <td class="px-4 py-3">
+                {#if tag.icon}
+                  <div class="flex items-center gap-2">
+                    <div class="text-admin-text">
+                      <span class="text-xs text-admin-text-muted">{tag.icon}</span>
+                    </div>
+                  </div>
+                {:else}
+                  <span class="text-xs text-admin-text-muted">No icon</span>
+                {/if}
               </td>
               <td class="px-4 py-3">
                 {#if tag.color}

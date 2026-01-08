@@ -108,7 +108,7 @@
     </div>
   {:else}
     <Table>
-      <thead class="bg-admin-surface/50">
+      <thead class="bg-admin-surface-hover">
         <tr>
           <th
             class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
@@ -137,9 +137,9 @@
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-admin-border/50">
+      <tbody class="divide-y divide-admin-border">
         {#each projects as project (project.id)}
-          <tr class="hover:bg-admin-surface-hover/30 transition-colors">
+          <tr class="hover:bg-admin-surface-hover/50 transition-colors">
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
                 <div>

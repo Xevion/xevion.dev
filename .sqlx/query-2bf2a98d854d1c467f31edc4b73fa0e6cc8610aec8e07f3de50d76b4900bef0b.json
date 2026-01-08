@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            status as \"status!: ProjectStatus\",\n            COUNT(*)::int as \"count!\"\n        FROM projects\n        GROUP BY status\n        ",
+  "query": "\n        SELECT\n            status as \"status!: ProjectStatus\",\n            COUNT(*)::int as \"count!\"\n        FROM projects\n        GROUP BY status\n        ",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       null
     ]
   },
-  "hash": "1dce5dfc93dcb882e6bdeacbe4156ad56c0e14144b2e0a6d8b1fcc29196dcca0"
+  "hash": "2bf2a98d854d1c467f31edc4b73fa0e6cc8610aec8e07f3de50d76b4900bef0b"
 }

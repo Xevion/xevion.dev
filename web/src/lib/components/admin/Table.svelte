@@ -10,7 +10,7 @@
 </script>
 
 <div
-  class={cn("overflow-x-auto rounded-lg border border-admin-border", className)}
+  class={cn("overflow-x-auto rounded-lg border border-admin-border bg-admin-surface", className)}
 >
   <table class="w-full text-sm">
     {@render children?.()}

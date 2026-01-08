@@ -49,6 +49,7 @@ export interface UpdateProjectData extends CreateProjectData {
 export interface CreateTagData {
   name: string;
   slug?: string;
+  icon?: string;
   color?: string;
 }
 

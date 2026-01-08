@@ -73,7 +73,7 @@ pub async fn create_tag_handler(
         &state.pool,
         &payload.name,
         payload.slug.as_deref(),
-        None, // icon - not yet supported in admin UI
+        payload.icon.as_deref(),
         payload.color.as_deref(),
     )
     .await
@@ -214,7 +214,7 @@ pub async fn update_tag_handler(
         tag.id,
         &payload.name,
         payload.slug.as_deref(),
-        None, // icon - not yet supported in admin UI
+        payload.icon.as_deref(),
         payload.color.as_deref(),
     )
     .await

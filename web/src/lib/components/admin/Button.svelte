@@ -30,7 +30,7 @@
     primary:
       "bg-admin-accent text-white hover:bg-admin-accent-hover focus-visible:ring-admin-accent shadow-sm hover:shadow",
     secondary:
-      "bg-transparent text-admin-text border border-admin-border hover:border-admin-border-hover hover:bg-admin-surface-hover/50 focus-visible:ring-admin-accent",
+      "bg-zinc-200/60 dark:bg-zinc-600/50 text-admin-text border border-zinc-400/50 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-300/70 dark:hover:bg-zinc-500/60 focus-visible:ring-admin-accent",
     danger:
       "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm hover:shadow",
     ghost:

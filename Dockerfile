@@ -63,7 +63,8 @@ COPY migrations/ ./migrations/
 COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 
-# Build with real assets
+# Build with real assets (use sqlx offline mode)
+ENV SQLX_OFFLINE=true
 RUN cargo build --release && \
     strip target/release/api
 
@@ -82,6 +83,11 @@ COPY --from=frontend /build/build/server ./web/build/server
 COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/*.js ./web/build/
 COPY web/console-logger.js ./web/
+
+# Install production dependencies for SSR runtime
+COPY web/package.json web/bun.lock ./web/
+RUN cd web && bun install --frozen-lockfile --production && \
+    ln -s /app/web/node_modules /app/web/build/node_modules
 
 # Create inline entrypoint script
 RUN cat > /entrypoint.sh << 'EOF'
