@@ -3,6 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Hide native scrollbar immediately to prevent layout shift */
+      html,
+      body {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+        &::-webkit-scrollbar {
+          display: none; /* Chrome, Safari, Opera */
+        }
+      }
+    </style>
     <script>
       (function () {
         const stored = localStorage.getItem("theme");
@@ -13,6 +24,8 @@
         if (isDark) {
           document.documentElement.classList.add("dark");
         }
+        // Set body background immediately to prevent flash
+        document.body.style.backgroundColor = isDark ? "#000000" : "#ffffff";
       })();
     </script>
     %sveltekit.head%

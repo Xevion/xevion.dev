@@ -7,6 +7,9 @@
   import { OverlayScrollbars } from "overlayscrollbars";
   import { onMount } from "svelte";
   import { themeStore } from "$lib/stores/theme.svelte";
+  import { page } from "$app/stores";
+  import { onNavigate } from "$app/navigation";
+  import Dots from "$lib/components/Dots.svelte";
 
   let { children, data } = $props();
 
@@ -19,6 +22,31 @@
   };
 
   const metadata = $derived(data?.metadata ?? defaultMetadata);
+
+  // Check if current route is admin (admin has its own layout/background)
+  const isAdminRoute = $derived($page.url.pathname.startsWith("/admin"));
+  // Check if current route is internal (OG preview, etc.)
+  const isInternalRoute = $derived($page.url.pathname.startsWith("/internal"));
+  // Show global background for public pages only
+  const showGlobalBackground = $derived(!isAdminRoute && !isInternalRoute);
+
+  // Use View Transitions API for smooth page transitions (Chrome 111+, Safari 18+)
+  onNavigate((navigation) => {
+    // Skip transitions for same-page navigations or if API not supported
+    if (
+      !document.startViewTransition ||
+      navigation.from?.url.pathname === navigation.to?.url.pathname
+    ) {
+      return;
+    }
+
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
 
   onMount(() => {
     // Initialize theme store
@@ -63,4 +91,13 @@
   <meta name="twitter:image" content={metadata.ogImage} />
 </svelte:head>
 
+<!-- Persistent background layer - only for public routes -->
+{#if showGlobalBackground}
+  <div
+    class="pointer-events-none fixed inset-0 -z-20 bg-white dark:bg-black transition-colors duration-300"
+  ></div>
+  <Dots />
+{/if}
+
+<!-- Page content - transitions handled by View Transitions API -->
 {@render children()}

@@ -204,3 +204,30 @@ body {
 .os-scrollbar-handle {
   border-radius: 4px;
 }
+
+/* View Transitions API - page transition animations */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes page-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+::view-transition-old(root) {
+  animation: page-fade-out 120ms ease-out;
+}
+
+::view-transition-new(root) {
+  animation: page-fade-in 150ms ease-in 50ms;
+}
