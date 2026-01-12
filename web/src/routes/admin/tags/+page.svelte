@@ -297,7 +297,9 @@
                 {#if editIcon}
                   <div class="flex items-center gap-2">
                     <div class="text-admin-text">
-                      <span class="text-xs text-admin-text-muted">{editIcon}</span>
+                      <span class="text-xs text-admin-text-muted"
+                        >{editIcon}</span
+                      >
                     </div>
                   </div>
                 {:else}
@@ -354,7 +356,9 @@
                 {#if tag.icon}
                   <div class="flex items-center gap-2">
                     <div class="text-admin-text">
-                      <span class="text-xs text-admin-text-muted">{tag.icon}</span>
+                      <span class="text-xs text-admin-text-muted"
+                        >{tag.icon}</span
+                      >
                     </div>
                   </div>
                 {:else}

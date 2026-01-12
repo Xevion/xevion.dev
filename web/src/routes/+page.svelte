@@ -1,7 +1,7 @@
 <script lang="ts">
   import AppWrapper from "$lib/components/AppWrapper.svelte";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
-  import PgpKeyModal from "$lib/components/PgpKeyModal.svelte";
+  import DiscordProfileModal from "$lib/components/DiscordProfileModal.svelte";
   import type { PageData } from "./$types";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
 
@@ -27,13 +27,8 @@
     socialLinksWithIcons.filter((link: { visible: boolean }) => link.visible),
   );
 
-  let pgpModalOpen = $state(false);
-
-  // Handle Discord click (copy to clipboard)
-  function handleDiscordClick(username: string) {
-    navigator.clipboard.writeText(username);
-    // TODO: Add toast notification
-  }
+  let discordModalOpen = $state(false);
+  let discordUsername = $state("");
 </script>
 
 <AppWrapper class="overflow-x-hidden font-schibsted">
@@ -67,7 +62,7 @@
               <!-- Simple link platforms -->
               <a
                 href={link.value}
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -79,11 +74,14 @@
                 >
               </a>
             {:else if link.platform === "discord"}
-              <!-- Discord - button that copies username -->
+              <!-- Discord - button that opens profile modal -->
               <button
                 type="button"
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-                onclick={() => handleDiscordClick(link.value)}
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
+                onclick={() => {
+                  discordUsername = link.value;
+                  discordModalOpen = true;
+                }}
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -98,7 +96,7 @@
               <!-- Email - mailto link -->
               <a
                 href="mailto:{link.value}"
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
               >
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -111,11 +109,10 @@
               </a>
             {/if}
           {/each}
-          <!-- PGP Key - kept separate from settings system -->
-          <button
-            type="button"
-            class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-            onclick={() => (pgpModalOpen = true)}
+          <!-- PGP Key - links to dedicated page -->
+          <a
+            href="/pgp"
+            class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
           >
             <MaterialSymbolsVpnKey
               class="size-4.5 text-zinc-600 dark:text-zinc-300"
@@ -124,7 +121,7 @@
               class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
               >PGP Key</span
             >
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -139,4 +136,4 @@
   </div>
 </AppWrapper>
 
-<PgpKeyModal bind:open={pgpModalOpen} />
+<DiscordProfileModal bind:open={discordModalOpen} username={discordUsername} />

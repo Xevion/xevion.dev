@@ -1,7 +1,11 @@
 import type { IconifyJSON } from "@iconify/types";
 import { getIconData, iconToSVG, replaceIDs } from "@iconify/utils";
 import { getLogger } from "@logtape/logtape";
-import type { IconCollection, IconIdentifier, IconRenderOptions } from "$lib/types/icons";
+import type {
+  IconCollection,
+  IconIdentifier,
+  IconRenderOptions,
+} from "$lib/types/icons";
 
 const logger = getLogger(["server", "icons"]);
 
@@ -39,7 +43,9 @@ function parseIdentifier(
 /**
  * Load icon collection from disk via dynamic import (internal - no caching logic)
  */
-async function loadCollectionFromDisk(collection: string): Promise<IconifyJSON | null> {
+async function loadCollectionFromDisk(
+  collection: string,
+): Promise<IconifyJSON | null> {
   try {
     // Dynamic import - Bun resolves the package path automatically
     const module = await import(`@iconify/json/json/${collection}.json`);
@@ -137,7 +143,9 @@ function renderIconData(
 /**
  * Render the default fallback icon (internal helper)
  */
-async function renderFallbackIcon(options: IconRenderOptions): Promise<string | null> {
+async function renderFallbackIcon(
+  options: IconRenderOptions,
+): Promise<string | null> {
   const parsed = parseIdentifier(DEFAULT_FALLBACK_ICON);
   if (!parsed) return null;
 
@@ -169,7 +177,10 @@ export async function renderIconsBatch(
   }
 
   // Parse and group by collection
-  const byCollection = new Map<string, { identifier: string; name: string }[]>();
+  const byCollection = new Map<
+    string,
+    { identifier: string; name: string }[]
+  >();
   const invalidIdentifiers: string[] = [];
 
   for (const identifier of identifiers) {
@@ -185,7 +196,9 @@ export async function renderIconsBatch(
   }
 
   if (invalidIdentifiers.length > 0) {
-    logger.warn("Invalid icon identifiers in batch", { identifiers: invalidIdentifiers });
+    logger.warn("Invalid icon identifiers in batch", {
+      identifiers: invalidIdentifiers,
+    });
   }
 
   // Load all needed collections in parallel
@@ -256,9 +269,12 @@ export async function renderIconsBatch(
 /**
  * Get single icon data (for API endpoint use only)
  */
-export async function getIconForApi(
-  identifier: string,
-): Promise<{ identifier: string; collection: string; name: string; svg: string } | null> {
+export async function getIconForApi(identifier: string): Promise<{
+  identifier: string;
+  collection: string;
+  name: string;
+  svg: string;
+} | null> {
   const parsed = parseIdentifier(identifier);
   if (!parsed) {
     logger.warn(`Invalid icon identifier: ${identifier}`);
@@ -318,7 +334,8 @@ export async function searchIcons(
   query: string,
   limit: number = 50,
 ): Promise<{ identifier: string; collection: string; name: string }[]> {
-  const results: { identifier: string; collection: string; name: string }[] = [];
+  const results: { identifier: string; collection: string; name: string }[] =
+    [];
 
   // Parse query for collection prefix (e.g., "lucide:home" or "lucide:")
   const colonIndex = query.indexOf(":");

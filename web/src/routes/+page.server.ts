@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
     ...project,
     tags: project.tags.map((tag) => ({
       ...tag,
-      iconSvg: tag.icon ? smallIcons.get(tag.icon) ?? "" : "",
+      iconSvg: tag.icon ? (smallIcons.get(tag.icon) ?? "") : "",
     })),
     clockIconSvg: smallIcons.get(CLOCK_ICON) ?? "",
   }));
