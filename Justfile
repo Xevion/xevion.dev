@@ -3,6 +3,23 @@ set dotenv-load
 default:
 	just --list
 
+# Login to production and save session cookie
+login username password:
+    @echo "Logging in to production..."
+    @curlie -X POST $API_BASE_URL/api/login \
+        username='{{username}}' \
+        password='{{password}}' \
+        -c .prod-session.txt
+    @echo "✅ Session saved to .prod-session.txt"
+
+# Check current production session status
+session:
+    @curlie GET $API_BASE_URL/api/session -b .prod-session.txt
+
+# Make authenticated API request to production
+api method path *args="":
+    curlie -X {{method}} $API_BASE_URL{{path}} -b .prod-session.txt {{args}}
+
 [script("bun")]
 check:
     const checks = [
@@ -83,7 +100,7 @@ serve:
     just serve-json | hl --config .hl.config.toml -P
 
 serve-json:
-    LOG_JSON=true bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/api --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/api --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 docker-image:
     docker build -t xevion-dev .
