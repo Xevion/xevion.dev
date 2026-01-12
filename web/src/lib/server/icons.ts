@@ -1,19 +1,15 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
 import type { IconifyJSON } from "@iconify/types";
 import { getIconData, iconToSVG, replaceIDs } from "@iconify/utils";
 import { getLogger } from "@logtape/logtape";
-import type {
-  IconCollection,
-  IconData,
-  IconIdentifier,
-  IconRenderOptions,
-} from "$lib/types/icons";
+import type { IconCollection, IconIdentifier, IconRenderOptions } from "$lib/types/icons";
 
 const logger = getLogger(["server", "icons"]);
 
-// In-memory cache for icon collections
+// In-memory cache for loaded icon collections
 const collectionCache = new Map<string, IconifyJSON>();
+
+// Loading promises to prevent concurrent loads of the same collection
+const loadingPromises = new Map<string, Promise<IconifyJSON | null>>();
 
 // Collections to pre-cache on server startup
 const PRE_CACHE_COLLECTIONS = [
@@ -25,7 +21,7 @@ const PRE_CACHE_COLLECTIONS = [
 ];
 
 // Default fallback icon
-const DEFAULT_FALLBACK_ICON = "lucide:help-circle";
+const DEFAULT_FALLBACK_ICON: IconIdentifier = "lucide:help-circle";
 
 /**
  * Parse icon identifier into collection and name
@@ -41,26 +37,13 @@ function parseIdentifier(
 }
 
 /**
- * Load icon collection from @iconify/json
+ * Load icon collection from disk via dynamic import (internal - no caching logic)
  */
-async function loadCollection(collection: string): Promise<IconifyJSON | null> {
-  // Check cache first
-  if (collectionCache.has(collection)) {
-    return collectionCache.get(collection)!;
-  }
-
+async function loadCollectionFromDisk(collection: string): Promise<IconifyJSON | null> {
   try {
-    const iconifyJsonPath = join(
-      process.cwd(),
-      "node_modules",
-      "@iconify",
-      "json",
-      "json",
-      `${collection}.json`,
-    );
-
-    const data = await readFile(iconifyJsonPath, "utf-8");
-    const iconSet: IconifyJSON = JSON.parse(data);
+    // Dynamic import - Bun resolves the package path automatically
+    const module = await import(`@iconify/json/json/${collection}.json`);
+    const iconSet: IconifyJSON = module.default;
 
     // Cache the collection
     collectionCache.set(collection, iconSet);
@@ -79,9 +62,203 @@ async function loadCollection(collection: string): Promise<IconifyJSON | null> {
 }
 
 /**
- * Get icon data by identifier
+ * Load icon collection with caching and concurrent load protection.
+ * Multiple concurrent requests for the same collection will wait for a single load.
  */
-export async function getIcon(identifier: string): Promise<IconData | null> {
+async function loadCollection(collection: string): Promise<IconifyJSON | null> {
+  // Return cached if available
+  if (collectionCache.has(collection)) {
+    return collectionCache.get(collection)!;
+  }
+
+  // Wait for in-progress load if another request is already loading this collection
+  const existingPromise = loadingPromises.get(collection);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  // Start new load and store promise so concurrent requests can wait
+  const loadPromise = loadCollectionFromDisk(collection);
+  loadingPromises.set(collection, loadPromise);
+
+  try {
+    return await loadPromise;
+  } finally {
+    loadingPromises.delete(collection);
+  }
+}
+
+/**
+ * Render icon data to SVG string (internal)
+ */
+function renderIconData(
+  iconData: ReturnType<typeof getIconData>,
+  options: IconRenderOptions = {},
+): string {
+  if (!iconData) {
+    throw new Error("Icon data is null");
+  }
+
+  // Convert icon data to SVG attributes
+  const renderData = iconToSVG(iconData);
+
+  // Get SVG body
+  const body = replaceIDs(iconData.body);
+
+  // Build SVG element with options applied
+  const attributes: Record<string, string> = {
+    ...renderData.attributes,
+    xmlns: "http://www.w3.org/2000/svg",
+    "xmlns:xlink": "http://www.w3.org/1999/xlink",
+  };
+
+  if (options.class) {
+    attributes.class = options.class;
+  }
+  if (options.size) {
+    attributes.width = String(options.size);
+    attributes.height = String(options.size);
+  }
+
+  const attributeString = Object.entries(attributes)
+    .map(([key, value]) => `${key}="${value}"`)
+    .join(" ");
+
+  let svg = `<svg ${attributeString}>${body}</svg>`;
+
+  // Apply custom color (replace currentColor)
+  if (options.color) {
+    svg = svg.replace(/currentColor/g, options.color);
+  }
+
+  return svg;
+}
+
+/**
+ * Render the default fallback icon (internal helper)
+ */
+async function renderFallbackIcon(options: IconRenderOptions): Promise<string | null> {
+  const parsed = parseIdentifier(DEFAULT_FALLBACK_ICON);
+  if (!parsed) return null;
+
+  const iconSet = await loadCollection(parsed.collection);
+  if (!iconSet) return null;
+
+  const iconData = getIconData(iconSet, parsed.name);
+  if (!iconData) return null;
+
+  return renderIconData(iconData, options);
+}
+
+/**
+ * Render multiple icons efficiently in a single batch.
+ * Groups icons by collection, loads each collection once, then renders all icons.
+ *
+ * @param identifiers - Array of icon identifiers (e.g., ["lucide:home", "simple-icons:github"])
+ * @param options - Render options applied to all icons
+ * @returns Map of identifier to rendered SVG string (missing icons get fallback)
+ */
+export async function renderIconsBatch(
+  identifiers: string[],
+  options: IconRenderOptions = {},
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+
+  if (identifiers.length === 0) {
+    return results;
+  }
+
+  // Parse and group by collection
+  const byCollection = new Map<string, { identifier: string; name: string }[]>();
+  const invalidIdentifiers: string[] = [];
+
+  for (const identifier of identifiers) {
+    const parsed = parseIdentifier(identifier);
+    if (!parsed) {
+      invalidIdentifiers.push(identifier);
+      continue;
+    }
+
+    const group = byCollection.get(parsed.collection) || [];
+    group.push({ identifier, name: parsed.name });
+    byCollection.set(parsed.collection, group);
+  }
+
+  if (invalidIdentifiers.length > 0) {
+    logger.warn("Invalid icon identifiers in batch", { identifiers: invalidIdentifiers });
+  }
+
+  // Load all needed collections in parallel
+  const collections = Array.from(byCollection.keys());
+  const loadedCollections = await Promise.all(
+    collections.map(async (collection) => ({
+      collection,
+      iconSet: await loadCollection(collection),
+    })),
+  );
+
+  // Build lookup map
+  const collectionMap = new Map<string, IconifyJSON>();
+  for (const { collection, iconSet } of loadedCollections) {
+    if (iconSet) {
+      collectionMap.set(collection, iconSet);
+    }
+  }
+
+  // Render all icons
+  const missingIcons: string[] = [];
+
+  for (const [collection, icons] of byCollection) {
+    const iconSet = collectionMap.get(collection);
+    if (!iconSet) {
+      missingIcons.push(...icons.map((i) => i.identifier));
+      continue;
+    }
+
+    for (const { identifier, name } of icons) {
+      const iconData = getIconData(iconSet, name);
+      if (!iconData) {
+        missingIcons.push(identifier);
+        continue;
+      }
+
+      try {
+        const svg = renderIconData(iconData, options);
+        results.set(identifier, svg);
+      } catch (error) {
+        logger.warn(`Failed to render icon: ${identifier}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        missingIcons.push(identifier);
+      }
+    }
+  }
+
+  // Add fallback for missing icons
+  if (missingIcons.length > 0) {
+    logger.warn("Icons not found in batch, using fallback", {
+      missing: missingIcons,
+      fallback: DEFAULT_FALLBACK_ICON,
+    });
+
+    // Render fallback icon once
+    const fallbackSvg = await renderFallbackIcon(options);
+    if (fallbackSvg) {
+      for (const identifier of missingIcons) {
+        results.set(identifier, fallbackSvg);
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Get single icon data (for API endpoint use only)
+ */
+export async function getIconForApi(
+  identifier: string,
+): Promise<{ identifier: string; collection: string; name: string; svg: string } | null> {
   const parsed = parseIdentifier(identifier);
   if (!parsed) {
     logger.warn(`Invalid icon identifier: ${identifier}`);
@@ -95,14 +272,12 @@ export async function getIcon(identifier: string): Promise<IconData | null> {
     return null;
   }
 
-  // Get icon data from the set
   const iconData = getIconData(iconSet, name);
   if (!iconData) {
     logger.warn(`Icon not found: ${identifier}`);
     return null;
   }
 
-  // Build SVG
   const svg = renderIconData(iconData);
 
   return {
@@ -114,74 +289,7 @@ export async function getIcon(identifier: string): Promise<IconData | null> {
 }
 
 /**
- * Render icon data to SVG string
- */
-function renderIconData(iconData: ReturnType<typeof getIconData>): string {
-  if (!iconData) {
-    throw new Error("Icon data is null");
-  }
-
-  // Convert icon data to SVG attributes
-  const renderData = iconToSVG(iconData);
-
-  // Get SVG body
-  const body = replaceIDs(iconData.body);
-
-  // Build SVG element
-  const attributes = {
-    ...renderData.attributes,
-    xmlns: "http://www.w3.org/2000/svg",
-    "xmlns:xlink": "http://www.w3.org/1999/xlink",
-  };
-
-  const attributeString = Object.entries(attributes)
-    .map(([key, value]) => `${key}="${value}"`)
-    .join(" ");
-
-  return `<svg ${attributeString}>${body}</svg>`;
-}
-
-/**
- * Render icon SVG with custom options
- */
-export async function renderIconSVG(
-  identifier: string,
-  options: IconRenderOptions = {},
-): Promise<string | null> {
-  const iconData = await getIcon(identifier);
-
-  if (!iconData) {
-    // Try fallback icon if provided, otherwise use default
-    if (identifier !== DEFAULT_FALLBACK_ICON) {
-      logger.warn(`Icon not found, using fallback: ${identifier}`);
-      return renderIconSVG(DEFAULT_FALLBACK_ICON, options);
-    }
-    return null;
-  }
-
-  let svg = iconData.svg;
-
-  // Apply custom class
-  if (options.class) {
-    svg = svg.replace("<svg ", `<svg class="${options.class}" `);
-  }
-
-  // Apply custom size
-  if (options.size) {
-    svg = svg.replace(/width="[^"]*"/, `width="${options.size}"`);
-    svg = svg.replace(/height="[^"]*"/, `height="${options.size}"`);
-  }
-
-  // Apply custom color (replace currentColor)
-  if (options.color) {
-    svg = svg.replace(/currentColor/g, options.color);
-  }
-
-  return svg;
-}
-
-/**
- * Get all available collections
+ * Get all available collections with metadata
  */
 export async function getCollections(): Promise<IconCollection[]> {
   const collections: IconCollection[] = [];
@@ -210,8 +318,7 @@ export async function searchIcons(
   query: string,
   limit: number = 50,
 ): Promise<{ identifier: string; collection: string; name: string }[]> {
-  const results: { identifier: string; collection: string; name: string }[] =
-    [];
+  const results: { identifier: string; collection: string; name: string }[] = [];
 
   // Parse query for collection prefix (e.g., "lucide:home" or "lucide:")
   const colonIndex = query.indexOf(":");
@@ -254,7 +361,8 @@ export async function searchIcons(
 }
 
 /**
- * Pre-cache common icon collections on server startup
+ * Pre-cache common icon collections on server startup.
+ * Call this in hooks.server.ts before handling requests.
  */
 export async function preCacheCollections(): Promise<void> {
   logger.info("Pre-caching icon collections...", {
@@ -270,7 +378,3 @@ export async function preCacheCollections(): Promise<void> {
     cached: collectionCache.size,
   });
 }
-
-// TODO: Future enhancement - Support color customization in icon identifiers
-// Format idea: "lucide:home#color=blue-500" or separate color field in DB
-// Would allow per-project icon theming without hardcoded styles

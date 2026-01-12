@@ -1,10 +1,14 @@
 import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { dev } from "$app/environment";
 import { initLogger } from "$lib/logger";
+import { preCacheCollections } from "$lib/server/icons";
 import { getLogger } from "@logtape/logtape";
 import { minify } from "html-minifier-terser";
 
 await initLogger();
+
+// Pre-cache icon collections before handling any requests
+await preCacheCollections();
 
 const logger = getLogger(["ssr", "error"]);
 

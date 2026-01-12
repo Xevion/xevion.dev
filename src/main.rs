@@ -7,6 +7,7 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 
 mod assets;
 mod auth;
+mod cache;
 mod config;
 mod db;
 mod formatter;
@@ -22,6 +23,7 @@ mod state;
 mod tarpit;
 mod utils;
 
+use cache::{IsrCache, IsrCacheConfig};
 use config::{Args, ListenAddr};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 use health::HealthChecker;
@@ -153,12 +155,25 @@ async fn main() {
         "Tarpit initialized"
     );
 
+    // Initialize ISR cache
+    let isr_cache_config = IsrCacheConfig::from_env();
+    let isr_cache = Arc::new(IsrCache::new(isr_cache_config.clone()));
+
+    tracing::info!(
+        enabled = isr_cache_config.enabled,
+        max_entries = isr_cache_config.max_entries,
+        fresh_sec = isr_cache_config.fresh_duration.as_secs(),
+        stale_sec = isr_cache_config.stale_duration.as_secs(),
+        "ISR cache initialized"
+    );
+
     let state = Arc::new(AppState {
         client,
         health_checker,
         tarpit_state,
         pool: pool.clone(),
         session_manager: session_manager.clone(),
+        isr_cache,
     });
 
     // Regenerate common OGP images on startup

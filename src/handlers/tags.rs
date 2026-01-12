@@ -78,7 +78,12 @@ pub async fn create_tag_handler(
     )
     .await
     {
-        Ok(tag) => (StatusCode::CREATED, Json(tag.to_api_tag())).into_response(),
+        Ok(tag) => {
+            // Invalidate cached pages - tag list appears on project pages
+            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+
+            (StatusCode::CREATED, Json(tag.to_api_tag())).into_response()
+        }
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
             StatusCode::CONFLICT,
             Json(serde_json::json!({
@@ -219,7 +224,12 @@ pub async fn update_tag_handler(
     )
     .await
     {
-        Ok(updated_tag) => Json(updated_tag.to_api_tag()).into_response(),
+        Ok(updated_tag) => {
+            // Invalidate cached pages - tag updates affect project displays
+            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+
+            Json(updated_tag.to_api_tag()).into_response()
+        }
         Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => (
             StatusCode::CONFLICT,
             Json(serde_json::json!({

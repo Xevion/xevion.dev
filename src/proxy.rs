@@ -6,19 +6,21 @@ use axum::{
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{
-    assets, db,
+    assets,
+    cache::{self, CachedResponse},
+    db,
     state::{AppState, ProxyError},
     tarpit::{self, TarpitState},
     utils,
 };
 
-/// ISR handler - serves pages through Bun SSR with session validation
+/// ISR handler - serves pages through Bun SSR with caching and session validation
 #[tracing::instrument(skip(state, req), fields(path = %req.uri().path(), method = %req.method()))]
 pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let method = req.method().clone();
     let uri = req.uri();
     let path = uri.path();
-    let query = uri.query().unwrap_or("");
+    let query = uri.query();
 
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
         tracing::warn!(method = %method, path = %path, "Non-GET/HEAD request to non-API route");
@@ -72,14 +74,11 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         return response;
     }
 
-    let path_with_query = if query.is_empty() {
-        path.to_string()
-    } else {
-        format!("{path}?{query}")
-    };
+    let path_with_query = cache::cache_key(path, query);
 
     // Build trusted headers to forward to downstream
     let mut forward_headers = HeaderMap::new();
+    let mut is_authenticated = false;
 
     // SECURITY: Strip any X-Session-User header from incoming request to prevent spoofing
 
@@ -101,6 +100,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
                                     axum::http::HeaderValue::from_str(&session.username)
                                 {
                                     forward_headers.insert("x-session-user", username_value);
+                                    is_authenticated = true;
                                 }
                             }
                         }
@@ -111,51 +111,64 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         }
     }
 
+    // Determine if this request can use the cache
+    // Skip cache for authenticated requests (they see different content)
+    let use_cache = !is_authenticated && cache::is_cacheable_path(path);
+
+    // Try to serve from cache for public requests
+    if use_cache {
+        if let Some(cached) = state.isr_cache.get(&path_with_query).await {
+            let fresh_duration = state.isr_cache.config.fresh_duration;
+            let stale_duration = state.isr_cache.config.stale_duration;
+
+            if cached.is_fresh(fresh_duration) {
+                // Fresh cache hit - serve immediately
+                let age_ms = cached.age().as_millis() as u64;
+                tracing::debug!(cache = "hit", age_ms, "ISR cache hit (fresh)");
+
+                return serve_cached_response(&cached, is_head);
+            } else if cached.is_stale_but_usable(fresh_duration, stale_duration) {
+                // Stale cache hit - serve immediately and refresh in background
+                let age_ms = cached.age().as_millis() as u64;
+                tracing::debug!(cache = "stale", age_ms, "ISR cache hit (stale, refreshing)");
+
+                // Spawn background refresh if not already refreshing
+                if state.isr_cache.start_refresh(&path_with_query) {
+                    let state_clone = state.clone();
+                    let path_clone = path_with_query.clone();
+                    tokio::spawn(async move {
+                        refresh_cache_entry(state_clone, path_clone).await;
+                    });
+                }
+
+                return serve_cached_response(&cached, is_head);
+            }
+            // Cache entry is too old - fall through to fetch
+        }
+    }
+
+    // Cache miss or non-cacheable - fetch from Bun
     let start = std::time::Instant::now();
 
     match proxy_to_bun(&path_with_query, state.clone(), forward_headers).await {
         Ok((status, headers, body)) => {
             let duration_ms = start.elapsed().as_millis() as u64;
-            let cache = "miss";
 
-            let is_static = utils::is_static_asset(path);
-            let is_page = utils::is_page_route(path);
-
-            match (status.as_u16(), is_static, is_page) {
-                (200..=299, true, _) => {
-                    tracing::trace!(status = status.as_u16(), duration_ms, cache, "ISR request");
-                }
-                (404, true, _) => {
-                    tracing::warn!(
-                        status = status.as_u16(),
-                        duration_ms,
-                        cache,
-                        "ISR request - missing asset"
-                    );
-                }
-                (500..=599, true, _) => {
-                    tracing::error!(
-                        status = status.as_u16(),
-                        duration_ms,
-                        cache,
-                        "ISR request - server error"
-                    );
-                }
-                (200..=299, _, true) => {
-                    tracing::debug!(status = status.as_u16(), duration_ms, cache, "ISR request");
-                }
-                (404, _, true) => {}
-                (500..=599, _, _) => {
-                    tracing::error!(
-                        status = status.as_u16(),
-                        duration_ms,
-                        cache,
-                        "ISR request - server error"
-                    );
-                }
-                _ => {
-                    tracing::debug!(status = status.as_u16(), duration_ms, cache, "ISR request");
-                }
+            // Cache successful responses for public requests
+            if use_cache && status.is_success() {
+                let cached_response = CachedResponse::new(status, headers.clone(), body.clone());
+                state
+                    .isr_cache
+                    .insert(path_with_query.clone(), cached_response)
+                    .await;
+                tracing::debug!(
+                    cache = "miss",
+                    status = status.as_u16(),
+                    duration_ms,
+                    "ISR request (cached)"
+                );
+            } else {
+                log_isr_request(path, status, duration_ms, "bypass");
             }
 
             // Intercept error responses for HTML requests
@@ -190,6 +203,93 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
                 format!("Failed to render page: {err}"),
             )
                 .into_response()
+        }
+    }
+}
+
+/// Serve a cached response
+fn serve_cached_response(cached: &CachedResponse, is_head: bool) -> Response {
+    if is_head {
+        (cached.status, cached.headers.clone()).into_response()
+    } else {
+        (cached.status, cached.headers.clone(), cached.body.clone()).into_response()
+    }
+}
+
+/// Background task to refresh a stale cache entry
+async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
+    // No auth headers for background refresh (public content only)
+    let forward_headers = HeaderMap::new();
+
+    match proxy_to_bun(&cache_key, state.clone(), forward_headers).await {
+        Ok((status, headers, body)) => {
+            if status.is_success() {
+                let cached_response = CachedResponse::new(status, headers, body);
+                state
+                    .isr_cache
+                    .insert(cache_key.clone(), cached_response)
+                    .await;
+                tracing::debug!(path = %cache_key, "Cache entry refreshed");
+            } else {
+                tracing::warn!(
+                    path = %cache_key,
+                    status = status.as_u16(),
+                    "Background refresh returned non-success status, keeping stale entry"
+                );
+            }
+        }
+        Err(err) => {
+            tracing::warn!(
+                path = %cache_key,
+                error = %err,
+                "Background refresh failed, keeping stale entry"
+            );
+        }
+    }
+
+    // Mark refresh as complete
+    state.isr_cache.end_refresh(&cache_key);
+}
+
+/// Log ISR request with appropriate level based on status
+fn log_isr_request(path: &str, status: StatusCode, duration_ms: u64, cache: &str) {
+    let is_static = utils::is_static_asset(path);
+    let is_page = utils::is_page_route(path);
+
+    match (status.as_u16(), is_static, is_page) {
+        (200..=299, true, _) => {
+            tracing::trace!(status = status.as_u16(), duration_ms, cache, "ISR request");
+        }
+        (404, true, _) => {
+            tracing::warn!(
+                status = status.as_u16(),
+                duration_ms,
+                cache,
+                "ISR request - missing asset"
+            );
+        }
+        (500..=599, true, _) => {
+            tracing::error!(
+                status = status.as_u16(),
+                duration_ms,
+                cache,
+                "ISR request - server error"
+            );
+        }
+        (200..=299, _, true) => {
+            tracing::debug!(status = status.as_u16(), duration_ms, cache, "ISR request");
+        }
+        (404, _, true) => {}
+        (500..=599, _, _) => {
+            tracing::error!(
+                status = status.as_u16(),
+                duration_ms,
+                cache,
+                "ISR request - server error"
+            );
+        }
+        _ => {
+            tracing::debug!(status = status.as_u16(), duration_ms, cache, "ISR request");
         }
     }
 }

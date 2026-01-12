@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::{auth::SessionManager, health::HealthChecker, http::HttpClient, tarpit::TarpitState};
+use crate::{
+    auth::SessionManager, cache::IsrCache, health::HealthChecker, http::HttpClient,
+    tarpit::TarpitState,
+};
 
 /// Application state shared across all handlers
 #[derive(Clone)]
@@ -10,6 +13,7 @@ pub struct AppState {
     pub tarpit_state: Arc<TarpitState>,
     pub pool: sqlx::PgPool,
     pub session_manager: Arc<SessionManager>,
+    pub isr_cache: Arc<IsrCache>,
 }
 
 /// Errors that can occur during proxying to Bun

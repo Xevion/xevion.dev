@@ -1,3 +1,4 @@
+import { dev } from "$app/environment";
 import { configure, getConsoleSink, type LogRecord } from "@logtape/logtape";
 
 interface RailwayLogEntry {
@@ -27,6 +28,9 @@ export async function initLogger() {
   const useJsonLogs =
     process.env.LOG_JSON === "true" || process.env.LOG_JSON === "1";
 
+  const logLevel = (process.env.LOG_LEVEL?.toLowerCase() ??
+    (dev ? "debug" : "info")) as "debug" | "info" | "warning" | "error";
+
   const jsonSink = (record: LogRecord) => {
     process.stdout.write(railwayFormatter(record));
   };
@@ -47,7 +51,7 @@ export async function initLogger() {
         },
         {
           category: [],
-          lowestLevel: "debug",
+          lowestLevel: logLevel,
           sinks: [useJsonLogs ? "json" : "console"],
         },
       ],

@@ -243,6 +243,9 @@ pub async fn create_project_handler(
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project created");
 
+    // Invalidate cached pages that display projects
+    state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+
     (
         StatusCode::CREATED,
         Json(project.to_api_admin_project(tags)),
@@ -410,6 +413,14 @@ pub async fn update_project_handler(
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project updated");
 
+    // Invalidate cached pages that display projects
+    // Also invalidate slug-based path in case project detail pages exist
+    let project_path = format!("/projects/{}", project.slug);
+    state
+        .isr_cache
+        .invalidate_many(&["/", "/projects", &project_path])
+        .await;
+
     Json(project.to_api_admin_project(tags)).into_response()
 }
 
@@ -469,6 +480,14 @@ pub async fn delete_project_handler(
     match db::delete_project(&state.pool, project_id).await {
         Ok(()) => {
             tracing::info!(project_id = %project_id, project_name = %project.name, "Project deleted");
+
+            // Invalidate cached pages that display projects
+            let project_path = format!("/projects/{}", project.slug);
+            state
+                .isr_cache
+                .invalidate_many(&["/", "/projects", &project_path])
+                .await;
+
             Json(project.to_api_admin_project(tags)).into_response()
         }
         Err(err) => {
@@ -588,13 +607,18 @@ pub async fn add_project_tag_handler(
     };
 
     match db::add_tag_to_project(&state.pool, project_id, tag_id).await {
-        Ok(()) => (
-            StatusCode::CREATED,
-            Json(serde_json::json!({
-                "message": "Tag added to project"
-            })),
-        )
-            .into_response(),
+        Ok(()) => {
+            // Invalidate cached pages - tags affect how projects are displayed
+            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+
+            (
+                StatusCode::CREATED,
+                Json(serde_json::json!({
+                    "message": "Tag added to project"
+                })),
+            )
+                .into_response()
+        }
         Err(sqlx::Error::Database(db_err)) if db_err.is_foreign_key_violation() => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
@@ -655,13 +679,18 @@ pub async fn remove_project_tag_handler(
     };
 
     match db::remove_tag_from_project(&state.pool, project_id, tag_id).await {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(serde_json::json!({
-                "message": "Tag removed from project"
-            })),
-        )
-            .into_response(),
+        Ok(()) => {
+            // Invalidate cached pages - tags affect how projects are displayed
+            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "message": "Tag removed from project"
+                })),
+            )
+                .into_response()
+        }
         Err(err) => {
             tracing::error!(error = %err, "Failed to remove tag from project");
             (
