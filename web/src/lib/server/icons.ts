@@ -54,13 +54,15 @@ async function loadCollectionFromDisk(
     // Cache the collection
     collectionCache.set(collection, iconSet);
 
-    logger.debug(`Loaded icon collection: ${collection}`, {
+    logger.debug("Loaded icon collection", {
+      collection,
       total: iconSet.info?.total || Object.keys(iconSet.icons).length,
     });
 
     return iconSet;
   } catch (error) {
-    logger.warn(`Failed to load icon collection: ${collection}`, {
+    logger.warn("Failed to load icon collection", {
+      collection,
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -239,7 +241,8 @@ export async function renderIconsBatch(
         const svg = renderIconData(iconData, options);
         results.set(identifier, svg);
       } catch (error) {
-        logger.warn(`Failed to render icon: ${identifier}`, {
+        logger.warn("Failed to render icon", {
+          identifier,
           error: error instanceof Error ? error.message : String(error),
         });
         missingIcons.push(identifier);
@@ -277,7 +280,7 @@ export async function getIconForApi(identifier: string): Promise<{
 } | null> {
   const parsed = parseIdentifier(identifier);
   if (!parsed) {
-    logger.warn(`Invalid icon identifier: ${identifier}`);
+    logger.warn("Invalid icon identifier", { identifier });
     return null;
   }
 
@@ -290,7 +293,7 @@ export async function getIconForApi(identifier: string): Promise<{
 
   const iconData = getIconData(iconSet, name);
   if (!iconData) {
-    logger.warn(`Icon not found: ${identifier}`);
+    logger.warn("Icon not found", { identifier });
     return null;
   }
 

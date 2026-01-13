@@ -72,8 +72,8 @@ impl SessionManager {
         }
 
         tracing::info!(
-            "Loaded {} active sessions from database",
-            self.sessions.len()
+            session_count = self.sessions.len(),
+            "Loaded active sessions from database"
         );
 
         Ok(())
@@ -111,7 +111,7 @@ impl SessionManager {
 
         self.sessions.insert(id, session.clone());
 
-        tracing::debug!("Created session {} for user {}", id, user_id);
+        tracing::debug!(session_id = %id, user_id, "Created session");
 
         Ok(session)
     }
@@ -139,7 +139,7 @@ impl SessionManager {
             .execute(&self.pool)
             .await?;
 
-        tracing::debug!("Deleted session {}", session_id);
+        tracing::debug!(session_id = %session_id, "Deleted session");
 
         Ok(())
     }
@@ -157,7 +157,7 @@ impl SessionManager {
         self.sessions.retain(|_, session| session.expires_at >= now);
 
         if expired_count > 0 {
-            tracing::info!("Cleaned up {} expired sessions", expired_count);
+            tracing::info!(expired_count, "Cleaned up expired sessions");
         }
 
         Ok(expired_count)
@@ -234,9 +234,9 @@ pub async fn ensure_admin_user(pool: &PgPool) -> Result<(), Box<dyn std::error::
 
     if get_admin_user(pool, &username).await?.is_none() {
         create_admin_user(pool, &username, &password).await?;
-        tracing::info!("Created admin user: {}", username);
+        tracing::info!(username, "Created admin user");
     } else {
-        tracing::debug!("Admin user '{}' already exists", username);
+        tracing::debug!(username, "Admin user already exists");
     }
 
     Ok(())

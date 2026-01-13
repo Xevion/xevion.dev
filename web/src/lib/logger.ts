@@ -10,11 +10,12 @@ interface RailwayLogEntry {
 }
 
 function railwayFormatter(record: LogRecord): string {
+  const categoryTarget = record.category.join(":");
   const entry: RailwayLogEntry = {
     timestamp: new Date().toISOString(),
     level: record.level.toLowerCase(),
     message: record.message.join(" "),
-    target: record.category.join(":"),
+    target: categoryTarget ? `bun:${categoryTarget}` : "bun",
   };
 
   if (record.properties && Object.keys(record.properties).length > 0) {

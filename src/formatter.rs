@@ -13,6 +13,17 @@ use tracing_subscriber::registry::LookupSpan;
 const TIMESTAMP_FORMAT: &[FormatItem<'static>] =
     format_description!("[hour]:[minute]:[second].[subsecond digits:3]");
 
+/// Transform tracing target from `api::*` to `rust::*` for combined log differentiation
+fn transform_target(target: &str) -> String {
+    if target == "api" {
+        "rust".to_string()
+    } else if let Some(rest) = target.strip_prefix("api::") {
+        format!("rust::{rest}")
+    } else {
+        target.to_string()
+    }
+}
+
 pub struct CustomPrettyFormatter;
 
 impl<S, N> FormatEvent<S, N> for CustomPrettyFormatter
@@ -63,10 +74,11 @@ where
             }
         }
 
+        let target = transform_target(meta.target());
         if writer.has_ansi_escapes() {
-            write!(writer, "{}: ", Color::DarkGray.paint(meta.target()))?;
+            write!(writer, "{}: ", Color::DarkGray.paint(&target))?;
         } else {
-            write!(writer, "{}: ", meta.target())?;
+            write!(writer, "{}: ", target)?;
         }
 
         ctx.format_fields(writer.by_ref(), event)?;
@@ -189,7 +201,7 @@ where
                 .unwrap_or_else(|_| String::from("1970-01-01T00:00:00Z")),
             message: message.unwrap_or_default(),
             level: meta.level().to_string().to_lowercase(),
-            target: meta.target().to_string(),
+            target: transform_target(meta.target()),
             fields,
         };
 

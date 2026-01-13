@@ -88,7 +88,7 @@ async fn main() {
         .expect("Failed to connect to database");
 
     // Run migrations on startup
-    tracing::info!("Running database migrations...");
+    tracing::info!("Running database migrations");
     sqlx::migrate!().run(&pool).await.unwrap_or_else(|e| {
         tracing::error!(error = %e, "Migration failed");
         std::process::exit(1);
@@ -146,10 +146,8 @@ async fn main() {
 
     tracing::info!(
         enabled = tarpit_state.config.enabled,
-        delay_range_ms = format!(
-            "{}-{}",
-            tarpit_state.config.delay_min_ms, tarpit_state.config.delay_max_ms
-        ),
+        delay_min_ms = tarpit_state.config.delay_min_ms,
+        delay_max_ms = tarpit_state.config.delay_max_ms,
         max_global = tarpit_state.config.max_global_connections,
         max_per_ip = tarpit_state.config.max_connections_per_ip,
         "Tarpit initialized"
