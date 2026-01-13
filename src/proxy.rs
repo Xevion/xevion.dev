@@ -22,6 +22,16 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let path = uri.path();
     let query = uri.query();
 
+    // Redirect trailing slashes to non-trailing (except root)
+    if path.len() > 1 && path.ends_with('/') {
+        let normalized = path.trim_end_matches('/');
+        let redirect_uri = match query {
+            Some(q) => format!("{normalized}?{q}"),
+            None => normalized.to_string(),
+        };
+        return axum::response::Redirect::permanent(&redirect_uri).into_response();
+    }
+
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
         tracing::warn!(method = %method, path = %path, "Non-GET/HEAD request to non-API route");
 

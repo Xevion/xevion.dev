@@ -4,6 +4,8 @@ import { apiFetch } from "$lib/api.server";
 import type { SiteSettings } from "$lib/admin-types";
 import { building } from "$app/environment";
 
+export const trailingSlash = "never";
+
 const DEFAULT_SETTINGS: SiteSettings = {
   identity: {
     siteTitle: "xevion.dev",
