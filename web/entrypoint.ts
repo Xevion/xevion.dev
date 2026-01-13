@@ -6,13 +6,20 @@ const API_SOCKET = "/tmp/api.sock";
 const PORT = process.env.PORT || "8080";
 const LOG_JSON = process.env.LOG_JSON || "true";
 
+function tryUnlink(path: string) {
+  try {
+    unlinkSync(path);
+  } catch (e) {
+    // ENOENT is expected (socket doesn't exist yet), other errors are unexpected
+    if (e instanceof Error && "code" in e && e.code !== "ENOENT") {
+      console.error(`Failed to cleanup ${path}: ${e.message}`);
+    }
+  }
+}
+
 function cleanup() {
-  try {
-    unlinkSync(BUN_SOCKET);
-  } catch {}
-  try {
-    unlinkSync(API_SOCKET);
-  } catch {}
+  tryUnlink(BUN_SOCKET);
+  tryUnlink(API_SOCKET);
 }
 
 // Cleanup on signals

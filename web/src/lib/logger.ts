@@ -1,5 +1,6 @@
 import { dev } from "$app/environment";
 import { configure, getConsoleSink, type LogRecord } from "@logtape/logtape";
+import { requestContext } from "$lib/server/context";
 
 interface RailwayLogEntry {
   timestamp: string;
@@ -10,12 +11,14 @@ interface RailwayLogEntry {
 }
 
 function railwayFormatter(record: LogRecord): string {
+  const ctx = requestContext.getStore();
   const categoryTarget = record.category.join(":");
   const entry: RailwayLogEntry = {
     timestamp: new Date().toISOString(),
     level: record.level.toLowerCase(),
     message: record.message.join(" "),
     target: categoryTarget ? `bun:${categoryTarget}` : "bun",
+    ...(ctx?.requestId && { req_id: ctx.requestId }),
   };
 
   if (record.properties && Object.keys(record.properties).length > 0) {

@@ -15,7 +15,6 @@ use crate::{
 };
 
 /// ISR handler - serves pages through Bun SSR with caching and session validation
-#[tracing::instrument(skip(state, req), fields(path = %req.uri().path(), method = %req.method()))]
 pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let method = req.method().clone();
     let uri = req.uri();
@@ -69,7 +68,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let is_head = method == axum::http::Method::HEAD;
 
     if path.starts_with("/api/") {
-        tracing::error!("API request reached ISR handler - routing bug!");
+        tracing::error!(path = %path, "API request reached ISR handler - routing bug");
         return (StatusCode::INTERNAL_SERVER_ERROR, "Internal routing error").into_response();
     }
 
@@ -103,6 +102,13 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     // Build trusted headers to forward to downstream
     let mut forward_headers = HeaderMap::new();
     let mut is_authenticated = false;
+
+    // Forward request ID to Bun (set by RequestIdLayer)
+    if let Some(request_id) = req.extensions().get::<crate::middleware::RequestId>() {
+        if let Ok(header_value) = axum::http::HeaderValue::from_str(&request_id.0) {
+            forward_headers.insert("x-request-id", header_value);
+        }
+    }
 
     // SECURITY: Strip any X-Session-User header from incoming request to prevent spoofing
 
@@ -382,7 +388,7 @@ pub async fn perform_health_check(
             false
         }
         Err(_) => {
-            tracing::error!("Health check failed: timeout after 5s");
+            tracing::error!(timeout_sec = 5, "Health check timed out");
             false
         }
     };

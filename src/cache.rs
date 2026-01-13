@@ -188,8 +188,9 @@ impl IsrCache {
 
     /// Invalidate all cached entries
     pub async fn invalidate_all(&self) {
+        let previous_count = self.cache.entry_count();
         self.cache.invalidate_all();
-        tracing::info!("All cache entries invalidated");
+        tracing::info!(previous_count, "All cache entries invalidated");
     }
 
     /// Get cache statistics

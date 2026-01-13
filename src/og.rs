@@ -89,19 +89,19 @@ pub async fn regenerate_common_images(state: Arc<AppState>) {
     // Wait 2 seconds before starting
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    tracing::info!("Ensuring common OG images exist");
+    tracing::debug!("Checking common OG images");
     let specs = vec![OGImageSpec::Index, OGImageSpec::Projects];
 
-    for spec in specs {
-        match ensure_og_image(&spec, state.clone()).await {
-            Ok(()) => {
-                tracing::info!(r2_key = spec.r2_key(), "Common OG image ready");
-            }
+    let mut ready = Vec::new();
+
+    for spec in &specs {
+        match ensure_og_image(spec, state.clone()).await {
+            Ok(()) => ready.push(spec.r2_key()),
             Err(e) => {
-                tracing::error!(r2_key = spec.r2_key(), error = %e, "Failed to ensure OG image");
+                tracing::error!(r2_key = spec.r2_key(), error = %e, "OG image failed");
             }
         }
     }
 
-    tracing::info!("Finished ensuring common OG images");
+    tracing::info!(images = ?ready, "Common OG images ready");
 }

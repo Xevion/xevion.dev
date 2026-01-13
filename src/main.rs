@@ -1,8 +1,9 @@
 use clap::Parser;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod assets;
@@ -87,14 +88,43 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    // Run migrations on startup
-    tracing::info!("Running database migrations");
-    sqlx::migrate!().run(&pool).await.unwrap_or_else(|e| {
+    // Check and run migrations on startup
+    let migrator = sqlx::migrate!();
+
+    // Query applied migrations directly from the database
+    let applied_versions: HashSet<i64> =
+        sqlx::query_scalar::<_, i64>("SELECT version FROM _sqlx_migrations ORDER BY version")
+            .fetch_all(&pool)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+
+    let pending: Vec<_> = migrator
+        .iter()
+        .filter(|m| !m.migration_type.is_down_migration())
+        .filter(|m| !applied_versions.contains(&m.version))
+        .map(|m| m.description.as_ref())
+        .collect();
+
+    if pending.is_empty() {
+        let last_version = applied_versions.iter().max();
+        let last_name = last_version
+            .and_then(|v| migrator.iter().find(|m| m.version == *v))
+            .map(|m| m.description.as_ref());
+        tracing::debug!(last_migration = ?last_name, "Database schema is current");
+    } else {
+        tracing::warn!(migrations = ?pending, "Pending database migrations");
+    }
+
+    migrator.run(&pool).await.unwrap_or_else(|e| {
         tracing::error!(error = %e, "Migration failed");
         std::process::exit(1);
     });
 
-    tracing::info!("Migrations applied successfully");
+    if !pending.is_empty() {
+        tracing::info!(count = pending.len(), "Migrations applied");
+    }
 
     // Ensure admin user exists
     auth::ensure_admin_user(&pool)
@@ -188,7 +218,6 @@ async fn main() {
         trust_request_id: Option<String>,
     ) -> axum::Router<Arc<AppState>> {
         router
-            .layer(TraceLayer::new_for_http())
             .layer(RequestIdLayer::new(trust_request_id))
             .layer(CorsLayer::permissive())
             .layer(RequestBodyLimitLayer::new(1_048_576))

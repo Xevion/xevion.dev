@@ -29,6 +29,9 @@ function stripAnsi(str: string): string {
   return str.replace(/\u001b\[[0-9;]*m/g, "").trim();
 }
 
+// Module-level flag to prevent reconfiguration across plugin instantiations
+let loggerConfigured = false;
+
 export function jsonLogger(): Plugin {
   const useJsonLogs =
     process.env.LOG_JSON === "true" || process.env.LOG_JSON === "1";
@@ -39,7 +42,6 @@ export function jsonLogger(): Plugin {
     };
   }
 
-  let loggerConfigured = false;
   const configureLogger = async () => {
     if (loggerConfigured) return;
     await configure({

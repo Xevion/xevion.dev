@@ -1,5 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import { env } from "$env/dynamic/private";
+import { requestContext } from "$lib/server/context";
 
 const logger = getLogger(["ssr", "lib", "api"]);
 
@@ -38,6 +39,15 @@ function createSmartFetch(upstreamUrl: string) {
 
     // Remove custom fetch property from options (not part of standard RequestInit)
     delete (fetchOptions as Record<string, unknown>).fetch;
+
+    // Forward request ID to Rust API
+    const ctx = requestContext.getStore();
+    if (ctx?.requestId) {
+      fetchOptions.headers = {
+        ...fetchOptions.headers,
+        "x-request-id": ctx.requestId,
+      };
+    }
 
     // Add Unix socket path if needed
     if (isUnixSocket) {

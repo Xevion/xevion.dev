@@ -122,7 +122,10 @@
           </h2>
           <!-- USERNAME ROW: gap-1.5 controls spacing between elements -->
           <div class="flex items-center gap-1.5 text-sm">
-            <span class="font-mono text-xs px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400">{username}</span>
+            <span
+              class="font-mono text-xs px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400"
+              >{username}</span
+            >
             <button
               onclick={copyUsername}
               class="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
