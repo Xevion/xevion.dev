@@ -30,6 +30,7 @@ check:
       { name: "rustfmt", cmd: ["cargo", "fmt", "--check"] },
     ];
 
+    const isTTY = process.stderr.isTTY;
     const start = Date.now();
     const remaining = new Set(checks.map(c => c.name));
     const results = [];
@@ -53,12 +54,12 @@ check:
       return { ...check, stdout, stderr, exitCode: proc.exitCode, elapsed };
     });
 
-    // Progress updater
-    const interval = setInterval(() => {
+    // Progress updater (only for interactive terminals)
+    const interval = isTTY ? setInterval(() => {
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       const tasks = Array.from(remaining).join(", ");
       process.stderr.write(`\r\x1b[K${elapsed}s [${tasks}]`);
-    }, 100);
+    }, 100) : null;
 
     // Stream outputs as they complete
     let anyFailed = false;
@@ -68,18 +69,18 @@ check:
 
       if (result.exitCode !== 0) {
         anyFailed = true;
-        process.stderr.write(`\r\x1b[K`);
+        if (isTTY) process.stderr.write(`\r\x1b[K`);
         process.stdout.write(`❌ ${result.name} (${result.elapsed}s)\n`);
         if (result.stdout) process.stdout.write(result.stdout);
         if (result.stderr) process.stderr.write(result.stderr);
       } else {
-        process.stderr.write(`\r\x1b[K`);
+        if (isTTY) process.stderr.write(`\r\x1b[K`);
         process.stdout.write(`✅ ${result.name} (${result.elapsed}s)\n`);
       }
     }
 
-    clearInterval(interval);
-    process.stderr.write(`\r\x1b[K`);
+    if (interval) clearInterval(interval);
+    if (isTTY) process.stderr.write(`\r\x1b[K`);
     process.exit(anyFailed ? 1 : 0);
 
 format:
