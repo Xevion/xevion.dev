@@ -8,14 +8,50 @@ pub use settings::*;
 pub use tags::*;
 
 use sqlx::{PgPool, postgres::PgPoolOptions, query};
+use std::time::Duration;
+use tokio::time::sleep;
 
-/// Database connection pool creation
+/// Database connection pool creation with retry logic
+///
+/// Production: Exponential backoff (1s -> 2s -> 4s... -> 30s cap), max 10 attempts
+/// Development: Fail fast (1 attempt)
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
-    PgPoolOptions::new()
+    let max_attempts: u32 = if cfg!(debug_assertions) { 1 } else { 10 };
+    let initial_delay = Duration::from_secs(1);
+    let max_delay = Duration::from_secs(30);
+
+    let pool_options = PgPoolOptions::new()
         .max_connections(20)
-        .acquire_timeout(std::time::Duration::from_secs(3))
-        .connect(database_url)
-        .await
+        .acquire_timeout(Duration::from_secs(3));
+
+    let mut last_error = None;
+    let mut delay = initial_delay;
+
+    for attempt in 1..=max_attempts {
+        match pool_options.clone().connect(database_url).await {
+            Ok(pool) => {
+                if attempt > 1 {
+                    tracing::info!(attempt, "Database connection established after retry");
+                }
+                return Ok(pool);
+            }
+            Err(e) => {
+                last_error = Some(e);
+                if attempt < max_attempts {
+                    tracing::warn!(
+                        attempt,
+                        max_attempts,
+                        delay_secs = delay.as_secs(),
+                        "Database connection failed, retrying..."
+                    );
+                    sleep(delay).await;
+                    delay = (delay * 2).min(max_delay);
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap())
 }
 
 /// Health check query

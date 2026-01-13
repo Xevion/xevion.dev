@@ -89,48 +89,8 @@ COPY web/package.json web/bun.lock ./web/
 RUN cd web && bun install --frozen-lockfile --production && \
     ln -s /app/web/node_modules /app/web/build/node_modules
 
-# Create inline entrypoint script
-RUN cat > /entrypoint.sh << 'EOF'
-#!/bin/sh
-set -e
-
-cleanup() {
-    kill "$BUN_PID" "$RUST_PID" 2>/dev/null || true
-    rm -f /tmp/api.sock /tmp/bun.sock
-    exit 0
-}
-trap cleanup SIGTERM SIGINT
-
-# Start Bun SSR (propagate LOG_JSON and set UPSTREAM_URL)
-cd /app/web/build
-SOCKET_PATH=/tmp/bun.sock LOG_JSON="${LOG_JSON}" UPSTREAM_URL=/tmp/api.sock bun --preload /app/web/console-logger.js index.js &
-BUN_PID=$!
-
-# Wait for Bun socket
-timeout=50
-while [ ! -S /tmp/bun.sock ] && [ $timeout -gt 0 ]; do
-    sleep 0.1
-    timeout=$((timeout - 1))
-done
-
-if [ ! -S /tmp/bun.sock ]; then
-    echo "ERROR: Bun failed to create socket within 5s"
-    exit 1
-fi
-
-# Start Rust server
-# Note: [::] binds to both IPv4 and IPv6 on Linux
-/app/api \
-    --listen "[::]:${PORT:-8080}" \
-    --listen /tmp/api.sock \
-    --downstream /tmp/bun.sock &
-RUST_PID=$!
-
-# Wait for either process to exit
-wait -n "$BUN_PID" "$RUST_PID" 2>/dev/null || wait "$BUN_PID" "$RUST_PID"
-cleanup
-EOF
-RUN chmod +x /entrypoint.sh
+# Copy entrypoint script
+COPY web/entrypoint.ts ./web/
 
 # Environment configuration
 # RUST_LOG - optional, overrides LOG_LEVEL with full tracing filter syntax
@@ -142,7 +102,7 @@ ENV PORT=8080 \
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD wget -q --spider http://localhost:${PORT}/api/health || exit 1
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["bun", "run", "/app/web/entrypoint.ts"]
