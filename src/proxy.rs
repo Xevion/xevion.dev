@@ -32,6 +32,20 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         return axum::response::Redirect::permanent(&redirect_uri).into_response();
     }
 
+    // Redirect .html extensions to clean URLs (skip static assets)
+    if path.ends_with(".html") && !path.starts_with("/_app/") {
+        let clean_path = if path == "/index.html" {
+            "/".to_string()
+        } else {
+            path.strip_suffix(".html").unwrap().to_string()
+        };
+        let redirect_uri = match query {
+            Some(q) => format!("{clean_path}?{q}"),
+            None => clean_path,
+        };
+        return axum::response::Redirect::permanent(&redirect_uri).into_response();
+    }
+
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
         tracing::warn!(method = %method, path = %path, "Non-GET/HEAD request to non-API route");
 
