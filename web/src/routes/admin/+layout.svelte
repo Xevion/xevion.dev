@@ -3,7 +3,6 @@
   import { resolve } from "$app/paths";
   import { page } from "$app/stores";
   import Sidebar from "$lib/components/admin/Sidebar.svelte";
-  import AppWrapper from "$lib/components/AppWrapper.svelte";
   import { authStore } from "$lib/stores/auth.svelte";
   import { getAdminStats } from "$lib/api";
   import type { AdminStats } from "$lib/admin-types";
@@ -54,19 +53,20 @@
   <!-- Login page has no sidebar -->
   {@render children()}
 {:else}
-  <!-- Admin layout with sidebar and dots shader -->
-  <AppWrapper bgColor="bg-admin-bg" showThemeToggle={false}>
-    <Sidebar
-      projectCount={stats?.totalProjects ?? 0}
-      tagCount={stats?.totalTags ?? 0}
-      onlogout={handleLogout}
-    />
+  <!-- Admin layout with sidebar -->
+  <div
+    class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg transition-colors duration-300"
+  ></div>
+  <Sidebar
+    projectCount={stats?.totalProjects ?? 0}
+    tagCount={stats?.totalTags ?? 0}
+    onlogout={handleLogout}
+  />
 
-    <!-- Main content area -->
-    <main class="lg:pl-64">
-      <div class="px-4 py-8 sm:px-6 lg:px-8">
-        {@render children()}
-      </div>
-    </main>
-  </AppWrapper>
+  <!-- Main content area -->
+  <main class="lg:pl-64 min-h-screen text-admin-text">
+    <div class="px-4 py-8 sm:px-6 lg:px-8">
+      {@render children()}
+    </div>
+  </main>
 {/if}

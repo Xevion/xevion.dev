@@ -83,8 +83,7 @@
           <!-- SIZE: avatar (96px) + stroke (4px * 2) = 104px -->
           <!-- POSITION: -m-1 centers the stroke ring behind the avatar -->
           <div
-            class="absolute inset-0 -m-1 rounded-full bg-zinc-100 dark:bg-zinc-900"
-            style="width: 104px; height: 104px;"
+            class="absolute inset-0 -m-1 size-[104px] rounded-full bg-zinc-100 dark:bg-zinc-900"
           ></div>
 
           <!-- Avatar circle -->
@@ -106,8 +105,7 @@
           <!-- POSITION: bottom/right values place center on avatar circumference -->
           <!-- For 96px avatar at 315° (bottom-right): ~4px from edge -->
           <div
-            class="absolute size-5 rounded-full bg-green-500 border-[3px] border-zinc-100 dark:border-zinc-900"
-            style="bottom: 2px; right: 2px;"
+            class="absolute bottom-0.5 right-0.5 size-5 rounded-full bg-green-500 border-[3px] border-zinc-100 dark:border-zinc-900"
           ></div>
         </div>
 

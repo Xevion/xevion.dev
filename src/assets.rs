@@ -86,50 +86,63 @@ pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
     ERROR_PAGES.get_file(&filename).map(|f| f.contents())
 }
 
-/// Serve a prerendered page by path, if it exists.
+/// Serve prerendered content by path, if it exists.
 ///
-/// Prerendered pages are built by SvelteKit at compile time and embedded.
-/// This handles various path patterns:
-/// - `/path` → looks for `path.html`
-/// - `/path/` → looks for `path.html` or `path/index.html`
+/// Prerendered content is built by SvelteKit at compile time and embedded.
+/// This serves any file from the prerendered directory with appropriate MIME types.
+///
+/// Path resolution order:
+/// 1. Exact file match (e.g., `/pgp/__data.json` → `pgp/__data.json`)
+/// 2. HTML file for extensionless paths (e.g., `/pgp` → `pgp.html`)
+/// 3. Index file for directory paths (e.g., `/about/` → `about/index.html`)
 ///
 /// # Arguments
-/// * `path` - Request path (e.g., "/pgp", "/about/")
+/// * `path` - Request path (e.g., "/pgp", "/pgp/__data.json")
 ///
 /// # Returns
-/// * `Some(Response)` - HTML response if prerendered page exists
-/// * `None` - If no prerendered page exists for this path
+/// * `Some(Response)` - Response with appropriate content-type if file exists
+/// * `None` - If no prerendered content exists for this path
 pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
     let path = path.strip_prefix('/').unwrap_or(path);
+
+    // Try exact file match first (handles __data.json, etc.)
+    if let Some(file) = PRERENDERED_PAGES.get_file(path) {
+        return Some(serve_prerendered_file(path, file.contents()));
+    }
+
     let path = path.strip_suffix('/').unwrap_or(path);
 
-    // Try direct HTML file first: "pgp" -> "pgp.html"
-    let html_filename = format!("{}.html", path);
-    if let Some(file) = PRERENDERED_PAGES.get_file(&html_filename) {
-        return Some(serve_html_response(file.contents()));
+    // Try as HTML file: "pgp" -> "pgp.html"
+    let html_path = format!("{}.html", path);
+    if let Some(file) = PRERENDERED_PAGES.get_file(&html_path) {
+        return Some(serve_prerendered_file(&html_path, file.contents()));
     }
 
-    // Try index.html pattern: "path" -> "path/index.html"
-    let index_filename = format!("{}/index.html", path);
-    if let Some(file) = PRERENDERED_PAGES.get_file(&index_filename) {
-        return Some(serve_html_response(file.contents()));
-    }
-
-    // Try root index: "" -> "index.html"
-    if path.is_empty() {
-        if let Some(file) = PRERENDERED_PAGES.get_file("index.html") {
-            return Some(serve_html_response(file.contents()));
-        }
+    // Try index pattern: "path" -> "path/index.html"
+    let index_path = if path.is_empty() {
+        "index.html".to_string()
+    } else {
+        format!("{}/index.html", path)
+    };
+    if let Some(file) = PRERENDERED_PAGES.get_file(&index_path) {
+        return Some(serve_prerendered_file(&index_path, file.contents()));
     }
 
     None
 }
 
-fn serve_html_response(content: &'static [u8]) -> Response {
+fn serve_prerendered_file(path: &str, content: &'static [u8]) -> Response {
+    let mime_type = mime_guess::from_path(path)
+        .first_or_octet_stream()
+        .as_ref()
+        .to_string();
+
     let mut headers = axum::http::HeaderMap::new();
     headers.insert(
         header::CONTENT_TYPE,
-        header::HeaderValue::from_static("text/html; charset=utf-8"),
+        mime_type
+            .parse()
+            .unwrap_or_else(|_| header::HeaderValue::from_static("application/octet-stream")),
     );
     headers.insert(
         header::CACHE_CONTROL,

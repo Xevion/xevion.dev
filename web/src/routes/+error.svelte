@@ -1,6 +1,5 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import AppWrapper from "$lib/components/AppWrapper.svelte";
   import { page } from "$app/stores";
 
   const status = $derived($page.status);
@@ -21,7 +20,7 @@
   <title>{status} - {message}</title>
 </svelte:head>
 
-<AppWrapper>
+<main class="page-main">
   <div class="flex min-h-screen items-center justify-center">
     <div class="mx-4 max-w-2xl text-center">
       <h1 class="mb-4 font-hanken text-8xl text-text-secondary">{status}</h1>
@@ -36,4 +35,4 @@
       {/if}
     </div>
   </div>
-</AppWrapper>
+</main>

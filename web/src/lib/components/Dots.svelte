@@ -5,6 +5,7 @@
 
   let {
     class: className = "",
+    style = "",
     scale = 1000,
     length = 10,
     spacing = 20,
@@ -20,6 +21,7 @@
     dotColor = [200 / 255, 200 / 255, 200 / 255] as [number, number, number],
   }: {
     class?: ClassValue;
+    style?: string;
     scale?: number;
     length?: number;
     spacing?: number;
@@ -404,11 +406,20 @@
   });
 </script>
 
-<canvas
-  bind:this={canvas}
-  class={cn(
-    "pointer-events-none fixed inset-0 -z-10 transition-opacity duration-1300 ease-out",
-    ready ? "opacity-100" : "opacity-0",
-    className,
-  )}
-></canvas>
+<!-- Wrapper for background + dots canvas - single persistent unit -->
+<div class="pointer-events-none fixed inset-0 -z-20" {style}>
+  <!-- Background overlay -->
+  <div
+    class="absolute inset-0 bg-white dark:bg-black transition-colors duration-300"
+  ></div>
+
+  <!-- Dots canvas -->
+  <canvas
+    bind:this={canvas}
+    class={cn(
+      "absolute inset-0 z-10 transition-opacity duration-1300 ease-out",
+      ready ? "opacity-100" : "opacity-0",
+      className,
+    )}
+  ></canvas>
+</div>

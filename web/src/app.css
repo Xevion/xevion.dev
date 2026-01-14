@@ -35,14 +35,6 @@
     var(--tw-gradient-stops)
   );
 
-  /* Animations */
-  --animate-bg-fast: fade 0.5s ease-in-out 0.5s forwards;
-  --animate-bg: fade 2.5s ease-in-out 1.5s forwards;
-  --animate-fade-in: fade-in 2.5s ease-in-out forwards;
-  --animate-title: title 3s ease-out forwards;
-  --animate-fade-left: fade-left 3s ease-in-out forwards;
-  --animate-fade-right: fade-right 3s ease-in-out forwards;
-
   /* Admin colors - Light mode defaults */
   --color-admin-bg: #f9fafb;
   --color-admin-bg-secondary: #ffffff;
@@ -55,19 +47,6 @@
   --color-admin-text-muted: #6b7280;
   --color-admin-accent: #6366f1;
   --color-admin-accent-hover: #818cf8;
-
-  /* Legacy aliases for backward compatibility */
-  --color-admin-panel: #ffffff;
-  --color-admin-hover: #f3f4f6;
-
-  /* Status colors */
-  --color-status-active: #22c55e;
-  --color-status-maintained: #6366f1;
-  --color-status-archived: #71717a;
-  --color-status-hidden: #52525b;
-  --color-status-error: #ef4444;
-  --color-status-warning: #f59e0b;
-  --color-status-info: #06b6d4;
 }
 
 /* Dark mode overrides */
@@ -92,78 +71,6 @@
   --color-admin-text: #fafafa;
   --color-admin-text-secondary: #a1a1aa;
   --color-admin-text-muted: #71717a;
-
-  /* Legacy aliases */
-  --color-admin-panel: #18181b;
-  --color-admin-hover: #3f3f46;
-}
-
-@keyframes fade {
-  0% {
-    opacity: 0%;
-  }
-  100% {
-    opacity: 100%;
-  }
-}
-
-@keyframes fade-in {
-  0% {
-    opacity: 0%;
-  }
-  75% {
-    opacity: 0%;
-  }
-  100% {
-    opacity: 100%;
-  }
-}
-
-@keyframes fade-left {
-  0% {
-    transform: translateX(100%);
-    opacity: 0%;
-  }
-  30% {
-    transform: translateX(0%);
-    opacity: 100%;
-  }
-  100% {
-    opacity: 0%;
-  }
-}
-
-@keyframes fade-right {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0%;
-  }
-  30% {
-    transform: translateX(0%);
-    opacity: 100%;
-  }
-  100% {
-    opacity: 0%;
-  }
-}
-
-@keyframes title {
-  0% {
-    line-height: 0%;
-    letter-spacing: 0.25em;
-    opacity: 0;
-  }
-  25% {
-    line-height: 0%;
-    opacity: 0%;
-  }
-  80% {
-    opacity: 100%;
-  }
-  100% {
-    line-height: 100%;
-    opacity: 100%;
-  }
 }
 
 html,
@@ -193,41 +100,78 @@ body {
   transition-duration: 0.3s !important;
 }
 
-/* OverlayScrollbars theme customization */
-.os-theme-dark,
-.os-theme-light {
-  --os-handle-bg: rgb(63 63 70);
-  --os-handle-bg-hover: rgb(82 82 91);
-  --os-handle-bg-active: rgb(113 113 122);
+html:not(.dark) {
+  .os-scrollbar {
+    --os-handle-bg: rgba(0, 0, 0, 0.25) !important;
+    --os-handle-bg-hover: rgba(0, 0, 0, 0.35) !important;
+    --os-handle-bg-active: rgba(0, 0, 0, 0.45) !important;
+  }
+}
+
+html.dark {
+  .os-scrollbar {
+    --os-handle-bg: rgba(255, 255, 255, 0.35) !important;
+    --os-handle-bg-hover: rgba(255, 255, 255, 0.45) !important;
+    --os-handle-bg-active: rgba(255, 255, 255, 0.55) !important;
+  }
 }
 
 .os-scrollbar-handle {
   border-radius: 4px;
 }
 
+/* Utility class for page main wrapper */
+.page-main {
+  @apply relative min-h-screen text-zinc-900 dark:text-zinc-50 transition-colors duration-300;
+}
+
 /* View Transitions API - page transition animations */
-@keyframes page-fade-in {
+
+/* Persistent elements (background with dots, theme toggle) - excluded from transition */
+/* Hide old snapshots entirely so only the live element shows (prevents doubling/ghosting) */
+::view-transition-old(background),
+::view-transition-old(theme-toggle) {
+  display: none;
+}
+
+::view-transition-new(background),
+::view-transition-new(theme-toggle) {
+  animation: none;
+}
+
+/* Page content transition - Material Design shared axis pattern */
+@keyframes vt-slide-to-left {
   from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes vt-slide-from-right {
+  from {
+    transform: translateX(20px);
     opacity: 0;
   }
   to {
+    transform: translateX(0);
     opacity: 1;
   }
 }
 
-@keyframes page-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-::view-transition-old(root) {
-  animation: page-fade-out 120ms ease-out;
-}
-
+/* Only animate page content, not root (persistent UI stays static) */
+::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: page-fade-in 150ms ease-in 50ms;
+  animation: none;
+}
+
+::view-transition-old(page-content) {
+  animation: vt-slide-to-left 250ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-new(page-content) {
+  animation: vt-slide-from-right 250ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }

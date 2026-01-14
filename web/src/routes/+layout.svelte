@@ -10,6 +10,7 @@
   import { page } from "$app/stores";
   import { onNavigate } from "$app/navigation";
   import Dots from "$lib/components/Dots.svelte";
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
   let { children, data } = $props();
 
@@ -40,6 +41,13 @@
       return;
     }
 
+    // Skip transitions for admin routes (they have their own layout/style)
+    const fromAdmin = navigation.from?.url.pathname.startsWith("/admin");
+    const toAdmin = navigation.to?.url.pathname.startsWith("/admin");
+    if (fromAdmin || toAdmin) {
+      return;
+    }
+
     return new Promise((resolve) => {
       document.startViewTransition(async () => {
         resolve();
@@ -57,6 +65,7 @@
       scrollbars: {
         autoHide: "leave",
         autoHideDelay: 800,
+        theme: themeStore.isDark ? "os-theme-dark" : "os-theme-light",
       },
     });
 
@@ -92,12 +101,21 @@
 </svelte:head>
 
 <!-- Persistent background layer - only for public routes -->
+<!-- These elements have view-transition-name to exclude them from page transitions -->
 {#if showGlobalBackground}
+  <!-- Dots component includes both background overlay and animated dots -->
+  <Dots style="view-transition-name: background" />
+
+  <!-- Theme toggle - persistent across page transitions -->
   <div
-    class="pointer-events-none fixed inset-0 -z-20 bg-white dark:bg-black transition-colors duration-300"
-  ></div>
-  <Dots />
+    class="fixed top-5 right-6 z-50"
+    style="view-transition-name: theme-toggle"
+  >
+    <ThemeToggle />
+  </div>
 {/if}
 
-<!-- Page content - transitions handled by View Transitions API -->
-{@render children()}
+<!-- Page content wrapper - this is what transitions between pages -->
+<div style="view-transition-name: page-content">
+  {@render children()}
+</div>

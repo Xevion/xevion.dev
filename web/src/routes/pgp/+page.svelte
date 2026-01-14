@@ -1,7 +1,5 @@
 <script lang="ts">
-  import AppWrapper from "$lib/components/AppWrapper.svelte";
   import { OverlayScrollbarsComponent } from "overlayscrollbars-svelte";
-  import "overlayscrollbars/overlayscrollbars.css";
   import IconDownload from "~icons/material-symbols/download-rounded";
   import IconCopy from "~icons/material-symbols/content-copy-rounded";
   import IconCheck from "~icons/material-symbols/check-rounded";
@@ -56,7 +54,7 @@
   />
 </svelte:head>
 
-<AppWrapper class="overflow-x-hidden font-schibsted">
+<main class="page-main overflow-x-hidden font-schibsted">
   <div class="flex items-center flex-col pt-14 pb-20 px-4 sm:px-6">
     <div class="max-w-2xl w-full">
       <!-- Header -->
@@ -190,4 +188,4 @@
       </div>
     </div>
   </div>
-</AppWrapper>
+</main>

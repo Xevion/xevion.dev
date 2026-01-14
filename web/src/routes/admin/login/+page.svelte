@@ -4,7 +4,6 @@
   import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
-  import AppWrapper from "$lib/components/AppWrapper.svelte";
   import { authStore } from "$lib/stores/auth.svelte";
 
   let username = $state("");
@@ -39,7 +38,10 @@
   <title>Admin Login | xevion.dev</title>
 </svelte:head>
 
-<AppWrapper>
+<div
+  class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg transition-colors duration-300"
+></div>
+<main class="page-main text-admin-text">
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md space-y-4">
       <!-- Login Form -->
@@ -95,4 +97,4 @@
       </div>
     </div>
   </div>
-</AppWrapper>
+</main>

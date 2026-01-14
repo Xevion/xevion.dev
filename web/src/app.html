@@ -24,8 +24,17 @@
         if (isDark) {
           document.documentElement.classList.add("dark");
         }
-        // Set body background immediately to prevent flash
-        document.body.style.backgroundColor = isDark ? "#000000" : "#ffffff";
+        // Set body background to prevent flash (deferred until body exists)
+        function setBodyBg() {
+          document.body.style.backgroundColor = isDark ? "#000000" : "#ffffff";
+        }
+        if (document.body) {
+          setBodyBg();
+        } else {
+          document.addEventListener("DOMContentLoaded", setBodyBg, {
+            once: true,
+          });
+        }
       })();
     </script>
     %sveltekit.head%

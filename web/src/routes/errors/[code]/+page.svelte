@@ -1,6 +1,5 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
-  import AppWrapper from "$components/AppWrapper.svelte";
 
   let { data } = $props();
 
@@ -13,7 +12,7 @@
   <title>{title}</title>
 </svelte:head>
 
-<AppWrapper>
+<main class="page-main">
   <div class="min-h-screen flex items-center justify-center">
     <div class="mx-4 max-w-3xl text-center">
       <h1 class="text-6xl sm:text-9xl font-hanken font-black text-zinc-200">
@@ -34,4 +33,4 @@
       {/if}
     </div>
   </div>
-</AppWrapper>
+</main>

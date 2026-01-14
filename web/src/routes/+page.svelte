@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppWrapper from "$lib/components/AppWrapper.svelte";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
   import DiscordProfileModal from "$lib/components/DiscordProfileModal.svelte";
   import type { PageData } from "./$types";
@@ -31,7 +30,7 @@
   let discordUsername = $state("");
 </script>
 
-<AppWrapper class="overflow-x-hidden font-schibsted">
+<main class="page-main overflow-x-hidden font-schibsted">
   <div class="flex items-center flex-col pt-14">
     <div
       class="max-w-2xl mx-4 border-b border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-200 dark:divide-zinc-700 sm:mx-6"
@@ -134,6 +133,6 @@
       </div>
     </div>
   </div>
-</AppWrapper>
+</main>
 
 <DiscordProfileModal bind:open={discordModalOpen} username={discordUsername} />

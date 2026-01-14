@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cn } from "$lib/utils";
   import Button from "./Button.svelte";
 
   interface Props {
@@ -11,6 +12,7 @@
     onconfirm?: () => void;
     oncancel?: () => void;
     children?: import("svelte").Snippet;
+    class?: string;
   }
 
   let {
@@ -23,6 +25,7 @@
     onconfirm,
     oncancel,
     children,
+    class: className,
   }: Props = $props();
 
   function handleCancel() {
@@ -51,7 +54,10 @@
     tabindex="-1"
   >
     <div
-      class="relative w-full max-w-md rounded-xl bg-admin-surface border border-admin-border p-8 shadow-xl shadow-black/20 dark:shadow-black/50"
+      class={cn(
+        "relative w-full max-w-md rounded-xl bg-admin-surface border border-admin-border p-8 shadow-xl shadow-black/20 dark:shadow-black/50",
+        className,
+      )}
       role="dialog"
       aria-modal="true"
     >

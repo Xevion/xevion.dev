@@ -48,7 +48,7 @@ export const handle: Handle = async ({ event, resolve }) => {
               minifyJS: true,
               removeAttributeQuotes: true,
               removeComments: true,
-              removeOptionalTags: true,
+              removeOptionalTags: false,
               removeRedundantAttributes: true,
               removeScriptTypeAttributes: true,
               removeStyleLinkTypeAttributes: true,

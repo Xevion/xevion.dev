@@ -204,9 +204,12 @@
   <!-- Selected icon preview -->
   {#if selectedIcon}
     <div
-      class="flex items-center gap-3 rounded-md border border-admin-border bg-admin-panel p-3"
+      class="flex items-center gap-3 rounded-md border border-admin-border bg-admin-bg-secondary p-3"
     >
-      <div class="flex size-10 items-center justify-center rounded bg-admin-bg">
+      <div
+        class="flex size-10 items-center justify-center rounded bg-admin-bg"
+        data-icon-container
+      >
         {#if selectedIconSvg}
           <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html selectedIconSvg}
@@ -222,7 +225,7 @@
       <button
         type="button"
         onclick={clearSelection}
-        class="rounded px-2 py-1 text-sm text-admin-text-muted hover:bg-admin-hover hover:text-admin-text"
+        class="rounded px-2 py-1 text-sm text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text"
       >
         Clear
       </button>
@@ -284,12 +287,12 @@
             <button
               type="button"
               data-icon-id={result.identifier}
-              class="group relative flex size-12 items-center justify-center rounded hover:bg-admin-hover"
+              class="group relative flex size-12 items-center justify-center rounded hover:bg-admin-surface-hover"
               onclick={() => selectIcon(result.identifier)}
               title={result.identifier}
             >
               <!-- Lazy load icon SVG via IntersectionObserver -->
-              <div class="size-9 text-admin-text">
+              <div class="size-9 text-admin-text" data-icon-container>
                 {#if cachedSvg}
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                   {@html cachedSvg}
@@ -338,14 +341,9 @@
 <!-- Could add "star" button to favorite frequently used icons -->
 
 <style>
-  /* Ensure SVG icons inherit size */
-  :global(.size-9 svg) {
+  /* Ensure dynamically-injected SVG icons fill their container */
+  [data-icon-container] :global(svg) {
     width: 100%;
     height: 100%;
-  }
-
-  :global(.size-10 svg) {
-    width: 1.5rem;
-    height: 1.5rem;
   }
 </style>
