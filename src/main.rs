@@ -8,6 +8,7 @@ mod cli;
 mod config;
 mod db;
 mod formatter;
+mod github;
 mod handlers;
 mod health;
 mod http;

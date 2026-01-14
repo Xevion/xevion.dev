@@ -6,6 +6,7 @@ use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
 use crate::cache::{IsrCache, IsrCacheConfig};
 use crate::config::ListenAddr;
+use crate::github;
 use crate::middleware::RequestIdLayer;
 use crate::state::AppState;
 use crate::tarpit::{TarpitConfig, TarpitState};
@@ -147,6 +148,65 @@ pub async fn run(
         let state = state.clone();
         async move {
             og::regenerate_common_images(state).await;
+        }
+    });
+
+    // Spawn GitHub activity sync background task (if GITHUB_TOKEN is set)
+    tokio::spawn({
+        let pool = pool.clone();
+        async move {
+            // Check if GitHub client is available (GITHUB_TOKEN set)
+            if github::GitHubClient::get().await.is_none() {
+                return;
+            }
+
+            let interval_secs: u64 = std::env::var("GITHUB_SYNC_INTERVAL_SEC")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(900); // Default: 15 minutes
+
+            // Brief delay to let server finish initializing, then run initial sync
+            tokio::time::sleep(Duration::from_secs(2)).await;
+
+            tracing::info!(
+                interval_sec = interval_secs,
+                "Running initial GitHub activity sync"
+            );
+
+            match github::sync_github_activity(&pool).await {
+                Ok(stats) => {
+                    tracing::info!(
+                        synced = stats.synced,
+                        skipped = stats.skipped,
+                        errors = stats.errors,
+                        "Initial GitHub activity sync completed"
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "Initial GitHub sync failed");
+                }
+            }
+
+            // Regular interval sync
+            let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
+            interval.tick().await; // Skip the first tick (already ran initial sync)
+
+            loop {
+                interval.tick().await;
+                match github::sync_github_activity(&pool).await {
+                    Ok(stats) => {
+                        tracing::info!(
+                            synced = stats.synced,
+                            skipped = stats.skipped,
+                            errors = stats.errors,
+                            "GitHub activity sync completed"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, "GitHub sync failed");
+                    }
+                }
+            }
         }
     });
 

@@ -421,3 +421,45 @@ pub async fn get_admin_stats(pool: &PgPool) -> Result<AdminStats, sqlx::Error> {
         total_tags: tag_count.count,
     })
 }
+
+/// Get all projects that have a github_repo set (for GitHub sync)
+pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::Error> {
+    query_as!(
+        DbProject,
+        r#"
+        SELECT
+            id,
+            slug,
+            name,
+            short_description,
+            description,
+            status as "status: ProjectStatus",
+            github_repo,
+            demo_url,
+            last_github_activity,
+            created_at,
+            updated_at
+        FROM projects
+        WHERE github_repo IS NOT NULL
+        ORDER BY updated_at DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Update the last_github_activity timestamp for a project
+pub async fn update_last_github_activity(
+    pool: &PgPool,
+    id: Uuid,
+    activity_time: OffsetDateTime,
+) -> Result<(), sqlx::Error> {
+    query!(
+        "UPDATE projects SET last_github_activity = $2 WHERE id = $1",
+        id,
+        activity_time
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
