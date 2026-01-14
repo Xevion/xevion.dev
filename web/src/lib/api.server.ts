@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { env } from "$env/dynamic/private";
 import { requestContext } from "$lib/server/context";
+import { ApiError } from "$lib/errors";
 
 const logger = getLogger(["ssr", "lib", "api"]);
 
@@ -71,7 +72,7 @@ function createSmartFetch(upstreamUrl: string) {
           status: response.status,
           statusText: response.statusText,
         });
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        throw new ApiError(response.status, response.statusText);
       }
 
       const data = await response.json();

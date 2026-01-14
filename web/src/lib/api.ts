@@ -10,6 +10,7 @@ import type {
   UpdateTagData,
   SiteSettings,
 } from "./admin-types";
+import { ApiError } from "./errors";
 
 // ============================================================================
 // CLIENT-SIDE API FUNCTIONS
@@ -23,7 +24,7 @@ async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    throw new ApiError(response.status, response.statusText);
   }
 
   return response.json();
@@ -44,8 +45,7 @@ export async function getAdminProject(
   try {
     return await clientApiFetch<AdminProject>(`/api/projects/${id}`);
   } catch (error) {
-    // 404 errors should return null
-    if (error instanceof Error && error.message.includes("404")) {
+    if (ApiError.isNotFound(error)) {
       return null;
     }
     throw error;
@@ -106,6 +106,32 @@ export async function deleteAdminTag(id: string): Promise<void> {
   await clientApiFetch(`/api/tags/${id}`, {
     method: "DELETE",
   });
+}
+
+export interface TagWithProjects {
+  tag: AdminTag;
+  projects: AdminProject[];
+}
+
+export async function getAdminTagBySlug(
+  slug: string,
+): Promise<TagWithProjects | null> {
+  try {
+    return await clientApiFetch<TagWithProjects>(`/api/tags/${slug}`);
+  } catch (error) {
+    if (ApiError.isNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export interface RelatedTag extends AdminTag {
+  cooccurrenceCount: number;
+}
+
+export async function getRelatedTags(slug: string): Promise<RelatedTag[]> {
+  return clientApiFetch<RelatedTag[]>(`/api/tags/${slug}/related`);
 }
 
 // Admin Events API (currently mocked - no backend implementation yet)

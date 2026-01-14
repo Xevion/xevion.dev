@@ -1,26 +1,28 @@
 <script lang="ts">
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
-  import Table from "$lib/components/admin/Table.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
-  import {
-    getAdminTags,
-    createAdminTag,
-    updateAdminTag,
-    deleteAdminTag,
-  } from "$lib/api";
-  import type {
-    AdminTagWithCount,
-    CreateTagData,
-    UpdateTagData,
-  } from "$lib/admin-types";
+  import TagChip from "$lib/components/TagChip.svelte";
+  import { createAdminTag, deleteAdminTag } from "$lib/api";
+  import type { CreateTagData } from "$lib/admin-types";
+  import type { TagWithIconAndCount } from "./+page.server";
   import IconPlus from "~icons/lucide/plus";
   import IconX from "~icons/lucide/x";
+  import IconInfo from "~icons/lucide/info";
+  import { invalidateAll } from "$app/navigation";
+  import { getLogger } from "@logtape/logtape";
 
-  let tags = $state<AdminTagWithCount[]>([]);
-  let loading = $state(true);
+  const logger = getLogger(["admin", "tags"]);
+
+  interface Props {
+    data: {
+      tags: TagWithIconAndCount[];
+    };
+  }
+
+  let { data }: Props = $props();
 
   // Create form state
   let showCreateForm = $state(false);
@@ -30,104 +32,80 @@
   let createColor = $state<string | undefined>(undefined);
   let creating = $state(false);
 
-  // Edit state
-  let editingId = $state<string | null>(null);
-  let editName = $state("");
-  let editSlug = $state("");
-  let editIcon = $state<string>("");
-  let editColor = $state<string | undefined>(undefined);
-  let updating = $state(false);
+  // Delete mode state (activated by holding Shift)
+  let deleteMode = $state(false);
+
+  // Track shift key
+  $effect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") deleteMode = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") deleteMode = false;
+    };
+    const handleBlur = () => {
+      // Reset delete mode if window loses focus
+      deleteMode = false;
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  });
 
   // Delete state
   let deleteModalOpen = $state(false);
-  let deleteTarget = $state<AdminTagWithCount | null>(null);
+  let deleteTarget = $state<TagWithIconAndCount | null>(null);
   let deleteConfirmReady = $state(false);
   let deleteTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  async function loadTags() {
-    try {
-      tags = await getAdminTags();
-    } catch (error) {
-      console.error("Failed to load tags:", error);
-    } finally {
-      loading = false;
-    }
-  }
-
-  $effect(() => {
-    loadTags();
-  });
 
   async function handleCreate() {
     if (!createName.trim()) return;
 
     creating = true;
     try {
-      const data: CreateTagData = {
+      const createData: CreateTagData = {
         name: createName,
         slug: createSlug || undefined,
         icon: createIcon || undefined,
         color: createColor,
       };
-      await createAdminTag(data);
-      await loadTags();
+      await createAdminTag(createData);
+      await invalidateAll();
       createName = "";
       createSlug = "";
       createIcon = "";
       createColor = undefined;
       showCreateForm = false;
     } catch (error) {
-      console.error("Failed to create tag:", error);
+      logger.error("Failed to create tag", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       alert("Failed to create tag");
     } finally {
       creating = false;
     }
   }
 
-  function startEdit(tag: AdminTagWithCount) {
-    editingId = tag.id;
-    editName = tag.name;
-    editSlug = tag.slug;
-    editIcon = tag.icon || "";
-    editColor = tag.color;
-  }
-
-  function cancelEdit() {
-    editingId = null;
-    editName = "";
-    editSlug = "";
-    editIcon = "";
-    editColor = undefined;
-  }
-
-  async function handleUpdate() {
-    if (!editingId || !editName.trim()) return;
-
-    updating = true;
-    try {
-      const data: UpdateTagData = {
-        id: editingId,
-        name: editName,
-        slug: editSlug || undefined,
-        color: editColor,
-        icon: editIcon || undefined,
-      };
-      await updateAdminTag(data);
-      await loadTags();
-      cancelEdit();
-    } catch (error) {
-      console.error("Failed to update tag:", error);
-      alert("Failed to update tag");
-    } finally {
-      updating = false;
+  function handleTagClick(tag: TagWithIconAndCount, event: MouseEvent) {
+    if (deleteMode) {
+      event.preventDefault();
+      event.stopPropagation();
+      initiateDelete(tag);
     }
+    // Otherwise, let the link navigate normally
   }
 
-  function initiateDelete(tag: AdminTagWithCount) {
+  function initiateDelete(tag: TagWithIconAndCount) {
     deleteTarget = tag;
     deleteConfirmReady = false;
 
-    // Enable confirm button after delay
     deleteTimeout = setTimeout(() => {
       deleteConfirmReady = true;
     }, 2000);
@@ -149,12 +127,14 @@
 
     try {
       await deleteAdminTag(deleteTarget.id);
-      await loadTags();
+      await invalidateAll();
       deleteModalOpen = false;
       deleteTarget = null;
       deleteConfirmReady = false;
     } catch (error) {
-      console.error("Failed to delete tag:", error);
+      logger.error("Failed to delete tag", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       alert("Failed to delete tag");
     }
   }
@@ -168,7 +148,15 @@
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <h1 class="text-xl font-semibold text-admin-text">Tags</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-semibold text-admin-text">Tags</h1>
+        <span
+          class="text-admin-text-muted hover:text-admin-text cursor-help transition-colors"
+          title="Hold Shift and click a tag to delete it"
+        >
+          <IconInfo class="w-4 h-4" />
+        </span>
+      </div>
       <p class="mt-1 text-sm text-admin-text-muted">
         Manage project tags and categories
       </p>
@@ -228,10 +216,8 @@
     </div>
   {/if}
 
-  <!-- Tags Table -->
-  {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">Loading tags...</div>
-  {:else if tags.length === 0}
+  <!-- Tags Grid -->
+  {#if data.tags.length === 0}
     <div class="text-center py-12">
       <p class="text-admin-text-muted mb-4">No tags yet</p>
       <Button variant="primary" onclick={() => (showCreateForm = true)}>
@@ -239,173 +225,39 @@
       </Button>
     </div>
   {:else}
-    <Table>
-      <thead class="bg-admin-surface-hover">
-        <tr>
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
-          >
-            Name
-          </th>
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
-          >
-            Slug
-          </th>
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
-          >
-            Icon
-          </th>
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
-          >
-            Color
-          </th>
-          <th
-            class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
-          >
-            Projects
-          </th>
-          <th
-            class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted"
-          >
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-admin-border">
-        {#each tags as tag (tag.id)}
-          <tr class="hover:bg-admin-surface-hover/50 transition-colors">
-            {#if editingId === tag.id}
-              <!-- Edit mode -->
-              <td class="px-4 py-3">
-                <Input
-                  type="text"
-                  bind:value={editName}
-                  placeholder="Tag name"
-                />
-              </td>
-              <td class="px-4 py-3">
-                <Input
-                  type="text"
-                  bind:value={editSlug}
-                  placeholder="tag-slug"
-                />
-              </td>
-              <td class="px-4 py-3">
-                {#if editIcon}
-                  <div class="flex items-center gap-2">
-                    <div class="text-admin-text">
-                      <span class="text-xs text-admin-text-muted"
-                        >{editIcon}</span
-                      >
-                    </div>
-                  </div>
-                {:else}
-                  <span class="text-xs text-admin-text-muted">No icon</span>
-                {/if}
-              </td>
-              <td class="px-4 py-3">
-                {#if editColor}
-                  <div class="flex items-center gap-2">
-                    <div
-                      class="size-6 rounded border border-admin-border"
-                      style="background-color: #{editColor}"
-                    ></div>
-                    <span class="text-xs text-admin-text-muted"
-                      >#{editColor}</span
-                    >
-                  </div>
-                {:else}
-                  <span class="text-xs text-admin-text-muted">No color</span>
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-admin-text">
-                {tag.projectCount}
-              </td>
-              <td class="px-4 py-3 text-right">
-                <div class="flex justify-end gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onclick={cancelEdit}
-                    disabled={updating}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onclick={handleUpdate}
-                    disabled={updating || !editName.trim()}
-                  >
-                    {updating ? "Saving..." : "Save"}
-                  </Button>
-                </div>
-              </td>
-            {:else}
-              <!-- View mode -->
-              <td class="px-4 py-3 font-medium text-admin-text">
-                {tag.name}
-              </td>
-              <td class="px-4 py-3 text-admin-text-secondary">
-                {tag.slug}
-              </td>
-              <td class="px-4 py-3">
-                {#if tag.icon}
-                  <div class="flex items-center gap-2">
-                    <div class="text-admin-text">
-                      <span class="text-xs text-admin-text-muted"
-                        >{tag.icon}</span
-                      >
-                    </div>
-                  </div>
-                {:else}
-                  <span class="text-xs text-admin-text-muted">No icon</span>
-                {/if}
-              </td>
-              <td class="px-4 py-3">
-                {#if tag.color}
-                  <div class="flex items-center gap-2">
-                    <div
-                      class="size-6 rounded border border-admin-border"
-                      style="background-color: #{tag.color}"
-                    ></div>
-                    <span class="text-xs text-admin-text-muted"
-                      >#{tag.color}</span
-                    >
-                  </div>
-                {:else}
-                  <span class="text-xs text-admin-text-muted">No color</span>
-                {/if}
-              </td>
-              <td class="px-4 py-3 text-admin-text">
-                {tag.projectCount}
-              </td>
-              <td class="px-4 py-3 text-right">
-                <div class="flex justify-end gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onclick={() => startEdit(tag)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onclick={() => initiateDelete(tag)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </td>
-            {/if}
-          </tr>
+    <div class="space-y-3">
+      <!-- Delete mode indicator -->
+      <div
+        class="h-6 flex items-center transition-opacity duration-150"
+        class:opacity-100={deleteMode}
+        class:opacity-0={!deleteMode}
+      >
+        <span
+          class="text-sm text-red-500 dark:text-red-400 font-medium flex items-center gap-1.5"
+        >
+          <IconX class="w-4 h-4" />
+          Click a tag to delete it
+        </span>
+      </div>
+
+      <!-- Tags -->
+      <div class="flex flex-wrap gap-2 max-w-3xl">
+        {#each data.tags as tag (tag.id)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div onclick={(e) => handleTagClick(tag, e)} class="contents">
+            <TagChip
+              name={tag.name}
+              color={deleteMode ? "ef4444" : tag.color}
+              iconSvg={tag.iconSvg}
+              href={`/admin/tags/${tag.slug}`}
+              class="transition-all duration-150 {deleteMode
+                ? 'bg-red-100/80 dark:bg-red-900/40 cursor-pointer'
+                : ''}"
+            />
+          </div>
         {/each}
-      </tbody>
-    </Table>
+      </div>
+    </div>
   {/if}
 </div>
 

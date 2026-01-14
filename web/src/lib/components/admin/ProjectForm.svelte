@@ -4,14 +4,17 @@
   import TagPicker from "./TagPicker.svelte";
   import type {
     AdminProject,
-    AdminTag,
     CreateProjectData,
     ProjectStatus,
+    TagWithIcon,
   } from "$lib/admin-types";
+  import { getLogger } from "@logtape/logtape";
+
+  const logger = getLogger(["admin", "components", "ProjectForm"]);
 
   interface Props {
     project?: AdminProject | null;
-    availableTags: AdminTag[];
+    availableTags: TagWithIcon[];
     onsubmit: (data: CreateProjectData) => Promise<void>;
     submitLabel?: string;
   }
@@ -85,7 +88,9 @@
         tagIds: selectedTagIds,
       });
     } catch (error) {
-      console.error("Failed to submit project:", error);
+      logger.error("Failed to submit project", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       alert("Failed to save project");
     } finally {
       submitting = false;

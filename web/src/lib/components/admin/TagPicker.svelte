@@ -1,11 +1,11 @@
 <script lang="ts">
   import { cn } from "$lib/utils";
-  import type { AdminTag } from "$lib/admin-types";
-  import IconX from "~icons/lucide/x";
+  import TagChip from "$lib/components/TagChip.svelte";
+  import type { TagWithIcon } from "$lib/admin-types";
 
   interface Props {
     label?: string;
-    availableTags: AdminTag[];
+    availableTags: TagWithIcon[];
     selectedTagIds: string[];
     placeholder?: string;
     class?: string;
@@ -22,6 +22,7 @@
   let searchTerm = $state("");
   let dropdownOpen = $state(false);
   let inputRef: HTMLInputElement | undefined = $state();
+  let hoveredTagId = $state<string | null>(null);
 
   // Generate unique ID for accessibility
   const inputId = `tagpicker-${Math.random().toString(36).substring(2, 11)}`;
@@ -72,21 +73,25 @@
     <div
       class="min-h-[42px] w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2"
     >
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-1.5 items-center">
         {#each selectedTags as tag (tag.id)}
-          <span
-            class="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20"
+          <button
+            type="button"
+            onclick={() => removeTag(tag.id)}
+            onmouseenter={() => (hoveredTagId = tag.id)}
+            onmouseleave={() => (hoveredTagId = null)}
+            class="cursor-pointer"
+            aria-label="Remove {tag.name}"
           >
-            {tag.name}
-            <button
-              type="button"
-              onclick={() => removeTag(tag.id)}
-              class="hover:text-blue-300"
-              aria-label="Remove tag"
-            >
-              <IconX class="w-3 h-3" />
-            </button>
-          </span>
+            <TagChip
+              name={tag.name}
+              color={hoveredTagId === tag.id ? "ef4444" : tag.color}
+              iconSvg={tag.iconSvg}
+              class="transition-all duration-150 {hoveredTagId === tag.id
+                ? 'bg-red-100/80 dark:bg-red-900/40'
+                : ''}"
+            />
+          </button>
         {/each}
 
         <!-- Search input -->
@@ -111,10 +116,10 @@
         {#each filteredTags as tag (tag.id)}
           <button
             type="button"
-            class="w-full px-3 py-2 text-left text-sm text-admin-text hover:bg-admin-surface-hover transition-colors"
+            class="w-full px-3 py-1.5 text-left hover:bg-admin-surface-hover transition-colors flex items-center"
             onclick={() => addTag(tag.id)}
           >
-            {tag.name}
+            <TagChip name={tag.name} color={tag.color} iconSvg={tag.iconSvg} />
           </button>
         {/each}
       </div>

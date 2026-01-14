@@ -15,6 +15,10 @@ export interface AdminTagWithCount extends AdminTag {
   projectCount: number;
 }
 
+export interface TagWithIcon extends AdminTag {
+  iconSvg?: string;
+}
+
 export interface AdminProject {
   id: string;
   slug: string;
