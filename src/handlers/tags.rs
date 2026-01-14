@@ -80,7 +80,7 @@ pub async fn create_tag_handler(
     {
         Ok(tag) => {
             // Invalidate cached pages - tag list appears on project pages
-            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+            state.isr_cache.invalidate("/").await;
 
             (StatusCode::CREATED, Json(tag.to_api_tag())).into_response()
         }
@@ -226,7 +226,7 @@ pub async fn update_tag_handler(
     {
         Ok(updated_tag) => {
             // Invalidate cached pages - tag updates affect project displays
-            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+            state.isr_cache.invalidate("/").await;
 
             Json(updated_tag.to_api_tag()).into_response()
         }

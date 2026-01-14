@@ -261,8 +261,8 @@ mod tests {
     fn test_is_cacheable_path() {
         // Should cache
         assert!(is_cacheable_path("/"));
-        assert!(is_cacheable_path("/projects"));
-        assert!(is_cacheable_path("/projects/my-project"));
+        assert!(is_cacheable_path("/some-page"));
+        assert!(is_cacheable_path("/pgp"));
 
         // Should not cache
         assert!(!is_cacheable_path("/admin"));
@@ -274,12 +274,11 @@ mod tests {
 
     #[test]
     fn test_cache_key() {
-        assert_eq!(cache_key("/projects", None), "/projects");
-        assert_eq!(cache_key("/projects", Some("")), "/projects");
-        assert_eq!(
-            cache_key("/projects", Some("tag=rust")),
-            "/projects?tag=rust"
-        );
+        assert_eq!(cache_key("/", None), "/");
+        assert_eq!(cache_key("/", Some("")), "/");
+        assert_eq!(cache_key("/", Some("tag=rust")), "/?tag=rust");
+        assert_eq!(cache_key("/", Some("utm_source=x")), "/?utm_source=x");
+        assert_eq!(cache_key("/some-page", None), "/some-page");
     }
 
     #[tokio::test]

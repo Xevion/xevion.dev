@@ -244,7 +244,7 @@ pub async fn create_project_handler(
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project created");
 
     // Invalidate cached pages that display projects
-    state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+    state.isr_cache.invalidate("/").await;
 
     (
         StatusCode::CREATED,
@@ -414,12 +414,7 @@ pub async fn update_project_handler(
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project updated");
 
     // Invalidate cached pages that display projects
-    // Also invalidate slug-based path in case project detail pages exist
-    let project_path = format!("/projects/{}", project.slug);
-    state
-        .isr_cache
-        .invalidate_many(&["/", "/projects", &project_path])
-        .await;
+    state.isr_cache.invalidate("/").await;
 
     Json(project.to_api_admin_project(tags)).into_response()
 }
@@ -482,11 +477,7 @@ pub async fn delete_project_handler(
             tracing::info!(project_id = %project_id, project_name = %project.name, "Project deleted");
 
             // Invalidate cached pages that display projects
-            let project_path = format!("/projects/{}", project.slug);
-            state
-                .isr_cache
-                .invalidate_many(&["/", "/projects", &project_path])
-                .await;
+            state.isr_cache.invalidate("/").await;
 
             Json(project.to_api_admin_project(tags)).into_response()
         }
@@ -609,7 +600,7 @@ pub async fn add_project_tag_handler(
     match db::add_tag_to_project(&state.pool, project_id, tag_id).await {
         Ok(()) => {
             // Invalidate cached pages - tags affect how projects are displayed
-            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+            state.isr_cache.invalidate("/").await;
 
             (
                 StatusCode::CREATED,
@@ -681,7 +672,7 @@ pub async fn remove_project_tag_handler(
     match db::remove_tag_from_project(&state.pool, project_id, tag_id).await {
         Ok(()) => {
             // Invalidate cached pages - tags affect how projects are displayed
-            state.isr_cache.invalidate_many(&["/", "/projects"]).await;
+            state.isr_cache.invalidate("/").await;
 
             (
                 StatusCode::OK,
