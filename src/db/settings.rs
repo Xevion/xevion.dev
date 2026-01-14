@@ -31,16 +31,16 @@ pub struct DbSocialLink {
 
 // API response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiSiteIdentity {
-    #[serde(rename = "displayName")]
     pub display_name: String,
     pub occupation: String,
     pub bio: String,
-    #[serde(rename = "siteTitle")]
     pub site_title: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiSocialLink {
     pub id: String,
     pub platform: String,
@@ -48,29 +48,28 @@ pub struct ApiSocialLink {
     pub value: String,
     pub icon: String,
     pub visible: bool,
-    #[serde(rename = "displayOrder")]
     pub display_order: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiSiteSettings {
     pub identity: ApiSiteIdentity,
-    #[serde(rename = "socialLinks")]
     pub social_links: Vec<ApiSocialLink>,
 }
 
 // Request types for updates
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSiteIdentityRequest {
-    #[serde(rename = "displayName")]
     pub display_name: String,
     pub occupation: String,
     pub bio: String,
-    #[serde(rename = "siteTitle")]
     pub site_title: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSocialLinkRequest {
     pub id: String,
     pub platform: String,
@@ -78,14 +77,13 @@ pub struct UpdateSocialLinkRequest {
     pub value: String,
     pub icon: String,
     pub visible: bool,
-    #[serde(rename = "displayOrder")]
     pub display_order: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSiteSettingsRequest {
     pub identity: UpdateSiteIdentityRequest,
-    #[serde(rename = "socialLinks")]
     pub social_links: Vec<UpdateSocialLinkRequest>,
 }
 

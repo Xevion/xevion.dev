@@ -1,42 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::cli::client::{ApiClient, ApiError, check_response};
 use crate::cli::output;
 use crate::cli::{ProjectsCommand, TagOp, parse_create_tags, parse_update_tags};
-use crate::db::{ApiAdminProject, ApiTag, ProjectStatus};
-
-/// Request to create a project
-#[derive(Serialize)]
-struct CreateProjectRequest {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    slug: Option<String>,
-    short_description: String,
-    description: String,
-    status: ProjectStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    github_repo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    demo_url: Option<String>,
-    tag_ids: Vec<String>,
-}
-
-/// Request to update a project
-#[derive(Serialize)]
-struct UpdateProjectRequest {
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    slug: Option<String>,
-    short_description: String,
-    description: String,
-    status: ProjectStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    github_repo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    demo_url: Option<String>,
-    tag_ids: Vec<String>,
-}
+use crate::db::{
+    ApiAdminProject, ApiTag, CreateProjectRequest, ProjectStatus, UpdateProjectRequest,
+};
 
 /// Run a projects subcommand
 pub async fn run(

@@ -4,18 +4,21 @@ use std::sync::Arc;
 use crate::{auth, state::AppState};
 
 #[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
     pub success: bool,
     pub username: String,
 }
 
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SessionResponse {
     pub authenticated: bool,
     pub username: String,

@@ -16,6 +16,7 @@ pub use tags::*;
 // Request/Response types used by handlers
 
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTagRequest {
     pub name: String,
     pub slug: Option<String>,
@@ -24,6 +25,7 @@ pub struct CreateTagRequest {
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTagRequest {
     pub name: String,
     pub slug: Option<String>,
@@ -32,6 +34,7 @@ pub struct UpdateTagRequest {
 }
 
 #[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddProjectTagRequest {
     pub tag_id: String,
 }

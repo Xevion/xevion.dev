@@ -34,29 +34,28 @@ pub struct ApiProjectLink {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiProject {
     pub id: String,
     pub slug: String,
     pub name: String,
-    #[serde(rename = "shortDescription")]
     pub short_description: String,
     pub links: Vec<ApiProjectLink>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiAdminProject {
     #[serde(flatten)]
     pub project: ApiProject,
     pub tags: Vec<ApiTag>,
     pub status: String,
     pub description: String,
-    #[serde(rename = "githubRepo", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub github_repo: Option<String>,
-    #[serde(rename = "demoUrl", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub demo_url: Option<String>,
-    #[serde(rename = "createdAt")]
-    pub created_at: String, // ISO 8601
-    #[serde(rename = "lastActivity")]
+    pub created_at: String,    // ISO 8601
     pub last_activity: String, // ISO 8601
 }
 
@@ -110,46 +109,38 @@ impl DbProject {
 
 // Request types for CRUD operations
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateProjectRequest {
     pub name: String,
     pub slug: Option<String>,
-    #[serde(rename = "shortDescription")]
     pub short_description: String,
     pub description: String,
     pub status: ProjectStatus,
-    #[serde(rename = "githubRepo")]
     pub github_repo: Option<String>,
-    #[serde(rename = "demoUrl")]
     pub demo_url: Option<String>,
-    #[serde(rename = "tagIds")]
     pub tag_ids: Vec<String>, // UUID strings
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateProjectRequest {
     pub name: String,
     pub slug: Option<String>,
-    #[serde(rename = "shortDescription")]
     pub short_description: String,
     pub description: String,
     pub status: ProjectStatus,
-    #[serde(rename = "githubRepo")]
     pub github_repo: Option<String>,
-    #[serde(rename = "demoUrl")]
     pub demo_url: Option<String>,
-    #[serde(rename = "tagIds")]
     pub tag_ids: Vec<String>, // UUID strings
 }
 
 // Admin stats response
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdminStats {
-    #[serde(rename = "totalProjects")]
     pub total_projects: i32,
-    #[serde(rename = "projectsByStatus")]
     pub projects_by_status: serde_json::Value,
-    #[serde(rename = "totalTags")]
     pub total_tags: i32,
 }
 

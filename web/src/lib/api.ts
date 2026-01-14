@@ -80,16 +80,7 @@ export async function deleteAdminProject(id: string): Promise<AdminProject> {
 
 // Admin Tags API
 export async function getAdminTags(): Promise<AdminTagWithCount[]> {
-  const tags =
-    await clientApiFetch<Array<AdminTag & { project_count: number }>>(
-      "/api/tags",
-    );
-
-  // Transform snake_case to camelCase
-  return tags.map((item) => ({
-    ...item,
-    projectCount: item.project_count,
-  }));
+  return clientApiFetch<AdminTagWithCount[]>("/api/tags");
 }
 
 export async function createAdminTag(data: CreateTagData): Promise<AdminTag> {

@@ -31,6 +31,7 @@ pub struct DbTagCooccurrence {
 
 // API response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiTag {
     pub id: String,
     pub slug: String,
@@ -42,6 +43,7 @@ pub struct ApiTag {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiTagWithCount {
     #[serde(flatten)]
     pub tag: ApiTag,
@@ -49,6 +51,7 @@ pub struct ApiTagWithCount {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ApiRelatedTag {
     #[serde(flatten)]
     pub tag: ApiTag,
