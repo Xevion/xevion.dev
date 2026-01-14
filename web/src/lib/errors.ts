@@ -32,6 +32,8 @@ export class ApiError extends Error {
    * Check if an error is a server error (5xx)
    */
   static isServerError(error: unknown): boolean {
-    return error instanceof ApiError && error.status >= 500 && error.status < 600;
+    return (
+      error instanceof ApiError && error.status >= 500 && error.status < 600
+    );
   }
 }

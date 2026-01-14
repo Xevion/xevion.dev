@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
       `/api/tags/${slug}/related`,
       { fetch },
     );
-  } catch (err) {
+  } catch {
     // Non-fatal - just show empty related tags
   }
 

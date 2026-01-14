@@ -1,5 +1,6 @@
 <script lang="ts">
   import { cn } from "$lib/utils";
+  import { telemetry } from "$lib/telemetry";
   import TagChip from "./TagChip.svelte";
   import type { AdminProject } from "$lib/admin-types";
 
@@ -20,6 +21,25 @@
   );
 
   const isLink = $derived(!!projectUrl);
+
+  // Determine click action type for telemetry
+  const clickAction = $derived(
+    project.demoUrl ? "demo_click" : project.githubRepo ? "github_click" : null,
+  );
+
+  function handleClick() {
+    if (clickAction && projectUrl) {
+      telemetry.track({
+        name: "project_interaction",
+        properties: {
+          action: clickAction,
+          projectSlug: project.slug,
+          projectName: project.name,
+          targetUrl: projectUrl,
+        },
+      });
+    }
+  }
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -44,6 +64,8 @@
   href={isLink ? projectUrl : undefined}
   target={isLink ? "_blank" : undefined}
   rel={isLink ? "noopener noreferrer" : undefined}
+  onclick={handleClick}
+  role={isLink ? undefined : "article"}
   class={cn(
     "flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3",
     isLink &&

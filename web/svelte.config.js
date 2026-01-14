@@ -14,6 +14,9 @@ const config = {
     alias: {
       $components: "src/lib/components",
     },
+    paths: {
+      relative: false, // Required for PostHog session replay with SSR
+    },
     prerender: {
       handleHttpError: ({ path, referrer, message }) => {
         console.log(

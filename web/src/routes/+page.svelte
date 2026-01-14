@@ -3,6 +3,7 @@
   import { page } from "$app/state";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
   import DiscordProfileModal from "$lib/components/DiscordProfileModal.svelte";
+  import { telemetry } from "$lib/telemetry";
   import type { PageData } from "./$types";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
 
@@ -30,6 +31,10 @@
 
   function openDiscordModal(username: string) {
     pushState("", { discordModal: { open: true, username } });
+  }
+
+  function trackSocialClick(url: string) {
+    telemetry.trackExternalLink(url, "social");
   }
 </script>
 
@@ -64,6 +69,7 @@
               <!-- Simple link platforms -->
               <a
                 href={link.value}
+                onclick={() => trackSocialClick(link.value)}
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
@@ -80,7 +86,10 @@
               <button
                 type="button"
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
-                onclick={() => openDiscordModal(link.value)}
+                onclick={() => {
+                  trackSocialClick(`discord:${link.value}`);
+                  openDiscordModal(link.value);
+                }}
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -95,6 +104,7 @@
               <!-- Email - mailto link -->
               <a
                 href="mailto:{link.value}"
+                onclick={() => trackSocialClick(`mailto:${link.value}`)}
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
@@ -108,7 +118,7 @@
               </a>
             {/if}
           {/each}
-          <!-- PGP Key - links to dedicated page -->
+          <!-- PGP Key - links to dedicated page (tracked via page view) -->
           <a
             href="/pgp"
             class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"

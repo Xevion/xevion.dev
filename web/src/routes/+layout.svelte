@@ -8,7 +8,8 @@
   import { onMount } from "svelte";
   import { themeStore } from "$lib/stores/theme.svelte";
   import { page } from "$app/stores";
-  import { onNavigate } from "$app/navigation";
+  import { afterNavigate, onNavigate } from "$app/navigation";
+  import { telemetry } from "$lib/telemetry";
   import Clouds from "$lib/components/Clouds.svelte";
   import Dots from "$lib/components/Dots.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
@@ -60,6 +61,13 @@
     });
   });
 
+  // Track page views on navigation (SPA navigations)
+  afterNavigate(({ to }) => {
+    if (to?.url.pathname) {
+      telemetry.trackPageView(to.url.pathname);
+    }
+  });
+
   onMount(() => {
     // Detect if this is a page reload (F5 or CTRL+F5) vs initial load or SPA navigation
     const navigation = performance.getEntriesByType(
@@ -75,6 +83,9 @@
 
     // Initialize theme store
     themeStore.init();
+
+    // Initialize PostHog telemetry (page views tracked via afterNavigate)
+    telemetry.init();
 
     // Initialize overlay scrollbars on the body element
     const osInstance = OverlayScrollbars(document.body, {

@@ -1,3 +1,5 @@
+import { telemetry } from "$lib/telemetry";
+
 class AuthStore {
   isAuthenticated = $state(false);
   username = $state<string | null>(null);
@@ -17,6 +19,7 @@ class AuthStore {
         const data = await response.json();
         this.isAuthenticated = true;
         this.username = data.username;
+        telemetry.identifyAdmin(data.username);
         return true;
       }
 
@@ -38,6 +41,7 @@ class AuthStore {
     } finally {
       this.isAuthenticated = false;
       this.username = null;
+      telemetry.reset();
     }
   }
 

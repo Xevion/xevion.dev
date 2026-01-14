@@ -5,6 +5,7 @@
   import Sidebar from "$lib/components/admin/Sidebar.svelte";
   import { authStore } from "$lib/stores/auth.svelte";
   import { getAdminStats } from "$lib/api";
+  import { telemetry } from "$lib/telemetry";
   import type { AdminStats } from "$lib/admin-types";
 
   let { children, data } = $props();
@@ -33,6 +34,7 @@
       !authStore.isAuthenticated
     ) {
       authStore.setSession(data.session.username);
+      telemetry.identifyAdmin(data.session.username);
     }
   });
 

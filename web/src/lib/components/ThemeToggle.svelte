@@ -1,12 +1,22 @@
 <script lang="ts">
   import { themeStore } from "$lib/stores/theme.svelte";
+  import { telemetry } from "$lib/telemetry";
   import IconSun from "~icons/lucide/sun";
   import IconMoon from "~icons/lucide/moon";
+
+  function handleToggle() {
+    const newTheme = themeStore.isDark ? "light" : "dark";
+    themeStore.toggle();
+    telemetry.track({
+      name: "theme_change",
+      properties: { theme: newTheme },
+    });
+  }
 </script>
 
 <button
   type="button"
-  onclick={() => themeStore.toggle()}
+  onclick={handleToggle}
   aria-label={themeStore.isDark
     ? "Switch to light mode"
     : "Switch to dark mode"}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { OverlayScrollbarsComponent } from "overlayscrollbars-svelte";
+  import { telemetry } from "$lib/telemetry";
   import IconDownload from "~icons/material-symbols/download-rounded";
   import IconCopy from "~icons/material-symbols/content-copy-rounded";
   import IconCheck from "~icons/material-symbols/check-rounded";
@@ -11,6 +12,10 @@
   let copyCommandSuccess = $state(false);
 
   async function copyToClipboard() {
+    telemetry.track({
+      name: "pgp_interaction",
+      properties: { action: "copy_key" },
+    });
     try {
       await navigator.clipboard.writeText(data.key.content);
       copySuccess = true;
@@ -23,6 +28,10 @@
   }
 
   async function copyCommand() {
+    telemetry.track({
+      name: "pgp_interaction",
+      properties: { action: "copy_command" },
+    });
     try {
       await navigator.clipboard.writeText(
         "curl https://xevion.dev/pgp | gpg --import",
@@ -37,6 +46,10 @@
   }
 
   function downloadKey() {
+    telemetry.track({
+      name: "pgp_interaction",
+      properties: { action: "download_key" },
+    });
     const a = document.createElement("a");
     a.href = "/publickey.asc";
     a.download = "publickey.asc";
