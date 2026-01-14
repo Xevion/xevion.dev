@@ -61,8 +61,17 @@
   });
 
   onMount(() => {
-    // Randomly choose background component (50/50 chance)
-    backgroundComponent = Math.random() < 0.5 ? "clouds" : "dots";
+    // Detect if this is a page reload (F5 or CTRL+F5) vs initial load or SPA navigation
+    const navigation = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming;
+    const isReload = navigation?.type === "reload";
+
+    // Randomize on reload OR if not yet set (initial load)
+    // SPA navigation doesn't trigger onMount, so background stays stable
+    if (isReload || backgroundComponent === null) {
+      backgroundComponent = Math.random() < 0.5 ? "clouds" : "dots";
+    }
 
     // Initialize theme store
     themeStore.init();

@@ -50,9 +50,9 @@ pub struct ApiAdminProject {
     pub tags: Vec<ApiTag>,
     pub status: String,
     pub description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "githubRepo", skip_serializing_if = "Option::is_none")]
     pub github_repo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "demoUrl", skip_serializing_if = "Option::is_none")]
     pub demo_url: Option<String>,
     #[serde(rename = "createdAt")]
     pub created_at: String, // ISO 8601
@@ -114,11 +114,15 @@ impl DbProject {
 pub struct CreateProjectRequest {
     pub name: String,
     pub slug: Option<String>,
+    #[serde(rename = "shortDescription")]
     pub short_description: String,
     pub description: String,
     pub status: ProjectStatus,
+    #[serde(rename = "githubRepo")]
     pub github_repo: Option<String>,
+    #[serde(rename = "demoUrl")]
     pub demo_url: Option<String>,
+    #[serde(rename = "tagIds")]
     pub tag_ids: Vec<String>, // UUID strings
 }
 
@@ -126,11 +130,15 @@ pub struct CreateProjectRequest {
 pub struct UpdateProjectRequest {
     pub name: String,
     pub slug: Option<String>,
+    #[serde(rename = "shortDescription")]
     pub short_description: String,
     pub description: String,
     pub status: ProjectStatus,
+    #[serde(rename = "githubRepo")]
     pub github_repo: Option<String>,
+    #[serde(rename = "demoUrl")]
     pub demo_url: Option<String>,
+    #[serde(rename = "tagIds")]
     pub tag_ids: Vec<String>, // UUID strings
 }
 
