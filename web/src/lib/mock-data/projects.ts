@@ -11,7 +11,7 @@ export interface MockProject {
   description: string;
   url: string;
   tags: MockProjectTag[];
-  updatedAt: string;
+  lastActivity: string;
   clockIconSvg?: string; // Pre-rendered clock icon for "Updated" text
 }
 
@@ -27,7 +27,7 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "SvelteKit", icon: "simple-icons:svelte", color: "f43f5e" },
       { name: "PostgreSQL", icon: "cib:postgresql", color: "3b82f6" },
     ],
-    updatedAt: "2026-01-06T22:12:37Z",
+    lastActivity: "2026-01-06T22:12:37Z",
   },
   {
     id: "2",
@@ -40,7 +40,7 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "CLI", icon: "lucide:terminal", color: "a1a1aa" },
       { name: "Analytics", icon: "lucide:bar-chart-3", color: "10b981" },
     ],
-    updatedAt: "2026-01-06T06:01:27Z",
+    lastActivity: "2026-01-06T06:01:27Z",
   },
   {
     id: "3",
@@ -53,7 +53,7 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "NPM", icon: "simple-icons:npm", color: "ec4899" },
       { name: "Graphics", icon: "lucide:image", color: "a855f7" },
     ],
-    updatedAt: "2026-01-05T20:23:07Z",
+    lastActivity: "2026-01-05T20:23:07Z",
   },
   {
     id: "4",
@@ -67,7 +67,7 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "Desktop", icon: "lucide:monitor", color: "6366f1" },
       { name: "Media", icon: "lucide:video", color: "f43f5e" },
     ],
-    updatedAt: "2026-01-05T05:09:09Z",
+    lastActivity: "2026-01-05T05:09:09Z",
   },
   {
     id: "5",
@@ -80,7 +80,7 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "Next.js", icon: "simple-icons:nextdotjs", color: "a1a1aa" },
       { name: "Networking", icon: "lucide:network", color: "0ea5e9" },
     ],
-    updatedAt: "2026-01-05T10:36:55Z",
+    lastActivity: "2026-01-05T10:36:55Z",
   },
   {
     id: "6",
@@ -93,6 +93,6 @@ export const MOCK_PROJECTS: MockProject[] = [
       { name: "System", icon: "lucide:settings-2", color: "a1a1aa" },
       { name: "Cross-platform", icon: "lucide:globe", color: "22c55e" },
     ],
-    updatedAt: "2026-01-01T00:34:09Z",
+    lastActivity: "2026-01-01T00:34:09Z",
   },
 ];

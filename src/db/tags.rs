@@ -314,7 +314,7 @@ pub async fn get_projects_for_tag(
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1
-        ORDER BY p.updated_at DESC
+        ORDER BY COALESCE(p.last_github_activity, p.created_at) DESC
         "#,
         tag_id
     )

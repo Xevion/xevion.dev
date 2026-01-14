@@ -63,7 +63,7 @@
         {project.name}
       </h3>
       <span class="shrink-0 sm:text-[0.83rem] text-zinc-600 dark:text-zinc-300">
-        {formatDate(project.updatedAt)}
+        {formatDate(project.lastActivity)}
       </span>
     </div>
     <p

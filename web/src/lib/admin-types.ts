@@ -27,8 +27,7 @@ export interface AdminProject {
   githubRepo?: string | null;
   demoUrl?: string | null;
   createdAt: string;
-  updatedAt: string;
-  lastGithubActivity?: string | null;
+  lastActivity: string;
 }
 
 export interface CreateProjectData {

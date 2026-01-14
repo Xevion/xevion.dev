@@ -27,6 +27,7 @@ check:
       { name: "eslint", cmd: ["bun", "run", "--cwd", "web", "lint"] },
       { name: "svelte-check", cmd: ["bun", "run", "--cwd", "web", "check"] },
       { name: "clippy", cmd: ["cargo", "clippy", "--all-targets"] },
+      { name: "sqlx-prepare", cmd: ["cargo", "sqlx", "prepare", "--check"] },
       { name: "rustfmt", cmd: ["cargo", "fmt", "--check"] },
     ];
 

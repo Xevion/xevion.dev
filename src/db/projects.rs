@@ -56,10 +56,8 @@ pub struct ApiAdminProject {
     pub demo_url: Option<String>,
     #[serde(rename = "createdAt")]
     pub created_at: String, // ISO 8601
-    #[serde(rename = "updatedAt")]
-    pub updated_at: String, // ISO 8601
-    #[serde(rename = "lastGithubActivity", skip_serializing_if = "Option::is_none")]
-    pub last_github_activity: Option<String>, // ISO 8601
+    #[serde(rename = "lastActivity")]
+    pub last_activity: String, // ISO 8601
 }
 
 impl DbProject {
@@ -91,6 +89,12 @@ impl DbProject {
     }
 
     pub fn to_api_admin_project(&self, tags: Vec<DbTag>) -> ApiAdminProject {
+        let last_activity = self
+            .last_github_activity
+            .unwrap_or(self.created_at)
+            .format(&Rfc3339)
+            .unwrap();
+
         ApiAdminProject {
             project: self.to_api_project(),
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
@@ -99,10 +103,7 @@ impl DbProject {
             github_repo: self.github_repo.clone(),
             demo_url: self.demo_url.clone(),
             created_at: self.created_at.format(&Rfc3339).unwrap(),
-            updated_at: self.updated_at.format(&Rfc3339).unwrap(),
-            last_github_activity: self
-                .last_github_activity
-                .map(|dt| dt.format(&Rfc3339).unwrap()),
+            last_activity,
         }
     }
 }
@@ -164,7 +165,7 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             updated_at
         FROM projects
         WHERE status != 'hidden'
-        ORDER BY updated_at DESC
+        ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
     )
     .fetch_all(pool)
@@ -203,7 +204,7 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             created_at,
             updated_at
         FROM projects
-        ORDER BY updated_at DESC
+        ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
     )
     .fetch_all(pool)

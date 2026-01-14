@@ -128,7 +128,7 @@
           <th
             class="px-4 py-3 text-left text-xs font-medium text-admin-text-muted"
           >
-            Updated
+            Last Activity
           </th>
           <th
             class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted"
@@ -168,7 +168,7 @@
               </div>
             </td>
             <td class="px-4 py-3 text-admin-text-secondary text-sm">
-              {formatDate(project.updatedAt)}
+              {formatDate(project.lastActivity)}
             </td>
             <td class="px-4 py-3 text-right">
               <div class="flex justify-end gap-2">

@@ -48,7 +48,11 @@ pub fn print_project(project: &ApiAdminProject) {
         println!("  {} {}", dim.paint("Tags:"), tags.join(", "));
     }
 
-    println!("  {} {}", dim.paint("Updated:"), project.updated_at);
+    println!(
+        "  {} {}",
+        dim.paint("Last Activity:"),
+        project.last_activity
+    );
 }
 
 /// Print a list of projects in table format

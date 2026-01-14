@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at\n        FROM projects\n        ORDER BY updated_at DESC\n        ",
+  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.name,\n            p.short_description,\n            p.description, \n            p.status as \"status: super::ProjectStatus\", \n            p.github_repo, \n            p.demo_url, \n            p.last_github_activity, \n            p.created_at, \n            p.updated_at\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY COALESCE(p.last_github_activity, p.created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "status: ProjectStatus",
+        "name": "status: super::ProjectStatus",
         "type_info": {
           "Custom": {
             "name": "project_status",
@@ -72,7 +72,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -88,5 +90,5 @@
       false
     ]
   },
-  "hash": "7210d993016792490832230c09ed3c4dfc1a6292fcc9c16ded0b182b9952b7ce"
+  "hash": "3401838a054f29a17d96086529b7222026aafa8a385615129eb0d407e44faa9c"
 }
