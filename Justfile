@@ -3,23 +3,6 @@ set dotenv-load
 default:
 	just --list
 
-# Login to production and save session cookie
-login username password:
-    @echo "Logging in to production..."
-    @curlie -X POST $API_BASE_URL/api/login \
-        username='{{username}}' \
-        password='{{password}}' \
-        -c .prod-session.txt
-    @echo "✅ Session saved to .prod-session.txt"
-
-# Check current production session status
-session:
-    @curlie GET $API_BASE_URL/api/session -b .prod-session.txt
-
-# Make authenticated API request to production
-api method path *args="":
-    curlie -X {{method}} $API_BASE_URL{{path}} -b .prod-session.txt {{args}}
-
 [script("bun")]
 check:
     const checks = [
@@ -88,21 +71,78 @@ format:
     bun run --cwd web format --list-different
     cargo fmt --all
 
-build:
-    bun run --cwd web build
-    cargo build --release
+# Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build), -i (install)
+[script("bun")]
+build *flags:
+    const args = "{{flags}}".split(/\s+/).filter(Boolean);
+
+    // Parse flags (supports -sd, -s -d, --serve, etc.)
+    let serve = false, debug = false, noBuild = false, install = false;
+    for (const arg of args) {
+      if (arg.startsWith("--")) {
+        if (arg === "--serve") serve = true;
+        else if (arg === "--debug") debug = true;
+        else if (arg === "--release") debug = false;
+        else if (arg === "--no-build") noBuild = true;
+        else if (arg === "--install") install = true;
+        else { console.error(`Unknown flag: ${arg}`); process.exit(1); }
+      } else if (arg.startsWith("-")) {
+        for (const c of arg.slice(1)) {
+          if (c === "s") serve = true;
+          else if (c === "d") debug = true;
+          else if (c === "r") debug = false;
+          else if (c === "n") noBuild = true;
+          else if (c === "i") install = true;
+          else { console.error(`Unknown flag: -${c}`); process.exit(1); }
+        }
+      } else { console.error(`Unknown argument: ${arg}`); process.exit(1); }
+    }
+
+    const profile = debug ? "debug" : "release";
+    const run = (cmd, cwd) => {
+      const proc = Bun.spawnSync(cmd, { stdio: ["inherit", "inherit", "inherit"], cwd });
+      if (proc.exitCode !== 0) process.exit(proc.exitCode);
+    };
+
+    if (!noBuild) {
+      console.log(`\x1b[1;36m→ Building frontend${debug ? " (sourcemaps)" : ""}...\x1b[0m`);
+      const buildCmd = debug
+        ? ["bunx", "--bun", "vite", "build", "--sourcemap"]
+        : ["bunx", "--bun", "vite", "build"];
+      run(buildCmd, "web");
+
+      console.log(`\x1b[1;36m→ Building Rust (${profile})...\x1b[0m`);
+      const cargoArgs = ["cargo", "build"];
+      if (!debug) cargoArgs.push("--release");
+      run(cargoArgs);
+    }
+
+    if (install) {
+      console.log(`\x1b[1;36m→ Installing (${profile})...\x1b[0m`);
+      const installArgs = ["cargo", "install", "--path", "."];
+      if (debug) installArgs.push("--debug");
+      run(installArgs);
+    }
+
+    if (serve) {
+      console.log(`\x1b[1;36m→ Serving (${profile})...\x1b[0m`);
+      const proc = Bun.spawn(["just", "_serve-internal", profile], { stdio: ["inherit", "inherit", "inherit"] });
+      await proc.exited;
+      process.exit(proc.exitCode);
+    }
+
+# Internal serve recipe (use `just build -s` instead)
+_serve-internal profile:
+    just _serve-json {{profile}} | hl --config .hl.config.toml -P
+
+_serve-json profile:
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/{{profile}}/xevion --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 dev:
     just dev-json | hl --config .hl.config.toml -P
 
 dev-json:
     LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "bun run --silent --cwd web dev --port 5173" "cargo watch --quiet --exec 'run --bin xevion --quiet -- --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream http://localhost:5173'"
-
-serve:
-    just serve-json | hl --config .hl.config.toml -P
-
-serve-json:
-    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/xevion --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 docker-image:
     docker build -t xevion-dev .
