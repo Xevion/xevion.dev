@@ -95,13 +95,13 @@ dev:
     just dev-json | hl --config .hl.config.toml -P
 
 dev-json:
-    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "bun run --silent --cwd web dev --port 5173" "cargo watch --quiet --exec 'run --quiet -- --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream http://localhost:5173'"
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "bun run --silent --cwd web dev --port 5173" "cargo watch --quiet --exec 'run --bin xevion --quiet -- --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream http://localhost:5173'"
 
 serve:
     just serve-json | hl --config .hl.config.toml -P
 
 serve-json:
-    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/api --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/release/xevion --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 docker-image:
     docker build -t xevion-dev .
@@ -131,7 +131,7 @@ seed:
     if (migrate.status !== 0) process.exit(migrate.status);
 
     // Seed data
-    const seed = spawnSync("cargo", ["run", "--bin", "seed"], { stdio: "inherit" });
+    const seed = spawnSync("cargo", ["run", "--bin", "xevion", "--", "seed"], { stdio: "inherit" });
     if (seed.status !== 0) process.exit(seed.status);
 
     console.log("✅ Database ready with seed data");

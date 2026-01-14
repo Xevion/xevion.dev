@@ -1,17 +1,12 @@
 use sqlx::PgPool;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenvy::dotenv().ok();
-
-    let database_url = std::env::var("DATABASE_URL")?;
-    let pool = PgPool::connect(&database_url).await?;
-
-    println!("🌱 Seeding database...");
+/// Seed the database with sample data
+pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Seeding database...");
 
     // Clear existing data (tags will cascade delete project_tags and tag_cooccurrence)
-    sqlx::query("DELETE FROM tags").execute(&pool).await?;
-    sqlx::query("DELETE FROM projects").execute(&pool).await?;
+    sqlx::query("DELETE FROM tags").execute(pool).await?;
+    sqlx::query("DELETE FROM projects").execute(pool).await?;
 
     // Seed projects with diverse data
     let projects = vec![
@@ -87,11 +82,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bind(status)
         .bind(repo)
         .bind(demo)
-        .execute(&pool)
+        .execute(pool)
         .await?;
     }
 
-    println!("✅ Seeded {} projects", project_count);
+    println!("  Seeded {} projects", project_count);
 
     // Seed tags
     let tags = vec![
@@ -122,13 +117,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             name,
             icon
         )
-        .fetch_one(&pool)
+        .fetch_one(pool)
         .await?;
 
         tag_ids.insert(slug, result.id);
     }
 
-    println!("✅ Seeded {} tags", tag_ids.len());
+    println!("  Seeded {} tags", tag_ids.len());
 
     // Associate tags with projects
     let project_tag_associations = vec![
@@ -159,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (project_slug, tag_slugs) in project_tag_associations {
         let project_id = sqlx::query!("SELECT id FROM projects WHERE slug = $1", project_slug)
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await?
             .id;
 
@@ -170,7 +165,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     project_id,
                     tag_id
                 )
-                .execute(&pool)
+                .execute(pool)
                 .await?;
 
                 association_count += 1;
@@ -178,11 +173,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("✅ Created {} project-tag associations", association_count);
+    println!("  Created {} project-tag associations", association_count);
 
     // Recalculate tag cooccurrence
     sqlx::query!("DELETE FROM tag_cooccurrence")
-        .execute(&pool)
+        .execute(pool)
         .await?;
 
     sqlx::query!(
@@ -199,10 +194,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         HAVING COUNT(*) > 0
         "#
     )
-    .execute(&pool)
+    .execute(pool)
     .await?;
 
-    println!("✅ Recalculated tag cooccurrence");
+    println!("  Recalculated tag cooccurrence");
+    println!("Database seeded successfully!");
 
     Ok(())
 }

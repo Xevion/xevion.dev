@@ -29,7 +29,7 @@ RUN mkdir -p web/build/client && \
     echo "placeholder" > web/build/client/.gitkeep
 
 RUN cargo build --release && \
-    strip target/release/api
+    strip target/release/xevion
 
 # ========== Stage 4: Frontend Builder ==========
 FROM oven/bun:1 AS frontend
@@ -66,7 +66,7 @@ COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 # Build with real assets (use sqlx offline mode)
 ENV SQLX_OFFLINE=true
 RUN cargo build --release && \
-    strip target/release/api
+    strip target/release/xevion
 
 # ========== Stage 6: Runtime ==========
 FROM oven/bun:1-alpine AS runtime
@@ -76,7 +76,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 # Copy Rust binary
-COPY --from=final-builder /build/target/release/api ./api
+COPY --from=final-builder /build/target/release/xevion ./xevion
 
 # Copy Bun SSR server and client assets (including fonts for OG images)
 COPY --from=frontend /build/build/server ./web/build/server

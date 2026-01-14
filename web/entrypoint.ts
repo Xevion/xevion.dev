@@ -63,7 +63,7 @@ while (!existsSync(BUN_SOCKET)) {
 console.log("Starting Rust API...");
 const rustProc = spawn({
   cmd: [
-    "/app/api",
+    "/app/xevion",
     "--listen",
     `[::]:${PORT}`,
     "--listen",

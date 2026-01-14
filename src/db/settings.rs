@@ -60,7 +60,7 @@ pub struct ApiSiteSettings {
 }
 
 // Request types for updates
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateSiteIdentityRequest {
     #[serde(rename = "displayName")]
     pub display_name: String,
@@ -70,7 +70,7 @@ pub struct UpdateSiteIdentityRequest {
     pub site_title: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateSocialLinkRequest {
     pub id: String,
     pub platform: String,
@@ -82,7 +82,7 @@ pub struct UpdateSocialLinkRequest {
     pub display_order: i32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateSiteSettingsRequest {
     pub identity: UpdateSiteIdentityRequest,
     #[serde(rename = "socialLinks")]

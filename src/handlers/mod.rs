@@ -15,7 +15,7 @@ pub use tags::*;
 
 // Request/Response types used by handlers
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct CreateTagRequest {
     pub name: String,
     pub slug: Option<String>,
@@ -23,7 +23,7 @@ pub struct CreateTagRequest {
     pub color: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct UpdateTagRequest {
     pub name: String,
     pub slug: Option<String>,
