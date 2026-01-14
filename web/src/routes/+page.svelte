@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/state";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
   import DiscordProfileModal from "$lib/components/DiscordProfileModal.svelte";
   import type { PageData } from "./$types";
@@ -26,8 +28,9 @@
     socialLinksWithIcons.filter((link: { visible: boolean }) => link.visible),
   );
 
-  let discordModalOpen = $state(false);
-  let discordUsername = $state("");
+  function openDiscordModal(username: string) {
+    pushState("", { discordModal: { open: true, username } });
+  }
 </script>
 
 <main class="page-main overflow-x-hidden font-schibsted">
@@ -61,7 +64,7 @@
               <!-- Simple link platforms -->
               <a
                 href={link.value}
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -76,11 +79,8 @@
               <!-- Discord - button that opens profile modal -->
               <button
                 type="button"
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
-                onclick={() => {
-                  discordUsername = link.value;
-                  discordModalOpen = true;
-                }}
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
+                onclick={() => openDiscordModal(link.value)}
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -95,7 +95,7 @@
               <!-- Email - mailto link -->
               <a
                 href="mailto:{link.value}"
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
+                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -111,7 +111,7 @@
           <!-- PGP Key - links to dedicated page -->
           <a
             href="/pgp"
-            class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
+            class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
           >
             <MaterialSymbolsVpnKey
               class="size-4.5 text-zinc-600 dark:text-zinc-300"
@@ -135,4 +135,9 @@
   </div>
 </main>
 
-<DiscordProfileModal bind:open={discordModalOpen} username={discordUsername} />
+{#if page.state.discordModal?.open}
+  <DiscordProfileModal
+    username={page.state.discordModal.username}
+    onclose={() => history.back()}
+  />
+{/if}

@@ -10,7 +10,7 @@
   aria-label={themeStore.isDark
     ? "Switch to light mode"
     : "Switch to dark mode"}
-  class="relative size-9 rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900/50 hover:bg-zinc-200 dark:hover:bg-zinc-800/70 transition-all duration-200"
+  class="relative size-9 rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900/50 hover:bg-zinc-200 dark:hover:bg-zinc-800/70 transition-all duration-200 cursor-pointer"
 >
   <div class="absolute inset-0 flex items-center justify-center">
     <IconSun

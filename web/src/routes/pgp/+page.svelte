@@ -128,7 +128,7 @@
       <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <button
           onclick={copyToClipboard}
-          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm cursor-pointer"
         >
           <IconCopy class="size-4 sm:size-5" />
           <span class="text-sm sm:text-base font-medium"
@@ -137,7 +137,7 @@
         </button>
         <button
           onclick={downloadKey}
-          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
         >
           <IconDownload class="size-4 sm:size-5" />
           <span class="text-sm sm:text-base font-medium">Download</span>
