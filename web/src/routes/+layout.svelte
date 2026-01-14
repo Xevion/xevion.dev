@@ -116,6 +116,6 @@
 {/if}
 
 <!-- Page content wrapper - this is what transitions between pages -->
-<div style="view-transition-name: page-content">
+<div class="pb-12" style="view-transition-name: page-content">
   {@render children()}
 </div>

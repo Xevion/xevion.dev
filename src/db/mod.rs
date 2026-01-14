@@ -22,7 +22,7 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
 
     let pool_options = PgPoolOptions::new()
         .max_connections(20)
-        .acquire_timeout(Duration::from_secs(3));
+        .acquire_timeout(Duration::from_secs(10));
 
     let mut last_error = None;
     let mut delay = initial_delay;

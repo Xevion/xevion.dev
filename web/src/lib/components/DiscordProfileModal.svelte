@@ -47,7 +47,7 @@
 
 <div
   use:portal
-  class="fixed inset-0 z-[60] flex items-start justify-center bg-black/30 backdrop-blur-[3px] p-4 pt-[15vh]"
+  class="fixed inset-0 z-[60] flex items-start justify-center bg-black/30 backdrop-blur-[3px] p-6 pt-[15vh]"
   onclick={handleBackdropClick}
   onkeydown={(e) => e.key === "Escape" && handleClose()}
   role="presentation"
@@ -56,7 +56,7 @@
 >
   <!-- SCALE: Adjust the scale() value to resize entire modal proportionally -->
   <div
-    class="relative w-full max-w-md rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg overflow-hidden scale-110 origin-top"
+    class="relative w-full max-w-md rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg overflow-hidden sm:scale-110 origin-top"
     role="dialog"
     aria-modal="true"
     aria-labelledby="discord-profile-title"
