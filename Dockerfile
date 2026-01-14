@@ -61,6 +61,7 @@ COPY migrations/ ./migrations/
 # Copy frontend assets for embedding
 COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/prerendered ./web/build/prerendered
+COPY --from=frontend /build/build/env.js ./web/build/env.js
 
 # Build with real assets (use sqlx offline mode)
 ENV SQLX_OFFLINE=true

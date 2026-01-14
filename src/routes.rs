@@ -77,6 +77,8 @@ pub fn build_base_router() -> Router<Arc<AppState>> {
     Router::new()
         .nest("/api", api_routes())
         .route("/api/", any(api_root_404_handler))
+        // Serve env.js explicitly before the wildcard (it's at build root, not in client/)
+        .route("/_app/env.js", get(handlers::serve_env_js))
         .route(
             "/_app/{*path}",
             get(assets::serve_embedded_asset).head(assets::serve_embedded_asset),

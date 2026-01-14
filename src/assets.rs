@@ -7,6 +7,7 @@ use include_dir::{Dir, include_dir};
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
 static ERROR_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered/errors");
 static PRERENDERED_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered");
+static ENV_JS: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/web/build/env.js"));
 
 pub async fn serve_embedded_asset(uri: Uri) -> Response {
     let path = uri.path();
@@ -84,6 +85,14 @@ pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
 pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
     let filename = format!("{}.html", status_code);
     ERROR_PAGES.get_file(&filename).map(|f| f.contents())
+}
+
+/// Get the embedded SvelteKit env.js file for dynamic public environment variables.
+///
+/// SvelteKit generates this file when using `$env/dynamic/public` imports.
+/// It must be served at `/_app/env.js` for prerendered pages to hydrate correctly.
+pub fn get_env_js() -> &'static [u8] {
+    ENV_JS
 }
 
 /// Serve prerendered content by path, if it exists.
