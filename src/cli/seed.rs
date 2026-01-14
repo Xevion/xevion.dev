@@ -153,7 +153,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
         (
             "rustdoc-mcp",
             "rustdoc-mcp",
-            "MCP server providing AI assistants access to Rust documentation",
+            "intelligent MCP server providing access to Rust documentation",
             "A Model Context Protocol (MCP) server that provides AI assistants with direct access to Rust crate documentation. Enables LLMs to query rustdoc-generated documentation, search for types, traits, and functions, and retrieve detailed API information for any published Rust crate. Integrates with Claude, GPT, and other MCP-compatible AI tools to provide accurate, up-to-date Rust API references without hallucination.",
             "active",
             Some("Xevion/rustdoc-mcp"),
@@ -289,7 +289,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
     sqlx::query!(
         r#"
         INSERT INTO tag_cooccurrence (tag_a, tag_b, count)
-        SELECT 
+        SELECT
             LEAST(t1.tag_id, t2.tag_id) as tag_a,
             GREATEST(t1.tag_id, t2.tag_id) as tag_b,
             COUNT(*)::int as count

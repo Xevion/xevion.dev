@@ -9,10 +9,14 @@
   import { themeStore } from "$lib/stores/theme.svelte";
   import { page } from "$app/stores";
   import { onNavigate } from "$app/navigation";
+  import Clouds from "$lib/components/Clouds.svelte";
   import Dots from "$lib/components/Dots.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
 
   let { children, data } = $props();
+
+  // Randomly choose background component on mount (stable, doesn't change after initial load)
+  let backgroundComponent = $state<"clouds" | "dots" | null>(null);
 
   const defaultMetadata = {
     title: "Xevion.dev",
@@ -57,6 +61,9 @@
   });
 
   onMount(() => {
+    // Randomly choose background component (50/50 chance)
+    backgroundComponent = Math.random() < 0.5 ? "clouds" : "dots";
+
     // Initialize theme store
     themeStore.init();
 
@@ -103,8 +110,12 @@
 <!-- Persistent background layer - only for public routes -->
 <!-- These elements have view-transition-name to exclude them from page transitions -->
 {#if showGlobalBackground}
-  <!-- Dots component includes both background overlay and animated dots -->
-  <Dots style="view-transition-name: background" />
+  <!-- Randomly chosen background component (Clouds or Dots) -->
+  {#if backgroundComponent === "clouds"}
+    <Clouds style="view-transition-name: background" />
+  {:else if backgroundComponent === "dots"}
+    <Dots style="view-transition-name: background" />
+  {/if}
 
   <!-- Theme toggle - persistent across page transitions -->
   <div

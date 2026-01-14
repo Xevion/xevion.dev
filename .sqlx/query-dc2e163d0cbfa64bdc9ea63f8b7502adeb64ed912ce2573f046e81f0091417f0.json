@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO tag_cooccurrence (tag_a, tag_b, count)\n        SELECT\n            LEAST(t1.tag_id, t2.tag_id) as tag_a,\n            GREATEST(t1.tag_id, t2.tag_id) as tag_b,\n            COUNT(*)::int as count\n        FROM project_tags t1\n        JOIN project_tags t2 ON t1.project_id = t2.project_id\n        WHERE t1.tag_id < t2.tag_id\n        GROUP BY tag_a, tag_b\n        HAVING COUNT(*) > 0\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dc2e163d0cbfa64bdc9ea63f8b7502adeb64ed912ce2573f046e81f0091417f0"
+}
