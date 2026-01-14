@@ -74,7 +74,7 @@
   </div>
 
   <!-- TODO: Add link to project search with tag filtering -->
-  <div class="mt-auto flex flex-wrap gap-1">
+  <div class="mt-auto flex flex-row-reverse flex-wrap-reverse gap-1">
     {#each project.tags as tag (tag.name)}
       <TagChip name={tag.name} color={tag.color} iconSvg={tag.iconSvg} />
     {/each}

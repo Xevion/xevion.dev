@@ -90,32 +90,48 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
 
     // Seed tags
     let tags = vec![
-        ("rust", "Rust", "simple-icons:rust"),
-        ("python", "Python", "simple-icons:python"),
-        ("typescript", "TypeScript", "simple-icons:typescript"),
-        ("javascript", "JavaScript", "simple-icons:javascript"),
-        ("web", "Web", "lucide:globe"),
-        ("cli", "CLI", "lucide:terminal"),
-        ("library", "Library", "lucide:package"),
-        ("game", "Game", "lucide:gamepad-2"),
-        ("data-structures", "Data Structures", "lucide:database"),
-        ("algorithms", "Algorithms", "lucide:cpu"),
-        ("multiplayer", "Multiplayer", "lucide:users"),
-        ("config", "Config", "lucide:settings"),
+        ("rust", "Rust", "simple-icons:rust", "CE422B"),
+        ("python", "Python", "simple-icons:python", "3776AB"),
+        (
+            "typescript",
+            "TypeScript",
+            "simple-icons:typescript",
+            "3178C6",
+        ),
+        (
+            "javascript",
+            "JavaScript",
+            "simple-icons:javascript",
+            "EAB308",
+        ),
+        ("web", "Web", "lucide:globe", "2563EB"),
+        ("cli", "CLI", "lucide:terminal", "64748B"),
+        ("library", "Library", "lucide:package", "8B5CF6"),
+        ("game", "Game", "lucide:gamepad-2", "EC4899"),
+        (
+            "data-structures",
+            "Data Structures",
+            "lucide:database",
+            "10B981",
+        ),
+        ("algorithms", "Algorithms", "lucide:cpu", "F59E0B"),
+        ("multiplayer", "Multiplayer", "lucide:users", "06B6D4"),
+        ("config", "Config", "lucide:settings", "6366F1"),
     ];
 
     let mut tag_ids = std::collections::HashMap::new();
 
-    for (slug, name, icon) in tags {
+    for (slug, name, icon, color) in tags {
         let result = sqlx::query!(
             r#"
-            INSERT INTO tags (slug, name, icon)
-            VALUES ($1, $2, $3)
+            INSERT INTO tags (slug, name, icon, color)
+            VALUES ($1, $2, $3, $4)
             RETURNING id
             "#,
             slug,
             name,
-            icon
+            icon,
+            color
         )
         .fetch_one(pool)
         .await?;

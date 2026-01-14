@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO tags (slug, name, icon)\n            VALUES ($1, $2, $3)\n            RETURNING id\n            ",
+  "query": "\n            INSERT INTO tags (slug, name, icon, color)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id\n            ",
   "describe": {
     "columns": [
       {
@@ -13,12 +13,13 @@
       "Left": [
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Varchar"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "1a6f4d858c200757c1d25c22279ef0a6eb8589bb6dff47afe1554850c1bead57"
+  "hash": "907e578fc43797b82c254fa3db3d976597f6deb761837d616d50aa93e9caef60"
 }

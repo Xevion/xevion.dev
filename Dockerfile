@@ -28,8 +28,7 @@ COPY src/ ./src/
 RUN mkdir -p web/build/client && \
     echo "placeholder" > web/build/client/.gitkeep
 
-RUN cargo build --release && \
-    strip target/release/xevion
+RUN cargo build --release
 
 # ========== Stage 4: Frontend Builder ==========
 FROM oven/bun:1 AS frontend
@@ -65,8 +64,7 @@ COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 
 # Build with real assets (use sqlx offline mode)
 ENV SQLX_OFFLINE=true
-RUN cargo build --release && \
-    strip target/release/xevion
+RUN cargo build --release
 
 # ========== Stage 6: Runtime ==========
 FROM oven/bun:1-alpine AS runtime

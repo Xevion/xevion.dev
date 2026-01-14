@@ -36,17 +36,18 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
                 return Ok(pool);
             }
             Err(e) => {
-                last_error = Some(e);
                 if attempt < max_attempts {
                     tracing::warn!(
                         attempt,
                         max_attempts,
                         delay_secs = delay.as_secs(),
+                        error = %e,
                         "Database connection failed, retrying..."
                     );
                     sleep(delay).await;
                     delay = (delay * 2).min(max_delay);
                 }
+                last_error = Some(e);
             }
         }
     }
