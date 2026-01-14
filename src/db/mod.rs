@@ -66,13 +66,13 @@ pub async fn health_check(pool: &PgPool) -> Result<(), sqlx::Error> {
 pub fn slugify(text: &str) -> String {
     text.to_lowercase()
         .chars()
-        .map(|c| {
+        .filter_map(|c| {
             if c.is_alphanumeric() {
-                c
-            } else if c.is_whitespace() || c == '-' || c == '_' {
-                '-'
+                Some(c)
+            } else if c.is_whitespace() || c == '-' || c == '_' || c == '.' {
+                Some('-')
             } else {
-                '\0'
+                None
             }
         })
         .collect::<String>()
@@ -85,6 +85,7 @@ pub fn slugify(text: &str) -> String {
 /// Project status enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, serde::Serialize, serde::Deserialize)]
 #[sqlx(type_name = "project_status", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ProjectStatus {
     Active,
     Maintained,
