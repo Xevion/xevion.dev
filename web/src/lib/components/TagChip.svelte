@@ -1,6 +1,6 @@
 <script lang="ts">
   import { cn } from "$lib/utils";
-  import { toSymbolId } from "./IconSprite.svelte";
+  import Icon from "./Icon.svelte";
 
   interface Props {
     name: string;
@@ -20,11 +20,7 @@
 
 {#snippet iconAndName()}
   {#if icon}
-    <span class="size-4.25 sm:size-3.75">
-      <svg class="w-full h-full" aria-hidden="true">
-        <use href="#{toSymbolId(icon)}" />
-      </svg>
-    </span>
+    <Icon {icon} size="size-4.25 sm:size-3.75" />
   {/if}
   <span>{name}</span>
 {/snippet}

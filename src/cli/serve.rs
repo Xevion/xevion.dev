@@ -8,6 +8,7 @@ use tower_http::cors::CorsLayer;
 use crate::cache::{IsrCache, IsrCacheConfig};
 use crate::config::ListenAddr;
 use crate::github;
+use crate::icon_cache::IconCache;
 use crate::middleware::RequestIdLayer;
 use crate::state::AppState;
 use crate::tarpit::{TarpitConfig, TarpitState};
@@ -135,6 +136,10 @@ pub async fn run(
         "ISR cache initialized"
     );
 
+    // Initialize icon cache
+    let icon_cache = Arc::new(IconCache::new());
+    tracing::debug!("Icon cache initialized");
+
     let state = Arc::new(AppState {
         client,
         health_checker,
@@ -142,6 +147,7 @@ pub async fn run(
         pool: pool.clone(),
         session_manager: session_manager.clone(),
         isr_cache,
+        icon_cache,
     });
 
     // Regenerate common OGP images on startup

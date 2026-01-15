@@ -1,12 +1,8 @@
 import { json, error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { requireAuth } from "$lib/server/auth";
 import { getIconForApi } from "$lib/server/icons";
 
 export const GET: RequestHandler = async (event) => {
-  // Require authentication
-  requireAuth(event);
-
   const { collection, name } = event.params;
   const identifier = `${collection}:${name}`;
 

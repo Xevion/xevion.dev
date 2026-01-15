@@ -2,7 +2,6 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Table from "$lib/components/admin/Table.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
-  import IconSprite from "$lib/components/IconSprite.svelte";
   import { goto } from "$app/navigation";
   import type { PageData } from "./$types";
   import type { ProjectStatus } from "$lib/admin-types";
@@ -62,8 +61,6 @@
 <svelte:head>
   <title>Projects | Admin</title>
 </svelte:head>
-
-<IconSprite icons={data.icons} />
 
 <div class="space-y-6">
   <!-- Header -->

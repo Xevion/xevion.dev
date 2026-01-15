@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
-  import IconSprite from "$lib/components/IconSprite.svelte";
   import { createAdminProject } from "$lib/api";
   import type { CreateProjectData } from "$lib/admin-types";
   import type { PageData } from "./$types";
@@ -18,8 +17,6 @@
 <svelte:head>
   <title>New Project | Admin</title>
 </svelte:head>
-
-<IconSprite icons={data.icons} />
 
 <div class="max-w-3xl space-y-6">
   <!-- Header -->

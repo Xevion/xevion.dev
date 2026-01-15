@@ -12,6 +12,7 @@ mod github;
 mod handlers;
 mod health;
 mod http;
+mod icon_cache;
 mod media_processing;
 mod middleware;
 mod og;

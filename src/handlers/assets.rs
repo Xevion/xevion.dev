@@ -1,5 +1,4 @@
 use axum::{
-    Json,
     extract::{Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -63,47 +62,5 @@ pub async fn handle_pgp_route(
     } else {
         // Proxy to Bun for HTML page
         proxy::isr_handler(State(state), req).await
-    }
-}
-
-/// Proxy icon requests to SvelteKit
-pub async fn proxy_icons_handler(
-    State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
-    axum::extract::Path(path): axum::extract::Path<String>,
-    req: Request,
-) -> impl IntoResponse {
-    let full_path = format!("/api/icons/{}", path);
-    let query = req.uri().query().unwrap_or("");
-
-    let path_with_query = if query.is_empty() {
-        full_path.clone()
-    } else {
-        format!("{full_path}?{query}")
-    };
-
-    // Build trusted headers with session info
-    let mut forward_headers = HeaderMap::new();
-
-    if let Some(cookie) = jar.get("admin_session")
-        && let Ok(session_id) = ulid::Ulid::from_string(cookie.value())
-        && let Some(session) = state.session_manager.validate_session(session_id)
-        && let Ok(username_value) = axum::http::HeaderValue::from_str(&session.username)
-    {
-        forward_headers.insert("x-session-user", username_value);
-    }
-
-    match proxy::proxy_to_bun(&path_with_query, state, forward_headers).await {
-        Ok((status, headers, body)) => (status, headers, body).into_response(),
-        Err(err) => {
-            tracing::error!(error = %err, path = %full_path, "Failed to proxy icon request");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({
-                    "error": "Failed to fetch icon data"
-                })),
-            )
-                .into_response()
-        }
     }
 }

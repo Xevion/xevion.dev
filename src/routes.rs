@@ -84,8 +84,9 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/settings",
             get(handlers::get_settings_handler).put(handlers::update_settings_handler),
         )
-        // Icon API - proxy to SvelteKit (authentication handled by SvelteKit)
-        .route("/icons/{*path}", get(handlers::proxy_icons_handler))
+        // Icon API - handles both cached SVG serving and JSON proxy
+        // SVG requests (e.g., /icons/lucide/star.svg) are cached; others proxy to Bun
+        .route("/icons/{*path}", get(handlers::serve_icon_handler))
         .fallback(api_404_and_method_handler)
 }
 

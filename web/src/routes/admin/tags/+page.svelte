@@ -5,7 +5,6 @@
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
-  import IconSprite from "$lib/components/IconSprite.svelte";
   import { createAdminTag, deleteAdminTag } from "$lib/api";
   import type { CreateTagData, AdminTagWithCount } from "$lib/admin-types";
   import type { PageData } from "./$types";
@@ -145,8 +144,6 @@
 <svelte:head>
   <title>Tags | Admin</title>
 </svelte:head>
-
-<IconSprite icons={data.icons} />
 
 <div class="space-y-6">
   <!-- Header -->

@@ -5,7 +5,7 @@
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
-  import IconSprite from "$lib/components/IconSprite.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import { updateAdminTag, deleteAdminTag } from "$lib/api";
   import { goto, invalidateAll } from "$app/navigation";
   import type { PageData } from "./$types";
@@ -27,49 +27,6 @@
   // svelte-ignore state_referenced_locally
   let color = $state<string | undefined>(data.tag.color);
   let saving = $state(false);
-
-  // Preview icon SVG - starts with server-rendered, updates on icon change
-  // svelte-ignore state_referenced_locally
-  let previewIconSvg = $state(
-    data.tag.icon ? (data.icons[data.tag.icon] ?? "") : "",
-  );
-  let iconLoadTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  // Watch for icon changes and fetch new preview
-  $effect(() => {
-    const currentIcon = icon;
-
-    // Clear pending timeout
-    if (iconLoadTimeout) {
-      clearTimeout(iconLoadTimeout);
-    }
-
-    if (!currentIcon) {
-      previewIconSvg = "";
-      return;
-    }
-
-    // Check if icon is already in sprite
-    if (data.icons[currentIcon]) {
-      previewIconSvg = data.icons[currentIcon];
-      return;
-    }
-
-    // Debounce icon fetching for new icons
-    iconLoadTimeout = setTimeout(async () => {
-      try {
-        const response = await fetch(
-          `/api/icons/${currentIcon.replace(":", "/")}`,
-        );
-        if (response.ok) {
-          const iconData = await response.json();
-          previewIconSvg = iconData.svg ?? "";
-        }
-      } catch {
-        // Keep existing preview on error
-      }
-    }, 200);
-  });
 
   // Delete state
   let deleteModalOpen = $state(false);
@@ -145,8 +102,6 @@
   <title>Edit {data.tag.name} | Tags | Admin</title>
 </svelte:head>
 
-<IconSprite icons={data.icons} />
-
 <div class="space-y-6 max-w-3xl">
   <!-- Back Link -->
   <a
@@ -193,7 +148,7 @@
       <ColorPicker bind:selectedColor={color} />
     </div>
 
-    <!-- Preview - rendered inline with dynamic icon SVG -->
+    <!-- Preview -->
     <div class="mt-6 pt-4 border-t border-admin-border">
       <span class="block text-sm font-medium text-admin-text mb-2">
         Preview
@@ -202,11 +157,8 @@
         class={tagBaseClasses}
         style="border-left-color: #{color || '06b6d4'}"
       >
-        {#if previewIconSvg}
-          <span class="size-4.25 sm:size-3.75 [&>svg]:w-full [&>svg]:h-full">
-            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-            {@html previewIconSvg}
-          </span>
+        {#if icon}
+          <Icon {icon} size="size-4.25 sm:size-3.75" />
         {/if}
         <span>{name || "Tag Name"}</span>
       </span>

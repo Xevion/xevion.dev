@@ -24,9 +24,6 @@ const PRE_CACHE_COLLECTIONS = [
   "feather",
 ];
 
-// Default fallback icon
-const DEFAULT_FALLBACK_ICON: IconIdentifier = "lucide:help-circle";
-
 /**
  * Parse icon identifier into collection and name
  */
@@ -143,134 +140,7 @@ function renderIconData(
 }
 
 /**
- * Render the default fallback icon (internal helper)
- */
-async function renderFallbackIcon(
-  options: IconRenderOptions,
-): Promise<string | null> {
-  const parsed = parseIdentifier(DEFAULT_FALLBACK_ICON);
-  if (!parsed) return null;
-
-  const iconSet = await loadCollection(parsed.collection);
-  if (!iconSet) return null;
-
-  const iconData = getIconData(iconSet, parsed.name);
-  if (!iconData) return null;
-
-  return renderIconData(iconData, options);
-}
-
-/**
- * Render multiple icons efficiently in a single batch.
- * Groups icons by collection, loads each collection once, then renders all icons.
- *
- * @param identifiers - Array of icon identifiers (e.g., ["lucide:home", "simple-icons:github"])
- * @param options - Render options applied to all icons
- * @returns Map of identifier to rendered SVG string (missing icons get fallback)
- */
-export async function renderIconsBatch(
-  identifiers: string[],
-  options: IconRenderOptions = {},
-): Promise<Map<string, string>> {
-  const results = new Map<string, string>();
-
-  if (identifiers.length === 0) {
-    return results;
-  }
-
-  // Parse and group by collection
-  const byCollection = new Map<
-    string,
-    { identifier: string; name: string }[]
-  >();
-  const invalidIdentifiers: string[] = [];
-
-  for (const identifier of identifiers) {
-    const parsed = parseIdentifier(identifier);
-    if (!parsed) {
-      invalidIdentifiers.push(identifier);
-      continue;
-    }
-
-    const group = byCollection.get(parsed.collection) || [];
-    group.push({ identifier, name: parsed.name });
-    byCollection.set(parsed.collection, group);
-  }
-
-  if (invalidIdentifiers.length > 0) {
-    logger.warn("Invalid icon identifiers in batch", {
-      identifiers: invalidIdentifiers,
-    });
-  }
-
-  // Load all needed collections in parallel
-  const collections = Array.from(byCollection.keys());
-  const loadedCollections = await Promise.all(
-    collections.map(async (collection) => ({
-      collection,
-      iconSet: await loadCollection(collection),
-    })),
-  );
-
-  // Build lookup map
-  const collectionMap = new Map<string, IconifyJSON>();
-  for (const { collection, iconSet } of loadedCollections) {
-    if (iconSet) {
-      collectionMap.set(collection, iconSet);
-    }
-  }
-
-  // Render all icons
-  const missingIcons: string[] = [];
-
-  for (const [collection, icons] of byCollection) {
-    const iconSet = collectionMap.get(collection);
-    if (!iconSet) {
-      missingIcons.push(...icons.map((i) => i.identifier));
-      continue;
-    }
-
-    for (const { identifier, name } of icons) {
-      const iconData = getIconData(iconSet, name);
-      if (!iconData) {
-        missingIcons.push(identifier);
-        continue;
-      }
-
-      try {
-        const svg = renderIconData(iconData, options);
-        results.set(identifier, svg);
-      } catch (error) {
-        logger.warn("Failed to render icon", {
-          identifier,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        missingIcons.push(identifier);
-      }
-    }
-  }
-
-  // Add fallback for missing icons
-  if (missingIcons.length > 0) {
-    logger.warn("Icons not found in batch, using fallback", {
-      missing: missingIcons,
-      fallback: DEFAULT_FALLBACK_ICON,
-    });
-
-    // Render fallback icon once
-    const fallbackSvg = await renderFallbackIcon(options);
-    if (fallbackSvg) {
-      for (const identifier of missingIcons) {
-        results.set(identifier, fallbackSvg);
-      }
-    }
-  }
-
-  return results;
-}
-
-/**
- * Get single icon data (for API endpoint use only)
+ * Get single icon data (for API endpoint use - IconPicker)
  */
 export async function getIconForApi(identifier: string): Promise<{
   identifier: string;

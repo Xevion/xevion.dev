@@ -3,7 +3,6 @@
   import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
-  import IconSprite from "$lib/components/IconSprite.svelte";
   import { updateAdminProject, deleteAdminProject } from "$lib/api";
   import type { UpdateProjectData, CreateProjectData } from "$lib/admin-types";
   import type { PageData } from "./$types";
@@ -60,8 +59,6 @@
 <svelte:head>
   <title>Edit Project | Admin</title>
 </svelte:head>
-
-<IconSprite icons={data.icons} />
 
 <div class="max-w-3xl space-y-6">
   <!-- Header -->
