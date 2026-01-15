@@ -57,7 +57,7 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
         .map_err(|e| format!("Failed to read response: {e}"))?
         .to_vec();
 
-    r2.put_object(&r2_key, bytes)
+    r2.put_object(&r2_key, bytes, "image/png")
         .await
         .map_err(|e| format!("Failed to upload to R2: {e}"))?;
 

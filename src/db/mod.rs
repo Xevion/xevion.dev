@@ -1,8 +1,10 @@
+pub mod media;
 pub mod projects;
 pub mod settings;
 pub mod tags;
 
 // Re-export all types and functions
+pub use media::*;
 pub use projects::*;
 pub use settings::*;
 pub use tags::*;

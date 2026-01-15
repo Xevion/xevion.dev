@@ -11,12 +11,12 @@ pub async fn projects_handler(
     let is_admin = auth::check_session(&state, &jar).is_some();
 
     if is_admin {
-        // Admin view: return all projects with tags
+        // Admin view: return all projects with tags and media
         match db::get_all_projects_with_tags_admin(&state.pool).await {
             Ok(projects_with_tags) => {
                 let response: Vec<db::ApiAdminProject> = projects_with_tags
                     .into_iter()
-                    .map(|(project, tags)| project.to_api_admin_project(tags))
+                    .map(|(project, tags, media)| project.to_api_admin_project(tags, media))
                     .collect();
                 Json(response).into_response()
             }
@@ -33,12 +33,12 @@ pub async fn projects_handler(
             }
         }
     } else {
-        // Public view: return non-hidden projects with tags
+        // Public view: return non-hidden projects with tags and media
         match db::get_public_projects_with_tags(&state.pool).await {
             Ok(projects_with_tags) => {
                 let response: Vec<db::ApiAdminProject> = projects_with_tags
                     .into_iter()
-                    .map(|(project, tags)| project.to_api_admin_project(tags))
+                    .map(|(project, tags, media)| project.to_api_admin_project(tags, media))
                     .collect();
                 Json(response).into_response()
             }
@@ -80,7 +80,7 @@ pub async fn get_project_handler(
     let is_admin = auth::check_session(&state, &jar).is_some();
 
     match db::get_project_by_id_with_tags(&state.pool, project_id).await {
-        Ok(Some((project, tags))) => {
+        Ok(Some((project, tags, media))) => {
             // If project is hidden and user is not admin, return 404
             if project.status == db::ProjectStatus::Hidden && !is_admin {
                 return (
@@ -93,7 +93,7 @@ pub async fn get_project_handler(
                     .into_response();
             }
 
-            Json(project.to_api_admin_project(tags)).into_response()
+            Json(project.to_api_admin_project(tags, media)).into_response()
         }
         Ok(None) => (
             StatusCode::NOT_FOUND,
@@ -214,8 +214,10 @@ pub async fn create_project_handler(
         tracing::error!(error = %err, project_id = %project.id, "Failed to set project tags");
     }
 
-    // Fetch project with tags to return
-    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project.id).await {
+    // Fetch project with tags and media to return
+    let (project, tags, media) = match db::get_project_by_id_with_tags(&state.pool, project.id)
+        .await
+    {
         Ok(Some(data)) => data,
         Ok(None) => {
             tracing::error!(project_id = %project.id, "Project not found after creation");
@@ -248,7 +250,7 @@ pub async fn create_project_handler(
 
     (
         StatusCode::CREATED,
-        Json(project.to_api_admin_project(tags)),
+        Json(project.to_api_admin_project(tags, media)),
     )
         .into_response()
 }
@@ -384,8 +386,10 @@ pub async fn update_project_handler(
         tracing::error!(error = %err, project_id = %project.id, "Failed to update project tags");
     }
 
-    // Fetch updated project with tags
-    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project.id).await {
+    // Fetch updated project with tags and media
+    let (project, tags, media) = match db::get_project_by_id_with_tags(&state.pool, project.id)
+        .await
+    {
         Ok(Some(data)) => data,
         Ok(None) => {
             tracing::error!(project_id = %project.id, "Project not found after update");
@@ -416,7 +420,7 @@ pub async fn update_project_handler(
     // Invalidate cached pages that display projects
     state.isr_cache.invalidate("/").await;
 
-    Json(project.to_api_admin_project(tags)).into_response()
+    Json(project.to_api_admin_project(tags, media)).into_response()
 }
 
 /// Delete a project (requires authentication)
@@ -446,32 +450,33 @@ pub async fn delete_project_handler(
     };
 
     // Fetch project before deletion to return it
-    let (project, tags) = match db::get_project_by_id_with_tags(&state.pool, project_id).await {
-        Ok(Some(data)) => data,
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(serde_json::json!({
-                    "error": "Not found",
-                    "message": "Project not found"
-                })),
-            )
-                .into_response();
-        }
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to fetch project before deletion");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to delete project"
-                })),
-            )
-                .into_response();
-        }
-    };
+    let (project, tags, media) =
+        match db::get_project_by_id_with_tags(&state.pool, project_id).await {
+            Ok(Some(data)) => data,
+            Ok(None) => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({
+                        "error": "Not found",
+                        "message": "Project not found"
+                    })),
+                )
+                    .into_response();
+            }
+            Err(err) => {
+                tracing::error!(error = %err, "Failed to fetch project before deletion");
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "Internal server error",
+                        "message": "Failed to delete project"
+                    })),
+                )
+                    .into_response();
+            }
+        };
 
-    // Delete project (CASCADE handles tags)
+    // Delete project (CASCADE handles tags and media)
     match db::delete_project(&state.pool, project_id).await {
         Ok(()) => {
             tracing::info!(project_id = %project_id, project_name = %project.name, "Project deleted");
@@ -479,7 +484,7 @@ pub async fn delete_project_handler(
             // Invalidate cached pages that display projects
             state.isr_cache.invalidate("/").await;
 
-            Json(project.to_api_admin_project(tags)).into_response()
+            Json(project.to_api_admin_project(tags, media)).into_response()
         }
         Err(err) => {
             tracing::error!(error = %err, "Failed to delete project");

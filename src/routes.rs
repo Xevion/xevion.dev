@@ -4,7 +4,7 @@ use axum::{
     extract::Request,
     http::{Method, Uri},
     response::IntoResponse,
-    routing::{any, get, post},
+    routing::{any, delete, get, post, put},
 };
 use std::sync::Arc;
 
@@ -41,7 +41,20 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         )
         .route(
             "/projects/{id}/tags/{tag_id}",
-            axum::routing::delete(handlers::remove_project_tag_handler),
+            delete(handlers::remove_project_tag_handler),
+        )
+        // Project media - GET is public, POST/PUT/DELETE require authentication
+        .route(
+            "/projects/{id}/media",
+            get(handlers::get_project_media_handler).post(handlers::upload_media_handler),
+        )
+        .route(
+            "/projects/{id}/media/reorder",
+            put(handlers::reorder_media_handler),
+        )
+        .route(
+            "/projects/{id}/media/{media_id}",
+            delete(handlers::delete_media_handler),
         )
         // Tags - authentication checked in handlers
         .route(

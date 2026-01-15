@@ -2,6 +2,7 @@
   import Button from "./Button.svelte";
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
+  import MediaManager from "./MediaManager.svelte";
   import type {
     AdminProject,
     CreateProjectData,
@@ -177,17 +178,8 @@
     placeholder="Search and select tags..."
   />
 
-  <!-- Media Upload Placeholder -->
-  <div class="space-y-1.5">
-    <div class="block text-sm font-medium text-admin-text">Media</div>
-    <Button type="button" variant="secondary" disabled class="w-full">
-      <i class="fa-solid fa-upload mr-2"></i>
-      Upload Images/Videos (Coming Soon)
-    </Button>
-    <p class="text-xs text-admin-text-muted">
-      Media upload functionality will be available soon
-    </p>
-  </div>
+  <!-- Media -->
+  <MediaManager projectId={project?.id ?? null} media={project?.media ?? []} />
 
   <!-- Actions -->
   <div class="flex justify-end gap-3 pt-4 border-t border-admin-border">

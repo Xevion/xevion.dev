@@ -9,6 +9,7 @@ import type {
   CreateTagData,
   UpdateTagData,
   SiteSettings,
+  ProjectMedia,
 } from "./admin-types";
 import { ApiError } from "./errors";
 
@@ -132,6 +133,68 @@ export interface RelatedTag extends AdminTag {
 
 export async function getRelatedTags(slug: string): Promise<RelatedTag[]> {
   return clientApiFetch<RelatedTag[]>(`/api/tags/${slug}/related`);
+}
+
+// Admin Media API
+export async function uploadProjectMedia(
+  projectId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<ProjectMedia> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append("file", file);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data as ProjectMedia);
+        } catch {
+          reject(new Error("Invalid response from server"));
+        }
+      } else {
+        reject(new Error(`Upload failed: ${xhr.statusText}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+
+    xhr.open("POST", `/api/projects/${projectId}/media`);
+    xhr.withCredentials = true;
+    xhr.send(formData);
+  });
+}
+
+export async function deleteProjectMedia(
+  projectId: string,
+  mediaId: string,
+): Promise<ProjectMedia> {
+  return clientApiFetch<ProjectMedia>(
+    `/api/projects/${projectId}/media/${mediaId}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function reorderProjectMedia(
+  projectId: string,
+  mediaIds: string[],
+): Promise<ProjectMedia[]> {
+  return clientApiFetch<ProjectMedia[]>(
+    `/api/projects/${projectId}/media/reorder`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaIds }),
+    },
+  );
 }
 
 // Admin Events API (currently mocked - no backend implementation yet)

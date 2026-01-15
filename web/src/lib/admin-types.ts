@@ -19,6 +19,45 @@ export interface TagWithIcon extends AdminTag {
   iconSvg?: string;
 }
 
+// Media types for project carousel
+export type MediaType = "image" | "video";
+
+export interface MediaVariant {
+  url: string;
+  width: number;
+  height: number;
+}
+
+export interface VideoOriginal {
+  url: string;
+  mime: string;
+  duration?: number;
+}
+
+export interface MediaVariants {
+  thumb?: MediaVariant;
+  medium?: MediaVariant;
+  full?: MediaVariant;
+  original?: MediaVariant;
+  poster?: MediaVariant;
+  video?: VideoOriginal;
+}
+
+export interface MediaMetadata {
+  focalPoint?: { x: number; y: number };
+  altText?: string;
+  duration?: number;
+}
+
+export interface ProjectMedia {
+  id: string;
+  displayOrder: number;
+  mediaType: MediaType;
+  variants: MediaVariants;
+  blurhash?: string;
+  metadata?: MediaMetadata;
+}
+
 export interface AdminProject {
   id: string;
   slug: string;
@@ -28,6 +67,7 @@ export interface AdminProject {
   status: ProjectStatus;
   links: Array<{ url: string; title?: string }>;
   tags: AdminTag[];
+  media: ProjectMedia[];
   githubRepo?: string | null;
   demoUrl?: string | null;
   createdAt: string;

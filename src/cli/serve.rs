@@ -1,8 +1,9 @@
+use axum::extract::DefaultBodyLimit;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
+use tower_http::cors::CorsLayer;
 
 use crate::cache::{IsrCache, IsrCacheConfig};
 use crate::config::ListenAddr;
@@ -218,7 +219,8 @@ pub async fn run(
         router
             .layer(RequestIdLayer::new(trust_request_id))
             .layer(CorsLayer::permissive())
-            .layer(RequestBodyLimitLayer::new(1_048_576))
+            // 50 MiB limit for media uploads
+            .layer(DefaultBodyLimit::max(50 * 1024 * 1024))
     }
 
     let mut tasks = Vec::new();

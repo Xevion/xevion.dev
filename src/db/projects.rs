@@ -5,7 +5,9 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
 use super::{
-    ProjectStatus, slugify,
+    ProjectStatus,
+    media::{ApiProjectMedia, DbProjectMedia, get_media_for_project},
+    slugify,
     tags::{ApiTag, DbTag, get_tags_for_project},
 };
 
@@ -49,6 +51,7 @@ pub struct ApiAdminProject {
     #[serde(flatten)]
     pub project: ApiProject,
     pub tags: Vec<ApiTag>,
+    pub media: Vec<ApiProjectMedia>,
     pub status: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,7 +90,11 @@ impl DbProject {
         }
     }
 
-    pub fn to_api_admin_project(&self, tags: Vec<DbTag>) -> ApiAdminProject {
+    pub fn to_api_admin_project(
+        &self,
+        tags: Vec<DbTag>,
+        media: Vec<DbProjectMedia>,
+    ) -> ApiAdminProject {
         let last_activity = self
             .last_github_activity
             .unwrap_or(self.created_at)
@@ -97,6 +104,7 @@ impl DbProject {
         ApiAdminProject {
             project: self.to_api_project(),
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
+            media: media.into_iter().map(|m| m.to_api_media()).collect(),
             status: format!("{:?}", self.status).to_lowercase(),
             description: self.description.clone(),
             github_repo: self.github_repo.clone(),
@@ -173,13 +181,14 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
 
 pub async fn get_public_projects_with_tags(
     pool: &PgPool,
-) -> Result<Vec<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+) -> Result<Vec<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
     let projects = get_public_projects(pool).await?;
 
     let mut result = Vec::new();
     for project in projects {
         let tags = get_tags_for_project(pool, project.id).await?;
-        result.push((project, tags));
+        let media = get_media_for_project(pool, project.id).await?;
+        result.push((project, tags, media));
     }
 
     Ok(result)
@@ -210,16 +219,17 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
     .await
 }
 
-/// Get all projects with tags (admin view)
+/// Get all projects with tags and media (admin view)
 pub async fn get_all_projects_with_tags_admin(
     pool: &PgPool,
-) -> Result<Vec<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+) -> Result<Vec<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
     let projects = get_all_projects_admin(pool).await?;
 
     let mut result = Vec::new();
     for project in projects {
         let tags = get_tags_for_project(pool, project.id).await?;
-        result.push((project, tags));
+        let media = get_media_for_project(pool, project.id).await?;
+        result.push((project, tags, media));
     }
 
     Ok(result)
@@ -252,17 +262,18 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
     .await
 }
 
-/// Get single project by ID with tags
+/// Get single project by ID with tags and media
 pub async fn get_project_by_id_with_tags(
     pool: &PgPool,
     id: Uuid,
-) -> Result<Option<(DbProject, Vec<DbTag>)>, sqlx::Error> {
+) -> Result<Option<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
     let project = get_project_by_id(pool, id).await?;
 
     match project {
         Some(p) => {
             let tags = get_tags_for_project(pool, p.id).await?;
-            Ok(Some((p, tags)))
+            let media = get_media_for_project(pool, p.id).await?;
+            Ok(Some((p, tags, media)))
         }
         None => Ok(None),
     }

@@ -7,7 +7,7 @@ web/build/
 web/.svelte-kit/
 
 # CLI session file
-.xevion-session
+.*-session
 
 # Added by cargo
 /target

@@ -78,18 +78,59 @@ impl R2Client {
         Ok(bytes)
     }
 
-    pub async fn put_object(&self, key: &str, body: Vec<u8>) -> Result<(), String> {
+    pub async fn put_object(
+        &self,
+        key: &str,
+        body: Vec<u8>,
+        content_type: &str,
+    ) -> Result<(), String> {
         self.client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
             .body(ByteStream::from(body))
-            .content_type("image/png")
+            .content_type(content_type)
             .send()
             .await
             .map_err(|e| format!("Failed to put object to R2: {e}"))?;
 
         Ok(())
+    }
+
+    pub async fn delete_object(&self, key: &str) -> Result<(), String> {
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to delete object from R2: {e}"))?;
+
+        Ok(())
+    }
+
+    /// Delete all objects under a prefix (e.g., "projects/{id}/{ulid}/")
+    pub async fn delete_prefix(&self, prefix: &str) -> Result<usize, String> {
+        let list_result = self
+            .client
+            .list_objects_v2()
+            .bucket(&self.bucket)
+            .prefix(prefix)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to list objects in R2: {e}"))?;
+
+        let mut deleted = 0;
+        if let Some(contents) = list_result.contents {
+            for object in contents {
+                if let Some(key) = object.key {
+                    self.delete_object(&key).await?;
+                    deleted += 1;
+                }
+            }
+        }
+
+        Ok(deleted)
     }
 
     pub async fn object_exists(&self, key: &str) -> bool {
