@@ -175,3 +175,18 @@ html.dark {
 ::view-transition-new(page-content) {
   animation: vt-slide-from-right 250ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
+
+/* Media mask for project card background images/videos - fades from transparent (left) to solid (right) */
+.media-mask-fade-left {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    /* Non-linear stops to help breakup the gradient better  */
+    rgba(0, 0, 0, 0.08) 12%,
+    rgba(0, 0, 0, 0.2) 22%,
+    rgba(0, 0, 0, 0.4) 32%,
+    rgba(0, 0, 0, 0.65) 42%,
+    rgba(0, 0, 0, 0.85) 52%,
+    black 65%
+  );
+}
