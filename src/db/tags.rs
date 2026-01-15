@@ -244,6 +244,52 @@ pub async fn get_tags_for_project(
     .await
 }
 
+/// Batch fetch tags for multiple projects in a single query.
+/// Returns a HashMap mapping project_id to its tags.
+pub async fn get_tags_for_projects(
+    pool: &PgPool,
+    project_ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, Vec<DbTag>>, sqlx::Error> {
+    use std::collections::HashMap;
+
+    if project_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let rows = sqlx::query!(
+        r#"
+        SELECT pt.project_id, t.id, t.slug, t.name, t.icon, t.color
+        FROM tags t
+        JOIN project_tags pt ON t.id = pt.tag_id
+        WHERE pt.project_id = ANY($1)
+        ORDER BY pt.project_id, t.name ASC
+        "#,
+        project_ids
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut result: HashMap<Uuid, Vec<DbTag>> = HashMap::new();
+
+    // Initialize empty vecs for all requested project_ids
+    for &id in project_ids {
+        result.entry(id).or_default();
+    }
+
+    for row in rows {
+        let tag = DbTag {
+            id: row.id,
+            slug: row.slug,
+            name: row.name,
+            icon: row.icon,
+            color: row.color,
+        };
+        result.entry(row.project_id).or_default().push(tag);
+    }
+
+    Ok(result)
+}
+
 pub async fn get_projects_for_tag(
     pool: &PgPool,
     tag_id: Uuid,

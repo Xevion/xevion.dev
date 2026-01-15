@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use super::{
     ProjectStatus,
-    media::{ApiProjectMedia, DbProjectMedia, get_media_for_project},
+    media::{self, ApiProjectMedia, DbProjectMedia, get_media_for_project},
     slugify,
-    tags::{ApiTag, DbTag, get_tags_for_project},
+    tags::{self, ApiTag, DbTag, get_tags_for_project},
 };
 
 // Database model
@@ -182,12 +182,28 @@ pub async fn get_public_projects_with_tags(
 ) -> Result<Vec<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
     let projects = get_public_projects(pool).await?;
 
-    let mut result = Vec::new();
-    for project in projects {
-        let tags = get_tags_for_project(pool, project.id).await?;
-        let media = get_media_for_project(pool, project.id).await?;
-        result.push((project, tags, media));
+    if projects.is_empty() {
+        return Ok(Vec::new());
     }
+
+    // Collect project IDs for batch queries
+    let project_ids: Vec<Uuid> = projects.iter().map(|p| p.id).collect();
+
+    // Batch fetch all tags and media in 2 queries instead of N*2
+    let (tags_map, media_map) = tokio::try_join!(
+        tags::get_tags_for_projects(pool, &project_ids),
+        media::get_media_for_projects(pool, &project_ids),
+    )?;
+
+    // Assemble results
+    let result = projects
+        .into_iter()
+        .map(|project| {
+            let tags = tags_map.get(&project.id).cloned().unwrap_or_default();
+            let media = media_map.get(&project.id).cloned().unwrap_or_default();
+            (project, tags, media)
+        })
+        .collect();
 
     Ok(result)
 }
@@ -222,12 +238,28 @@ pub async fn get_all_projects_with_tags_admin(
 ) -> Result<Vec<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
     let projects = get_all_projects_admin(pool).await?;
 
-    let mut result = Vec::new();
-    for project in projects {
-        let tags = get_tags_for_project(pool, project.id).await?;
-        let media = get_media_for_project(pool, project.id).await?;
-        result.push((project, tags, media));
+    if projects.is_empty() {
+        return Ok(Vec::new());
     }
+
+    // Collect project IDs for batch queries
+    let project_ids: Vec<Uuid> = projects.iter().map(|p| p.id).collect();
+
+    // Batch fetch all tags and media in 2 queries instead of N*2
+    let (tags_map, media_map) = tokio::try_join!(
+        tags::get_tags_for_projects(pool, &project_ids),
+        media::get_media_for_projects(pool, &project_ids),
+    )?;
+
+    // Assemble results
+    let result = projects
+        .into_iter()
+        .map(|project| {
+            let tags = tags_map.get(&project.id).cloned().unwrap_or_default();
+            let media = media_map.get(&project.id).cloned().unwrap_or_default();
+            (project, tags, media)
+        })
+        .collect();
 
     Ok(result)
 }

@@ -250,6 +250,53 @@ pub async fn get_media_for_project(
     .await
 }
 
+/// Batch fetch media for multiple projects in a single query.
+/// Returns a HashMap mapping project_id to its media items.
+pub async fn get_media_for_projects(
+    pool: &PgPool,
+    project_ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, Vec<DbProjectMedia>>, sqlx::Error> {
+    use std::collections::HashMap;
+
+    if project_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let rows = sqlx::query_as!(
+        DbProjectMedia,
+        r#"
+        SELECT 
+            id,
+            project_id,
+            display_order,
+            media_type as "media_type: MediaType",
+            r2_base_path,
+            variants,
+            blurhash,
+            metadata
+        FROM project_media
+        WHERE project_id = ANY($1)
+        ORDER BY project_id, display_order ASC
+        "#,
+        project_ids
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut result: HashMap<Uuid, Vec<DbProjectMedia>> = HashMap::new();
+
+    // Initialize empty vecs for all requested project_ids
+    for &id in project_ids {
+        result.entry(id).or_default();
+    }
+
+    for media in rows {
+        result.entry(media.project_id).or_default().push(media);
+    }
+
+    Ok(result)
+}
+
 /// Get single media item by ID
 pub async fn get_media_by_id(
     pool: &PgPool,
