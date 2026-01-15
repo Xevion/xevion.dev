@@ -133,13 +133,13 @@ build *flags:
 
 # Internal serve recipe (use `just build -s` instead)
 _serve-internal profile:
-    just _serve-json {{profile}} | hl --config .hl.config.toml -P
+    script -q -c "just _serve-json {{profile}} | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
 
 _serve-json profile:
     LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/{{profile}}/xevion --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 dev:
-    just dev-json | hl --config .hl.config.toml -P
+    script -q -c "just dev-json | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
 
 dev-json:
     LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "bun run --silent --cwd web dev --port 5173" "cargo watch --quiet --exec 'run --bin xevion --quiet -- --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream http://localhost:5173'"
@@ -148,7 +148,7 @@ docker-image:
     docker build -t xevion-dev .
 
 docker-run port="8080":
-	just docker-run-json {{port}} | hl --config .hl.config.toml -P
+    script -q -c "just docker-run-json {{port}} | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
 
 docker-run-json port="8080":
     #!/usr/bin/env bash
