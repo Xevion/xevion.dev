@@ -452,7 +452,10 @@ pub async fn get_admin_stats(pool: &PgPool) -> Result<AdminStats, sqlx::Error> {
     })
 }
 
-/// Get all projects that have a github_repo set (for GitHub sync)
+/// Get all projects that have a github_repo set (for GitHub sync).
+///
+/// Orders by most recent activity first (NULLS LAST) so that projects with
+/// the shortest check intervals are processed first by the scheduler.
 pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::Error> {
     query_as!(
         DbProject,
@@ -470,7 +473,7 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             created_at
         FROM projects
         WHERE github_repo IS NOT NULL
-        ORDER BY updated_at DESC
+        ORDER BY last_github_activity DESC NULLS LAST
         "#
     )
     .fetch_all(pool)

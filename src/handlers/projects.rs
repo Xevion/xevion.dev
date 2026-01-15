@@ -1,7 +1,7 @@
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;
 
-use crate::{auth, db, handlers::AddProjectTagRequest, state::AppState};
+use crate::{auth, db, github, handlers::AddProjectTagRequest, state::AppState};
 
 /// List all projects - returns filtered data based on auth status
 pub async fn projects_handler(
@@ -231,6 +231,14 @@ pub async fn create_project_handler(
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project created");
 
+    // If project has a github_repo, add to scheduler for immediate checking
+    if let Some(ref repo) = project.github_repo
+        && let Some(scheduler) = github::get_scheduler()
+    {
+        scheduler.add_project(project.id, repo.clone());
+        tracing::debug!(project_id = %project.id, repo = %repo, "Added project to GitHub scheduler");
+    }
+
     // Invalidate cached pages that display projects
     state.isr_cache.invalidate("/").await;
 
@@ -399,6 +407,34 @@ pub async fn update_project_handler(
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project updated");
 
+    // Update GitHub scheduler if github_repo changed
+    if let Some(scheduler) = github::get_scheduler() {
+        let old_repo = existing_project.github_repo.as_ref();
+        let new_repo = project.github_repo.as_ref();
+
+        match (old_repo, new_repo) {
+            (None, Some(repo)) => {
+                // Added github_repo - schedule for immediate check
+                scheduler.add_project(project.id, repo.clone());
+                tracing::debug!(project_id = %project.id, repo = %repo, "Added project to GitHub scheduler");
+            }
+            (Some(_), None) => {
+                // Removed github_repo - remove from scheduler
+                scheduler.remove_project(project.id);
+                tracing::debug!(project_id = %project.id, "Removed project from GitHub scheduler");
+            }
+            (Some(old), Some(new)) if old != new => {
+                // Changed github_repo - update scheduler
+                scheduler.remove_project(project.id);
+                scheduler.add_project(project.id, new.clone());
+                tracing::debug!(project_id = %project.id, old_repo = %old, new_repo = %new, "Updated project in GitHub scheduler");
+            }
+            _ => {
+                // No change to github_repo
+            }
+        }
+    }
+
     // Invalidate cached pages that display projects
     state.isr_cache.invalidate("/").await;
 
@@ -447,6 +483,13 @@ pub async fn delete_project_handler(
     match db::delete_project(&state.pool, project.id).await {
         Ok(()) => {
             tracing::info!(project_id = %project.id, project_name = %project.name, "Project deleted");
+
+            // Remove from GitHub scheduler if it had a github_repo
+            if project.github_repo.is_some()
+                && let Some(scheduler) = github::get_scheduler()
+            {
+                scheduler.remove_project(project.id);
+            }
 
             // Invalidate cached pages that display projects
             state.isr_cache.invalidate("/").await;
