@@ -1,8 +1,10 @@
 use axum::{
-    http::{StatusCode, Uri, header},
+    http::{HeaderMap, StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
 use include_dir::{Dir, include_dir};
+
+use crate::encoding;
 
 static CLIENT_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/client");
 static ERROR_PAGES: Dir = include_dir!("$CARGO_MANIFEST_DIR/web/build/prerendered/errors");
@@ -46,6 +48,80 @@ pub fn try_serve_embedded_asset(path: &str) -> Option<Response> {
 
         (StatusCode::OK, headers, file.contents()).into_response()
     })
+}
+
+/// Serve an embedded asset with content encoding negotiation
+///
+/// Attempts to serve pre-compressed variants (.br, .gz, .zst) based on
+/// the Accept-Encoding header. Falls back to uncompressed if no suitable
+/// compressed variant is found.
+///
+/// Pre-compressed assets are generated at build time by scripts/compress-assets.ts
+/// and embedded alongside the original files.
+///
+/// # Arguments
+/// * `path` - Request path (e.g., "/_app/immutable/chunks/foo.js")
+/// * `headers` - Request headers (for Accept-Encoding negotiation)
+///
+/// # Returns
+/// * `Some(Response)` - Response with appropriate Content-Encoding header
+/// * `None` - If neither compressed nor uncompressed asset exists
+pub fn try_serve_embedded_asset_with_encoding(path: &str, headers: &HeaderMap) -> Option<Response> {
+    let asset_path = path.strip_prefix('/').unwrap_or(path);
+
+    // Parse accepted encodings in priority order
+    let accepted_encodings = encoding::parse_accepted_encodings(headers);
+
+    // Try each encoding in order of client preference
+    for encoding in accepted_encodings {
+        // Skip identity - we'll use it as final fallback
+        if encoding == encoding::ContentEncoding::Identity {
+            continue;
+        }
+
+        // Build path to pre-compressed variant
+        let compressed_path = format!("{}{}", asset_path, encoding.extension());
+
+        // Check if pre-compressed variant exists
+        if let Some(file) = CLIENT_ASSETS.get_file(&compressed_path) {
+            // Get MIME type from ORIGINAL path (not .br/.gz/.zst extension)
+            let mime_type = mime_guess::from_path(asset_path)
+                .first_or_octet_stream()
+                .as_ref()
+                .to_string();
+
+            let mut response_headers = axum::http::HeaderMap::new();
+            response_headers.insert(
+                header::CONTENT_TYPE,
+                mime_type.parse().unwrap_or_else(|_| {
+                    header::HeaderValue::from_static("application/octet-stream")
+                }),
+            );
+
+            // Set Content-Encoding header
+            if let Some(encoding_value) = encoding.header_value() {
+                response_headers.insert(header::CONTENT_ENCODING, encoding_value);
+            }
+
+            // Set cache headers (same as uncompressed)
+            if path.contains("/immutable/") {
+                response_headers.insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("public, max-age=31536000, immutable"),
+                );
+            } else {
+                response_headers.insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("public, max-age=3600"),
+                );
+            }
+
+            return Some((StatusCode::OK, response_headers, file.contents()).into_response());
+        }
+    }
+
+    // No compressed variant found, fall back to uncompressed
+    try_serve_embedded_asset(path)
 }
 
 fn serve_asset_by_path(path: &str) -> Response {

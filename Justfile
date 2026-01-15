@@ -111,6 +111,12 @@ build *flags:
         : ["bunx", "--bun", "vite", "build"];
       run(buildCmd, "web");
 
+      // Pre-compress in release mode only
+      if (!debug) {
+        console.log(`\x1b[1;36m→ Pre-compressing assets...\x1b[0m`);
+        run(["bun", "run", "scripts/compress-assets.ts"], "web");
+      }
+
       console.log(`\x1b[1;36m→ Building Rust (${profile})...\x1b[0m`);
       const cargoArgs = ["cargo", "build"];
       if (!debug) cargoArgs.push("--release");

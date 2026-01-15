@@ -34,6 +34,9 @@ RUN cargo build --release
 FROM oven/bun:1 AS frontend
 WORKDIR /build
 
+# Install system zstd for pre-compression
+RUN apt-get update && apt-get install -y zstd && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies (cached until package.json/bun.lock change)
 COPY web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
@@ -42,6 +45,9 @@ RUN bun install --frozen-lockfile
 COPY web/ ./
 ARG VITE_OG_R2_BASE_URL
 RUN bun run build
+
+# Pre-compress static assets (gzip, brotli, zstd)
+RUN bun run scripts/compress-assets.ts
 
 # ========== Stage 5: Final Rust Build (with embedded assets) ==========
 FROM chef AS final-builder

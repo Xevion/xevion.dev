@@ -3,10 +3,13 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use tower_http::compression::predicate::{NotForContentType, Predicate, SizeAbove};
+use tower_http::compression::{CompressionLayer, CompressionLevel};
 use tower_http::cors::CorsLayer;
 
 use crate::cache::{IsrCache, IsrCacheConfig};
 use crate::config::ListenAddr;
+use crate::encoding::COMPRESSION_MIN_SIZE;
 use crate::github;
 use crate::icon_cache::IconCache;
 use crate::middleware::RequestIdLayer;
@@ -174,7 +177,28 @@ pub async fn run(
         router: axum::Router<Arc<AppState>>,
         trust_request_id: Option<String>,
     ) -> axum::Router<Arc<AppState>> {
+        // Build compression predicate: skip small responses and already-compressed types
+        // NOTE: MIN_SIZE must match COMPRESSION_MIN_SIZE in encoding.rs and compress-assets.ts
+        let compression_predicate = SizeAbove::new(COMPRESSION_MIN_SIZE as u16)
+            .and(NotForContentType::IMAGES)
+            .and(NotForContentType::new("video/"))
+            .and(NotForContentType::new("audio/"))
+            .and(NotForContentType::new("font/woff"))
+            .and(NotForContentType::new("application/octet-stream"));
+
+        // Compression layer with all algorithms at fastest levels
+        // This handles runtime compression for all responses (API, SSR pages, etc.)
+        // ISR cached responses set Content-Encoding headers, which tower-http
+        // automatically detects and skips re-compression (no double compression)
+        let compression_layer = CompressionLayer::new()
+            .zstd(true)
+            .br(true)
+            .gzip(true)
+            .quality(CompressionLevel::Fastest)
+            .compress_when(compression_predicate);
+
         router
+            .layer(compression_layer)
             .layer(RequestIdLayer::new(trust_request_id))
             .layer(CorsLayer::permissive())
             // 50 MiB limit for media uploads

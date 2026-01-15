@@ -34,7 +34,12 @@ time = { version = "0.3.44", features = ["formatting", "macros", "serde"] }
 tokio = { version = "1.49.0", features = ["full"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 tower = "0.5"
-tower-http = { version = "0.6.8", features = ["trace", "cors", "limit"] }
+tower-http = { version = "0.6.8", features = ["trace", "cors", "limit", "compression-full"] }
+
+# Compression for ISR cache
+zstd = "0.13"
+brotli = "8"
+flate2 = "1.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 ulid = { version = "1", features = ["serde"] }

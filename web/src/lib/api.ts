@@ -13,10 +13,6 @@ import type {
 } from "./admin-types";
 import { ApiError } from "./errors";
 
-// ============================================================================
-// CLIENT-SIDE API FUNCTIONS
-// ============================================================================
-
 // Client-side fetch wrapper for browser requests
 async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -30,10 +26,6 @@ async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   return response.json();
 }
-
-// ============================================================================
-// ADMIN API FUNCTIONS
-// ============================================================================
 
 // Admin Projects API
 export async function getAdminProjects(): Promise<AdminProject[]> {

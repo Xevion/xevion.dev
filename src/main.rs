@@ -7,6 +7,7 @@ mod cache;
 mod cli;
 mod config;
 mod db;
+mod encoding;
 mod formatter;
 mod github;
 mod handlers;

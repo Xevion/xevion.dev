@@ -1,6 +1,6 @@
 use axum::{
     extract::{ConnectInfo, Request, State},
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use std::{net::SocketAddr, sync::Arc, time::Duration};
@@ -9,6 +9,7 @@ use crate::{
     assets,
     cache::{self, CachedResponse},
     db,
+    encoding::negotiate_encoding,
     state::{AppState, ProxyError},
     tarpit::{self, TarpitState},
     utils,
@@ -20,6 +21,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let uri = req.uri();
     let path = uri.path();
     let query = uri.query();
+    let request_headers = req.headers().clone();
 
     // Redirect trailing slashes to non-trailing (except root)
     if path.len() > 1 && path.ends_with('/') {
@@ -85,7 +87,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
 
     // Check if this is a static asset that exists in embedded CLIENT_ASSETS
     if utils::is_static_asset(path)
-        && let Some(response) = assets::try_serve_embedded_asset(path)
+        && let Some(response) = assets::try_serve_embedded_asset_with_encoding(path, req.headers())
     {
         return response;
     }
@@ -152,7 +154,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
             let age_ms = cached.age().as_millis() as u64;
             tracing::debug!(cache = "hit", age_ms, "ISR cache hit (fresh)");
 
-            return serve_cached_response(&cached, is_head);
+            return serve_cached_response(&cached, &request_headers, is_head);
         } else if cached.is_stale_but_usable(fresh_duration, stale_duration) {
             // Stale cache hit - serve immediately and refresh in background
             let age_ms = cached.age().as_millis() as u64;
@@ -167,7 +169,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
                 });
             }
 
-            return serve_cached_response(&cached, is_head);
+            return serve_cached_response(&cached, &request_headers, is_head);
         }
         // Cache entry is too old - fall through to fetch
     }
@@ -232,12 +234,35 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     }
 }
 
-/// Serve a cached response
-fn serve_cached_response(cached: &CachedResponse, is_head: bool) -> Response {
+/// Serve a cached response with content encoding negotiation
+fn serve_cached_response(
+    cached: &CachedResponse,
+    request_headers: &HeaderMap,
+    is_head: bool,
+) -> Response {
+    // Negotiate encoding based on Accept-Encoding
+    let desired_encoding = negotiate_encoding(request_headers);
+    let (body, actual_encoding) = cached.get_body(desired_encoding);
+
+    let mut headers = cached.headers.clone();
+
+    // Add Content-Encoding header if compressed
+    if let Some(encoding_value) = actual_encoding.header_value() {
+        headers.insert(header::CONTENT_ENCODING, encoding_value);
+    }
+
+    // Add Vary header for caching
+    headers.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+
+    // Update Content-Length for compressed body
+    if let Ok(len) = HeaderValue::from_str(&body.len().to_string()) {
+        headers.insert(header::CONTENT_LENGTH, len);
+    }
+
     if is_head {
-        (cached.status, cached.headers.clone()).into_response()
+        (cached.status, headers).into_response()
     } else {
-        (cached.status, cached.headers.clone(), cached.body.clone()).into_response()
+        (cached.status, headers, body).into_response()
     }
 }
 

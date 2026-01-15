@@ -4,22 +4,31 @@
 //! - TTL-based expiration
 //! - Stale-while-revalidate pattern
 //! - Singleflight (via moka's built-in coalescing)
+//! - Multi-encoding compressed storage (lazy)
 //! - On-demand invalidation
 
 use axum::http::{HeaderMap, StatusCode};
 use dashmap::DashSet;
 use moka::future::Cache;
 use std::{
+    collections::HashMap,
     sync::Arc,
     time::{Duration, Instant},
 };
 
-/// Cached response data
+use crate::encoding::{
+    COMPRESSION_MIN_SIZE, ContentEncoding, compress_brotli, compress_gzip, compress_zstd,
+};
+
+/// Cached response data with lazy compressed variants
 #[derive(Clone)]
 pub struct CachedResponse {
     pub status: StatusCode,
     pub headers: HeaderMap,
+    /// Original uncompressed body
     pub body: axum::body::Bytes,
+    /// Compressed variants (lazily populated on first request per encoding)
+    compressed: Arc<parking_lot::RwLock<HashMap<ContentEncoding, axum::body::Bytes>>>,
     pub cached_at: Instant,
 }
 
@@ -29,8 +38,48 @@ impl CachedResponse {
             status,
             headers,
             body,
+            compressed: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             cached_at: Instant::now(),
         }
+    }
+
+    /// Get body for a specific encoding, compressing on-demand if needed
+    ///
+    /// Returns (body_bytes, actual_encoding). The actual encoding may differ from
+    /// requested if the body is too small or compression doesn't help.
+    pub fn get_body(&self, encoding: ContentEncoding) -> (axum::body::Bytes, ContentEncoding) {
+        // Identity encoding or small body - return uncompressed
+        if encoding == ContentEncoding::Identity || self.body.len() < COMPRESSION_MIN_SIZE {
+            return (self.body.clone(), ContentEncoding::Identity);
+        }
+
+        // Check if we already have this encoding cached
+        {
+            let cache = self.compressed.read();
+            if let Some(compressed) = cache.get(&encoding) {
+                return (compressed.clone(), encoding);
+            }
+        }
+
+        // Compress on-demand
+        let compressed_bytes = match encoding {
+            ContentEncoding::Zstd => compress_zstd(&self.body),
+            ContentEncoding::Brotli => compress_brotli(&self.body),
+            ContentEncoding::Gzip => compress_gzip(&self.body),
+            ContentEncoding::Identity => unreachable!(),
+        };
+
+        // Only cache if compression actually helped
+        if let Some(compressed) = compressed_bytes
+            && compressed.len() < self.body.len()
+        {
+            let bytes = axum::body::Bytes::from(compressed);
+            self.compressed.write().insert(encoding, bytes.clone());
+            return (bytes, encoding);
+        }
+
+        // Compression didn't help or failed, return uncompressed
+        (self.body.clone(), ContentEncoding::Identity)
     }
 
     /// Check if this response is still fresh (within fresh_duration)
