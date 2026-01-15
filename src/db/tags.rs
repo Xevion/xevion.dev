@@ -120,6 +120,13 @@ pub async fn get_tag_by_ref(pool: &PgPool, ref_str: &str) -> Result<Option<DbTag
     }
 }
 
+pub async fn delete_tag(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM tags WHERE id = $1", id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>, sqlx::Error> {
     let rows = sqlx::query!(
         r#"

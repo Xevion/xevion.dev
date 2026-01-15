@@ -252,6 +252,66 @@ pub async fn update_tag_handler(
     }
 }
 
+/// Delete a tag (requires authentication)
+pub async fn delete_tag_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
+    jar: axum_extra::extract::CookieJar,
+) -> impl IntoResponse {
+    if auth::check_session(&state, &jar).is_none() {
+        return auth::require_auth_response().into_response();
+    }
+
+    // Fetch tag before deletion to return it
+    let tag = match db::get_tag_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(tag)) => tag,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": "Not found",
+                    "message": "Tag not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tag before deletion");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to delete tag"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    // Delete tag (CASCADE handles project_tags and tag_cooccurrence)
+    match db::delete_tag(&state.pool, tag.id).await {
+        Ok(()) => {
+            tracing::info!(tag_id = %tag.id, tag_name = %tag.name, "Tag deleted");
+
+            // Invalidate cached pages - tags appear on project pages
+            state.isr_cache.invalidate("/").await;
+
+            Json(tag.to_api_tag()).into_response()
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to delete tag");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to delete tag"
+                })),
+            )
+                .into_response()
+        }
+    }
+}
+
 /// Get related tags by cooccurrence
 pub async fn get_related_tags_handler(
     State(state): State<Arc<AppState>>,

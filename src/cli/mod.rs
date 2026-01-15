@@ -229,6 +229,13 @@ pub enum TagsCommand {
         #[arg(long)]
         color: Option<String>,
     },
+
+    /// Delete a tag
+    Delete {
+        /// Tag slug or UUID
+        #[arg(name = "ref")]
+        reference: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]

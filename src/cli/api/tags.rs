@@ -35,6 +35,7 @@ pub async fn run(
             icon,
             color,
         } => update(client, &slug, name, new_slug, icon, color, json).await,
+        TagsCommand::Delete { reference } => delete(client, &reference, json).await,
     }
 }
 
@@ -167,6 +168,27 @@ async fn update(
     } else {
         output::success(&format!("Updated tag: {}", tag.name));
         output::print_tag(&tag);
+    }
+
+    Ok(())
+}
+
+/// Delete a tag
+async fn delete(
+    client: ApiClient,
+    reference: &str,
+    json: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let response = client
+        .delete_auth(&format!("/api/tags/{}", reference))
+        .await?;
+    let response = check_response(response).await?;
+    let deleted: ApiTag = response.json().await?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&deleted)?);
+    } else {
+        output::success(&format!("Deleted tag: {}", deleted.name));
     }
 
     Ok(())

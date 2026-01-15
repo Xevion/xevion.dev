@@ -65,7 +65,9 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         )
         .route(
             "/tags/{ref}",
-            get(handlers::get_tag_handler).put(handlers::update_tag_handler),
+            get(handlers::get_tag_handler)
+                .put(handlers::update_tag_handler)
+                .delete(handlers::delete_tag_handler),
         )
         .route(
             "/tags/{ref}/related",
