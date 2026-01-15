@@ -1,8 +1,19 @@
 import { telemetry } from "$lib/telemetry";
 
 class AuthStore {
+  private static STORAGE_KEY = "admin_session_active";
+
   isAuthenticated = $state(false);
   username = $state<string | null>(null);
+
+  init() {
+    if (typeof window === "undefined") return;
+
+    const stored = sessionStorage.getItem(AuthStore.STORAGE_KEY);
+    if (stored === "true") {
+      this.isAuthenticated = true;
+    }
+  }
 
   async login(username: string, password: string): Promise<boolean> {
     try {
@@ -19,6 +30,7 @@ class AuthStore {
         const data = await response.json();
         this.isAuthenticated = true;
         this.username = data.username;
+        sessionStorage.setItem(AuthStore.STORAGE_KEY, "true");
         telemetry.identifyAdmin(data.username);
         return true;
       }
@@ -41,6 +53,7 @@ class AuthStore {
     } finally {
       this.isAuthenticated = false;
       this.username = null;
+      sessionStorage.removeItem(AuthStore.STORAGE_KEY);
       telemetry.reset();
     }
   }
@@ -69,6 +82,7 @@ class AuthStore {
   setSession(username: string): void {
     this.isAuthenticated = true;
     this.username = username;
+    sessionStorage.setItem(AuthStore.STORAGE_KEY, "true");
   }
 }
 

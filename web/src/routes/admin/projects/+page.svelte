@@ -1,16 +1,11 @@
 <script lang="ts">
   import Button from "$lib/components/admin/Button.svelte";
   import Table from "$lib/components/admin/Table.svelte";
-  import Modal from "$lib/components/admin/Modal.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
-  import { deleteAdminProject } from "$lib/api";
-  import { invalidateAll } from "$app/navigation";
+  import { goto } from "$app/navigation";
   import type { ProjectWithTagIcons } from "./+page.server";
   import type { ProjectStatus } from "$lib/admin-types";
   import IconPlus from "~icons/lucide/plus";
-  import { getLogger } from "@logtape/logtape";
-
-  const logger = getLogger(["admin", "projects"]);
 
   // Status display configuration (colors match Badge component)
   const STATUS_CONFIG: Record<ProjectStatus, { color: string; label: string }> =
@@ -24,62 +19,48 @@
   interface Props {
     data: {
       projects: ProjectWithTagIcons[];
-      statusIcons: Record<ProjectStatus, string>;
     };
   }
 
   let { data }: Props = $props();
 
-  let deleteModalOpen = $state(false);
-  let deleteTarget = $state<ProjectWithTagIcons | null>(null);
-  let deleteConfirmReady = $state(false);
-  let deleteTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  function initiateDelete(project: ProjectWithTagIcons) {
-    deleteTarget = project;
-    deleteConfirmReady = false;
-
-    // Enable confirm button after delay
-    deleteTimeout = setTimeout(() => {
-      deleteConfirmReady = true;
-    }, 2000);
-
-    deleteModalOpen = true;
-  }
-
-  function cancelDelete() {
-    if (deleteTimeout) {
-      clearTimeout(deleteTimeout);
-    }
-    deleteModalOpen = false;
-    deleteTarget = null;
-    deleteConfirmReady = false;
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget || !deleteConfirmReady) return;
-
-    try {
-      await deleteAdminProject(deleteTarget.id);
-      await invalidateAll();
-      deleteModalOpen = false;
-      deleteTarget = null;
-      deleteConfirmReady = false;
-    } catch (error) {
-      logger.error("Failed to delete project", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to delete project");
-    }
-  }
-
   function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    const timeStr = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    // Recent: relative timestamps
+    if (diffMins < 1) return "just now";
+    if (diffMins === 1) return "1 minute ago";
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    // Yesterday: relative with time
+    if (diffDays === 1 || (diffHours >= 24 && diffHours < 48)) {
+      return `Yesterday at ${timeStr}`;
+    }
+
+    // Older: absolute timestamp with time
+    const dateOptions: Intl.DateTimeFormatOptions = {
       month: "short",
       day: "numeric",
-    });
+    };
+    // Only show year if different from current year
+    if (date.getFullYear() !== now.getFullYear()) {
+      dateOptions.year = "numeric";
+    }
+    const datePartStr = date.toLocaleDateString("en-US", dateOptions);
+    return `${datePartStr} at ${timeStr}`;
   }
 </script>
 
@@ -134,16 +115,19 @@
           >
             Last Activity
           </th>
-          <th
-            class="px-4 py-3 text-right text-xs font-medium text-admin-text-muted"
-          >
-            Actions
-          </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-admin-border">
         {#each data.projects as project (project.id)}
-          <tr class="hover:bg-admin-surface-hover/50 transition-colors">
+          <tr
+            class="hover:bg-admin-surface-hover/50 transition-colors cursor-pointer"
+            onclick={() => goto(`/admin/projects/${project.id}`)}
+            onkeydown={(e) =>
+              (e.key === "Enter" || e.key === " ") &&
+              goto(`/admin/projects/${project.id}`)}
+            role="link"
+            tabindex="0"
+          >
             <td class="px-4 py-3">
               <div class="flex items-center gap-3">
                 <div>
@@ -160,11 +144,15 @@
               <TagChip
                 name={STATUS_CONFIG[project.status].label}
                 color={STATUS_CONFIG[project.status].color}
-                iconSvg={data.statusIcons[project.status]}
               />
             </td>
             <td class="px-4 py-3">
-              <div class="flex flex-wrap gap-1">
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="flex flex-wrap gap-1"
+                onclick={(e) => e.stopPropagation()}
+                onkeydown={(e) => e.stopPropagation()}
+              >
                 {#each project.tags.slice(0, 3) as tag (tag.id)}
                   <TagChip
                     name={tag.name}
@@ -185,47 +173,9 @@
             <td class="px-4 py-3 text-admin-text-secondary text-sm">
               {formatDate(project.lastActivity)}
             </td>
-            <td class="px-4 py-3 text-right">
-              <div class="flex justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  href={`/admin/projects/${project.id}`}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onclick={() => initiateDelete(project)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </td>
           </tr>
         {/each}
       </tbody>
     </Table>
   {/if}
 </div>
-
-<!-- Delete Confirmation Modal -->
-<Modal
-  bind:open={deleteModalOpen}
-  title="Delete Project"
-  description="Are you sure you want to delete this project? This action cannot be undone."
-  confirmText={deleteConfirmReady ? "Delete" : `Wait ${2}s...`}
-  confirmVariant="danger"
-  onconfirm={confirmDelete}
-  oncancel={cancelDelete}
->
-  {#if deleteTarget}
-    <div
-      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
-    >
-      <p class="font-medium text-admin-text">{deleteTarget.name}</p>
-      <p class="text-sm text-admin-text-secondary">{deleteTarget.slug}</p>
-    </div>
-  {/if}
-</Modal>

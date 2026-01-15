@@ -17,6 +17,7 @@
     project?: AdminProject | null;
     availableTags: TagWithIcon[];
     onsubmit: (data: CreateProjectData) => Promise<void>;
+    ondelete?: () => void;
     submitLabel?: string;
   }
 
@@ -24,6 +25,7 @@
     project = null,
     availableTags,
     onsubmit,
+    ondelete,
     submitLabel = "Save Project",
   }: Props = $props();
 
@@ -182,10 +184,17 @@
   <MediaManager projectId={project?.id ?? null} media={project?.media ?? []} />
 
   <!-- Actions -->
-  <div class="flex justify-end gap-3 pt-4 border-t border-admin-border">
-    <Button variant="secondary" href="/admin/projects">Cancel</Button>
-    <Button type="submit" variant="primary" disabled={submitting || !name}>
-      {submitting ? "Saving..." : submitLabel}
-    </Button>
+  <div class="flex justify-between gap-3 pt-4 border-t border-admin-border">
+    {#if ondelete}
+      <Button variant="danger" onclick={ondelete}>Delete</Button>
+    {:else}
+      <div></div>
+    {/if}
+    <div class="flex gap-3">
+      <Button variant="secondary" href="/admin/projects">Cancel</Button>
+      <Button type="submit" variant="primary" disabled={submitting || !name}>
+        {submitting ? "Saving..." : submitLabel}
+      </Button>
+    </div>
   </div>
 </form>

@@ -7,12 +7,14 @@
   import { OverlayScrollbars } from "overlayscrollbars";
   import { onMount } from "svelte";
   import { themeStore } from "$lib/stores/theme.svelte";
+  import { authStore } from "$lib/stores/auth.svelte";
   import { page } from "$app/stores";
   import { afterNavigate, onNavigate } from "$app/navigation";
   import { telemetry } from "$lib/telemetry";
   import Clouds from "$lib/components/Clouds.svelte";
   import Dots from "$lib/components/Dots.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+  import AdminButton from "$lib/components/AdminButton.svelte";
 
   let { children, data } = $props();
 
@@ -84,6 +86,9 @@
     // Initialize theme store
     themeStore.init();
 
+    // Initialize auth store (checks sessionStorage for admin session)
+    authStore.init();
+
     // Initialize PostHog telemetry (page views tracked via afterNavigate)
     telemetry.init();
 
@@ -137,11 +142,12 @@
     <Dots style="view-transition-name: background" />
   {/if}
 
-  <!-- Theme toggle - persistent across page transitions -->
+  <!-- Header buttons - persistent across page transitions -->
   <div
-    class="fixed top-5 right-6 z-50"
+    class="fixed top-5 right-6 z-50 flex items-center gap-2"
     style="view-transition-name: theme-toggle"
   >
+    <AdminButton />
     <ThemeToggle />
   </div>
 {/if}

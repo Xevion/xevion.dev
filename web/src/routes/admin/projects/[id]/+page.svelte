@@ -2,12 +2,16 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
-  import { updateAdminProject } from "$lib/api";
+  import Modal from "$lib/components/admin/Modal.svelte";
+  import { updateAdminProject, deleteAdminProject } from "$lib/api";
   import type {
     UpdateProjectData,
     CreateProjectData,
     TagWithIcon,
   } from "$lib/admin-types";
+  import { getLogger } from "@logtape/logtape";
+
+  const logger = getLogger(["admin", "projects", "edit"]);
 
   interface Props {
     data: {
@@ -17,6 +21,38 @@
   }
 
   let { data }: Props = $props();
+
+  // Delete modal state
+  let deleteModalOpen = $state(false);
+  let deleteConfirmReady = $state(false);
+  let deleteTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function initiateDelete() {
+    deleteConfirmReady = false;
+    deleteTimeout = setTimeout(() => {
+      deleteConfirmReady = true;
+    }, 2000);
+    deleteModalOpen = true;
+  }
+
+  function cancelDelete() {
+    if (deleteTimeout) clearTimeout(deleteTimeout);
+    deleteModalOpen = false;
+    deleteConfirmReady = false;
+  }
+
+  async function confirmDelete() {
+    if (!data.project || !deleteConfirmReady) return;
+    try {
+      await deleteAdminProject(data.project.id);
+      goto(resolve("/admin/projects"));
+    } catch (error) {
+      logger.error("Failed to delete project", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      alert("Failed to delete project");
+    }
+  }
 
   async function handleSubmit(formData: CreateProjectData) {
     if (!data.project) return;
@@ -60,8 +96,29 @@
         project={data.project}
         availableTags={data.availableTags}
         onsubmit={handleSubmit}
+        ondelete={initiateDelete}
         submitLabel="Update Project"
       />
     </div>
   {/if}
 </div>
+
+<!-- Delete Confirmation Modal -->
+<Modal
+  bind:open={deleteModalOpen}
+  title="Delete Project"
+  description="Are you sure you want to delete this project? This action cannot be undone."
+  confirmText={deleteConfirmReady ? "Delete" : "Wait 2s..."}
+  confirmVariant="danger"
+  onconfirm={confirmDelete}
+  oncancel={cancelDelete}
+>
+  {#if data.project}
+    <div
+      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+    >
+      <p class="font-medium text-admin-text">{data.project.name}</p>
+      <p class="text-sm text-admin-text-secondary">{data.project.slug}</p>
+    </div>
+  {/if}
+</Modal>
