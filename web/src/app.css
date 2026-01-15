@@ -104,6 +104,29 @@ html.dark {
   border-radius: 4px;
 }
 
+/* Give scrollbars unique view-transition-names so they persist through page transitions */
+.os-scrollbar-horizontal {
+  view-transition-name: scrollbar-h;
+}
+
+.os-scrollbar-vertical {
+  view-transition-name: scrollbar-v;
+}
+
+/* Fade in scrollbars on initial page load */
+@keyframes scrollbar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.os-scrollbar {
+  animation: scrollbar-fade-in 300ms ease-out;
+}
+
 /* Native scrollbars for other elements (Webkit: Chrome, Safari, Edge) */
 html:not(.dark) ::-webkit-scrollbar {
   width: 10px;
@@ -190,15 +213,19 @@ body::-webkit-scrollbar {
   mix-blend-mode: normal;
 }
 
-/* Persistent elements (background with dots, theme toggle) - excluded from page transitions */
+/* Persistent elements (background, theme toggle, scrollbars) - excluded from page transitions */
 /* Hide old snapshots entirely so only the live element shows (prevents doubling/ghosting) */
 ::view-transition-old(background),
-::view-transition-old(theme-toggle) {
+::view-transition-old(theme-toggle),
+::view-transition-old(scrollbar-h),
+::view-transition-old(scrollbar-v) {
   display: none;
 }
 
 ::view-transition-new(background),
-::view-transition-new(theme-toggle) {
+::view-transition-new(theme-toggle),
+::view-transition-new(scrollbar-h),
+::view-transition-new(scrollbar-v) {
   animation: none;
 }
 
