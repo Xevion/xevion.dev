@@ -167,6 +167,7 @@
     ...(themeStore.isDark ? darkModeOverrides : lightModeOverrides),
   });
 
+  // svelte-ignore non_reactive_update
   let canvas: HTMLCanvasElement;
   let cleanupFns: (() => void)[] = [];
   let ready = $state(false);

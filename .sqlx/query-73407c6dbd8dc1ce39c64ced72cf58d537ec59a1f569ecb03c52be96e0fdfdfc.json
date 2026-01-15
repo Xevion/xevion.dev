@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.icon,\n            t.color,\n            t.created_at,\n            tc.count\n        FROM tag_cooccurrence tc\n        JOIN tags t ON (tc.tag_a = t.id OR tc.tag_b = t.id)\n        WHERE (tc.tag_a = $1 OR tc.tag_b = $1) AND t.id != $1\n        ORDER BY tc.count DESC, t.name ASC\n        LIMIT $2\n        ",
+  "query": "\n        SELECT \n            t.id, \n            t.slug, \n            t.name,\n            t.icon,\n            t.color,\n            COUNT(pt.project_id)::int as \"project_count!\"\n        FROM tags t\n        LEFT JOIN project_tags pt ON t.id = pt.tag_id\n        GROUP BY t.id, t.slug, t.name, t.icon, t.color\n        ORDER BY t.name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -30,20 +30,12 @@
       },
       {
         "ordinal": 5,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 6,
-        "name": "count",
+        "name": "project_count!",
         "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Int8"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -51,9 +43,8 @@
       false,
       true,
       true,
-      false,
-      false
+      null
     ]
   },
-  "hash": "b7a265d9e8e14728f9e6b469d52c7c236aa9113b4d95aee0b1318e5a9f1bb4f1"
+  "hash": "73407c6dbd8dc1ce39c64ced72cf58d537ec59a1f569ecb03c52be96e0fdfdfc"
 }

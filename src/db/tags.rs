@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::slugify;
@@ -13,20 +12,6 @@ pub struct DbTag {
     pub name: String,
     pub icon: Option<String>,
     pub color: Option<String>,
-    pub created_at: OffsetDateTime,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct DbProjectTag {
-    pub project_id: Uuid,
-    pub tag_id: Uuid,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct DbTagCooccurrence {
-    pub tag_a: Uuid,
-    pub tag_b: Uuid,
-    pub count: i32,
 }
 
 // API response types
@@ -80,16 +65,14 @@ pub async fn create_tag(
     icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
-    let slug = slug_override
-        .map(|s| slugify(s))
-        .unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
 
     sqlx::query_as!(
         DbTag,
         r#"
         INSERT INTO tags (slug, name, icon, color)
         VALUES ($1, $2, $3, $4)
-        RETURNING id, slug, name, icon, color, created_at
+        RETURNING id, slug, name, icon, color
         "#,
         slug,
         name,
@@ -100,44 +83,17 @@ pub async fn create_tag(
     .await
 }
 
-pub async fn get_tag_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbTag>, sqlx::Error> {
-    sqlx::query_as!(
-        DbTag,
-        r#"
-        SELECT id, slug, name, icon, color, created_at
-        FROM tags
-        WHERE id = $1
-        "#,
-        id
-    )
-    .fetch_optional(pool)
-    .await
-}
-
 pub async fn get_tag_by_slug(pool: &PgPool, slug: &str) -> Result<Option<DbTag>, sqlx::Error> {
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT id, slug, name, icon, color, created_at
+        SELECT id, slug, name, icon, color
         FROM tags
         WHERE slug = $1
         "#,
         slug
     )
     .fetch_optional(pool)
-    .await
-}
-
-pub async fn get_all_tags(pool: &PgPool) -> Result<Vec<DbTag>, sqlx::Error> {
-    sqlx::query_as!(
-        DbTag,
-        r#"
-        SELECT id, slug, name, icon, color, created_at
-        FROM tags
-        ORDER BY name ASC
-        "#
-    )
-    .fetch_all(pool)
     .await
 }
 
@@ -150,11 +106,10 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
             t.name,
             t.icon,
             t.color,
-            t.created_at,
             COUNT(pt.project_id)::int as "project_count!"
         FROM tags t
         LEFT JOIN project_tags pt ON t.id = pt.tag_id
-        GROUP BY t.id, t.slug, t.name, t.icon, t.color, t.created_at
+        GROUP BY t.id, t.slug, t.name, t.icon, t.color
         ORDER BY t.name ASC
         "#
     )
@@ -170,7 +125,6 @@ pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>
                 name: row.name,
                 icon: row.icon,
                 color: row.color,
-                created_at: row.created_at,
             };
             (tag, row.project_count)
         })
@@ -185,9 +139,7 @@ pub async fn update_tag(
     icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
-    let slug = slug_override
-        .map(|s| slugify(s))
-        .unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
 
     sqlx::query_as!(
         DbTag,
@@ -195,7 +147,7 @@ pub async fn update_tag(
         UPDATE tags
         SET slug = $2, name = $3, icon = $4, color = $5
         WHERE id = $1
-        RETURNING id, slug, name, icon, color, created_at
+        RETURNING id, slug, name, icon, color
         "#,
         id,
         slug,
@@ -205,39 +157,6 @@ pub async fn update_tag(
     )
     .fetch_one(pool)
     .await
-}
-
-pub async fn delete_tag(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
-    sqlx::query!("DELETE FROM tags WHERE id = $1", id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn tag_exists_by_name(pool: &PgPool, name: &str) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query!(
-        r#"
-        SELECT EXISTS(SELECT 1 FROM tags WHERE LOWER(name) = LOWER($1)) as "exists!"
-        "#,
-        name
-    )
-    .fetch_one(pool)
-    .await?;
-
-    Ok(result.exists)
-}
-
-pub async fn tag_exists_by_slug(pool: &PgPool, slug: &str) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query!(
-        r#"
-        SELECT EXISTS(SELECT 1 FROM tags WHERE slug = $1) as "exists!"
-        "#,
-        slug
-    )
-    .fetch_one(pool)
-    .await?;
-
-    Ok(result.exists)
 }
 
 // Project-Tag association queries
@@ -283,7 +202,7 @@ pub async fn get_tags_for_project(
     sqlx::query_as!(
         DbTag,
         r#"
-        SELECT t.id, t.slug, t.name, t.icon, t.color, t.created_at
+        SELECT t.id, t.slug, t.name, t.icon, t.color
         FROM tags t
         JOIN project_tags pt ON t.id = pt.tag_id
         WHERE pt.project_id = $1
@@ -312,8 +231,7 @@ pub async fn get_projects_for_tag(
             p.github_repo, 
             p.demo_url, 
             p.last_github_activity, 
-            p.created_at, 
-            p.updated_at
+            p.created_at
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1
@@ -404,7 +322,6 @@ pub async fn get_related_tags(
             t.name,
             t.icon,
             t.color,
-            t.created_at,
             tc.count
         FROM tag_cooccurrence tc
         JOIN tags t ON (tc.tag_a = t.id OR tc.tag_b = t.id)
@@ -427,7 +344,6 @@ pub async fn get_related_tags(
                 name: row.name,
                 icon: row.icon,
                 color: row.color,
-                created_at: row.created_at,
             };
             (tag, row.count)
         })

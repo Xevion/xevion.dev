@@ -34,10 +34,10 @@ pub fn is_page_route(path: &str) -> bool {
 
 /// Check if the request accepts HTML responses
 pub fn accepts_html(headers: &HeaderMap) -> bool {
-    if let Some(accept) = headers.get(header::ACCEPT) {
-        if let Ok(accept_str) = accept.to_str() {
-            return accept_str.contains("text/html") || accept_str.contains("*/*");
-        }
+    if let Some(accept) = headers.get(header::ACCEPT)
+        && let Ok(accept_str) = accept.to_str()
+    {
+        return accept_str.contains("text/html") || accept_str.contains("*/*");
     }
     // Default to true for requests without Accept header (browsers typically send it)
     true
@@ -46,34 +46,34 @@ pub fn accepts_html(headers: &HeaderMap) -> bool {
 /// Determines if request prefers raw content (CLI tools) over HTML
 pub fn prefers_raw_content(headers: &HeaderMap) -> bool {
     // Check User-Agent for known CLI tools first (most reliable)
-    if let Some(ua) = headers.get(header::USER_AGENT) {
-        if let Ok(ua_str) = ua.to_str() {
-            let ua_lower = ua_str.to_lowercase();
-            if ua_lower.starts_with("curl/")
-                || ua_lower.starts_with("wget/")
-                || ua_lower.starts_with("httpie/")
-                || ua_lower.contains("curlie")
-            {
-                return true;
-            }
+    if let Some(ua) = headers.get(header::USER_AGENT)
+        && let Ok(ua_str) = ua.to_str()
+    {
+        let ua_lower = ua_str.to_lowercase();
+        if ua_lower.starts_with("curl/")
+            || ua_lower.starts_with("wget/")
+            || ua_lower.starts_with("httpie/")
+            || ua_lower.contains("curlie")
+        {
+            return true;
         }
     }
 
     // Check Accept header - if it explicitly prefers text/html, serve HTML
-    if let Some(accept) = headers.get(header::ACCEPT) {
-        if let Ok(accept_str) = accept.to_str() {
-            // If text/html appears before */* in the list, they prefer HTML
-            if let Some(html_pos) = accept_str.find("text/html") {
-                if let Some(wildcard_pos) = accept_str.find("*/*") {
-                    return html_pos > wildcard_pos;
-                }
-                // Has text/html but no */* → prefers HTML
-                return false;
+    if let Some(accept) = headers.get(header::ACCEPT)
+        && let Ok(accept_str) = accept.to_str()
+    {
+        // If text/html appears before */* in the list, they prefer HTML
+        if let Some(html_pos) = accept_str.find("text/html") {
+            if let Some(wildcard_pos) = accept_str.find("*/*") {
+                return html_pos > wildcard_pos;
             }
-            // Has */* but no text/html → probably a CLI tool
-            if accept_str.contains("*/*") && !accept_str.contains("text/html") {
-                return true;
-            }
+            // Has text/html but no */* → prefers HTML
+            return false;
+        }
+        // Has */* but no text/html → probably a CLI tool
+        if accept_str.contains("*/*") && !accept_str.contains("text/html") {
+            return true;
         }
     }
 

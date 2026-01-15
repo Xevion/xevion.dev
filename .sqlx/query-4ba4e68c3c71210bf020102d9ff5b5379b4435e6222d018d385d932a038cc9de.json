@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n\n            last_github_activity,\n            created_at,\n            updated_at\n        FROM projects\n        WHERE id = $1\n        ",
+  "query": "\n        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -64,16 +64,29 @@
         "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 10,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "maintained",
+                "archived",
+                "hidden"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -86,9 +99,8 @@
       true,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "170d08a3b1effa554fe831e43a8d7b640fbddaa348289360fb520057c0ef3272"
+  "hash": "4ba4e68c3c71210bf020102d9ff5b5379b4435e6222d018d385d932a038cc9de"
 }

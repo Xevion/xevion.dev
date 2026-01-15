@@ -111,17 +111,15 @@ pub async fn session(client: ApiClient, json: bool) -> Result<(), Box<dyn std::e
         } else {
             output::error("Session expired or invalid");
         }
+    } else if json {
+        println!(
+            "{}",
+            serde_json::json!({
+                "authenticated": false,
+            })
+        );
     } else {
-        if json {
-            println!(
-                "{}",
-                serde_json::json!({
-                    "authenticated": false,
-                })
-            );
-        } else {
-            output::info("Not logged in");
-        }
+        output::info("Not logged in");
     }
 
     Ok(())

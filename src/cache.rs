@@ -146,11 +146,6 @@ impl IsrCache {
         self.cache.insert(path, Arc::new(response)).await;
     }
 
-    /// Check if a path is currently being refreshed
-    pub fn is_refreshing(&self, path: &str) -> bool {
-        self.refreshing.contains(path)
-    }
-
     /// Mark a path as being refreshed. Returns true if it wasn't already refreshing.
     pub fn start_refresh(&self, path: &str) -> bool {
         self.refreshing.insert(path.to_string())
@@ -166,49 +161,6 @@ impl IsrCache {
         self.cache.invalidate(path).await;
         tracing::debug!(path = %path, "Cache entry invalidated");
     }
-
-    /// Invalidate multiple cached paths
-    pub async fn invalidate_many(&self, paths: &[&str]) {
-        for path in paths {
-            self.cache.invalidate(*path).await;
-        }
-        tracing::info!(paths = ?paths, "Cache entries invalidated");
-    }
-
-    /// Invalidate all entries matching a prefix
-    pub async fn invalidate_prefix(&self, prefix: &str) {
-        // moka doesn't have prefix invalidation, so we need to iterate
-        // This is O(n) but invalidation should be infrequent
-        let prefix_owned = prefix.to_string();
-        self.cache
-            .invalidate_entries_if(move |key, _| key.starts_with(&prefix_owned))
-            .ok();
-        tracing::info!(prefix = %prefix, "Cache entries with prefix invalidated");
-    }
-
-    /// Invalidate all cached entries
-    pub async fn invalidate_all(&self) {
-        let previous_count = self.cache.entry_count();
-        self.cache.invalidate_all();
-        tracing::info!(previous_count, "All cache entries invalidated");
-    }
-
-    /// Get cache statistics
-    pub fn stats(&self) -> CacheStats {
-        CacheStats {
-            entry_count: self.cache.entry_count(),
-            weighted_size: self.cache.weighted_size(),
-            refreshing_count: self.refreshing.len(),
-        }
-    }
-}
-
-/// Cache statistics for observability
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct CacheStats {
-    pub entry_count: u64,
-    pub weighted_size: u64,
-    pub refreshing_count: usize,
 }
 
 /// Determines if a path should be cached

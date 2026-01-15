@@ -90,10 +90,10 @@ async fn create(
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Validate color if provided
-    if let Some(ref c) = color {
-        if !c.chars().all(|ch| ch.is_ascii_hexdigit()) || c.len() != 6 {
-            return Err("Color must be a 6-character hex string (e.g., '3b82f6')".into());
-        }
+    if let Some(ref c) = color
+        && (!c.chars().all(|ch| ch.is_ascii_hexdigit()) || c.len() != 6)
+    {
+        return Err("Color must be a 6-character hex string (e.g., '3b82f6')".into());
     }
 
     let request = CreateTagRequest {
@@ -128,10 +128,11 @@ async fn update(
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Validate color if provided
-    if let Some(ref c) = color {
-        if !c.is_empty() && (!c.chars().all(|ch| ch.is_ascii_hexdigit()) || c.len() != 6) {
-            return Err("Color must be a 6-character hex string (e.g., '3b82f6')".into());
-        }
+    if let Some(ref c) = color
+        && !c.is_empty()
+        && (!c.chars().all(|ch| ch.is_ascii_hexdigit()) || c.len() != 6)
+    {
+        return Err("Color must be a 6-character hex string (e.g., '3b82f6')".into());
     }
 
     // First fetch the current tag

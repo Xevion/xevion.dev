@@ -102,6 +102,13 @@
     // Otherwise, let the link navigate normally
   }
 
+  function handleTagKeyDown(tag: TagWithIconAndCount, event: KeyboardEvent) {
+    if (deleteMode && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      initiateDelete(tag);
+    }
+  }
+
   function initiateDelete(tag: TagWithIconAndCount) {
     deleteTarget = tag;
     deleteConfirmReady = false;
@@ -243,8 +250,14 @@
       <!-- Tags -->
       <div class="flex flex-wrap gap-2 max-w-3xl">
         {#each data.tags as tag (tag.id)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div onclick={(e) => handleTagClick(tag, e)} class="contents">
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+          <div
+            onclick={(e) => handleTagClick(tag, e)}
+            onkeydown={(e) => handleTagKeyDown(tag, e)}
+            role={deleteMode ? "button" : undefined}
+            tabindex={deleteMode ? 0 : undefined}
+            class="contents"
+          >
             <TagChip
               name={tag.name}
               color={deleteMode ? "ef4444" : tag.color}

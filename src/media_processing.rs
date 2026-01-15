@@ -10,9 +10,6 @@ pub const THUMB_WIDTH: u32 = 300;
 pub const MEDIUM_WIDTH: u32 = 800;
 pub const FULL_WIDTH: u32 = 1600;
 
-/// Quality setting for WebP encoding (0-100)
-const WEBP_QUALITY: u8 = 85;
-
 /// Result of processing an uploaded image
 #[derive(Debug)]
 pub struct ProcessedImage {

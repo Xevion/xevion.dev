@@ -121,12 +121,11 @@ pub async fn api_logout_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
 ) -> (axum_extra::extract::CookieJar, StatusCode) {
-    if let Some(cookie) = jar.get("admin_session") {
-        if let Ok(session_id) = ulid::Ulid::from_string(cookie.value()) {
-            if let Err(e) = state.session_manager.delete_session(session_id).await {
-                tracing::error!(error = %e, "Failed to delete session during logout");
-            }
-        }
+    if let Some(cookie) = jar.get("admin_session")
+        && let Ok(session_id) = ulid::Ulid::from_string(cookie.value())
+        && let Err(e) = state.session_manager.delete_session(session_id).await
+    {
+        tracing::error!(error = %e, "Failed to delete session during logout");
     }
 
     let cookie = axum_extra::extract::cookie::Cookie::build(("admin_session", ""))

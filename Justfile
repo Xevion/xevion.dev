@@ -8,8 +8,8 @@ check:
     const checks = [
       { name: "prettier", cmd: ["bun", "run", "--cwd", "web", "format:check"] },
       { name: "eslint", cmd: ["bun", "run", "--cwd", "web", "lint"] },
-      { name: "svelte-check", cmd: ["bun", "run", "--cwd", "web", "check"] },
-      { name: "clippy", cmd: ["cargo", "clippy", "--all-targets"] },
+      { name: "svelte-check", cmd: ["bun", "run", "--cwd", "web", "check", "--fail-on-warnings"] },
+      { name: "clippy", cmd: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
       { name: "sqlx-prepare", cmd: ["cargo", "sqlx", "prepare", "--check"] },
       { name: "rustfmt", cmd: ["cargo", "fmt", "--check"] },
     ];

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n\n            last_github_activity,\n            created_at,\n            updated_at\n        FROM projects\n        WHERE slug = $1\n        ",
+  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at\n        FROM projects\n        WHERE github_repo IS NOT NULL\n        ORDER BY updated_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -64,17 +64,10 @@
         "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 10,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -86,9 +79,8 @@
       true,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "f97c44ba8b156a2f97cdbc240d1c760ae1efc041d1acd5c3462b96a9236dd3dc"
+  "hash": "e35380efe500836a7a7bbcfcd54023b64bb20bbf58ef18acc37046b34996cefd"
 }

@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Media type enum matching PostgreSQL enum
@@ -19,15 +18,10 @@ pub struct DbProjectMedia {
     pub project_id: Uuid,
     pub display_order: i32,
     pub media_type: MediaType,
-    pub original_filename: String,
     pub r2_base_path: String,
     pub variants: serde_json::Value,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-    pub size_bytes: i64,
     pub blurhash: Option<String>,
     pub metadata: Option<serde_json::Value>,
-    pub created_at: OffsetDateTime,
 }
 
 /// Variant info for images
@@ -158,34 +152,34 @@ impl DbProjectMedia {
         // Parse the JSONB variants
         if let Some(obj) = self.variants.as_object() {
             // Handle image variants
-            if let Some(thumb) = obj.get("thumb") {
-                if let Ok(v) = serde_json::from_value::<ImageVariant>(thumb.clone()) {
-                    variants.thumb = Some(ApiMediaVariant {
-                        url: format!("{}/{}", base_url, v.key),
-                        width: v.width,
-                        height: v.height,
-                    });
-                }
+            if let Some(thumb) = obj.get("thumb")
+                && let Ok(v) = serde_json::from_value::<ImageVariant>(thumb.clone())
+            {
+                variants.thumb = Some(ApiMediaVariant {
+                    url: format!("{}/{}", base_url, v.key),
+                    width: v.width,
+                    height: v.height,
+                });
             }
 
-            if let Some(medium) = obj.get("medium") {
-                if let Ok(v) = serde_json::from_value::<ImageVariant>(medium.clone()) {
-                    variants.medium = Some(ApiMediaVariant {
-                        url: format!("{}/{}", base_url, v.key),
-                        width: v.width,
-                        height: v.height,
-                    });
-                }
+            if let Some(medium) = obj.get("medium")
+                && let Ok(v) = serde_json::from_value::<ImageVariant>(medium.clone())
+            {
+                variants.medium = Some(ApiMediaVariant {
+                    url: format!("{}/{}", base_url, v.key),
+                    width: v.width,
+                    height: v.height,
+                });
             }
 
-            if let Some(full) = obj.get("full") {
-                if let Ok(v) = serde_json::from_value::<ImageVariant>(full.clone()) {
-                    variants.full = Some(ApiMediaVariant {
-                        url: format!("{}/{}", base_url, v.key),
-                        width: v.width,
-                        height: v.height,
-                    });
-                }
+            if let Some(full) = obj.get("full")
+                && let Ok(v) = serde_json::from_value::<ImageVariant>(full.clone())
+            {
+                variants.full = Some(ApiMediaVariant {
+                    url: format!("{}/{}", base_url, v.key),
+                    width: v.width,
+                    height: v.height,
+                });
             }
 
             // Handle original - could be image or video
@@ -212,14 +206,14 @@ impl DbProjectMedia {
             }
 
             // Handle video poster
-            if let Some(poster) = obj.get("poster") {
-                if let Ok(v) = serde_json::from_value::<ImageVariant>(poster.clone()) {
-                    variants.poster = Some(ApiMediaVariant {
-                        url: format!("{}/{}", base_url, v.key),
-                        width: v.width,
-                        height: v.height,
-                    });
-                }
+            if let Some(poster) = obj.get("poster")
+                && let Ok(v) = serde_json::from_value::<ImageVariant>(poster.clone())
+            {
+                variants.poster = Some(ApiMediaVariant {
+                    url: format!("{}/{}", base_url, v.key),
+                    width: v.width,
+                    height: v.height,
+                });
             }
         }
 
@@ -242,15 +236,10 @@ pub async fn get_media_for_project(
             project_id,
             display_order,
             media_type as "media_type: MediaType",
-            original_filename,
             r2_base_path,
             variants,
-            width,
-            height,
-            size_bytes,
             blurhash,
-            metadata,
-            created_at
+            metadata
         FROM project_media
         WHERE project_id = $1
         ORDER BY display_order ASC
@@ -274,15 +263,10 @@ pub async fn get_media_by_id(
             project_id,
             display_order,
             media_type as "media_type: MediaType",
-            original_filename,
             r2_base_path,
             variants,
-            width,
-            height,
-            size_bytes,
             blurhash,
-            metadata,
-            created_at
+            metadata
         FROM project_media
         WHERE id = $1
         "#,
@@ -309,6 +293,7 @@ pub async fn get_next_display_order(pool: &PgPool, project_id: Uuid) -> Result<i
 }
 
 /// Create a new media record
+#[allow(clippy::too_many_arguments)]
 pub async fn create_media(
     pool: &PgPool,
     project_id: Uuid,
@@ -337,15 +322,10 @@ pub async fn create_media(
             project_id,
             display_order,
             media_type as "media_type: MediaType",
-            original_filename,
             r2_base_path,
             variants,
-            width,
-            height,
-            size_bytes,
             blurhash,
-            metadata,
-            created_at
+            metadata
         "#,
         project_id,
         display_order,
@@ -413,38 +393,4 @@ pub async fn reorder_media(
 
     tx.commit().await?;
     Ok(())
-}
-
-/// Update media metadata (focal point, alt text, etc.)
-pub async fn update_media_metadata(
-    pool: &PgPool,
-    id: Uuid,
-    metadata: serde_json::Value,
-) -> Result<DbProjectMedia, sqlx::Error> {
-    sqlx::query_as!(
-        DbProjectMedia,
-        r#"
-        UPDATE project_media
-        SET metadata = $2
-        WHERE id = $1
-        RETURNING 
-            id,
-            project_id,
-            display_order,
-            media_type as "media_type: MediaType",
-            original_filename,
-            r2_base_path,
-            variants,
-            width,
-            height,
-            size_bytes,
-            blurhash,
-            metadata,
-            created_at
-        "#,
-        id,
-        metadata
-    )
-    .fetch_one(pool)
-    .await
 }

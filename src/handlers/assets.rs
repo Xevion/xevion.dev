@@ -85,14 +85,12 @@ pub async fn proxy_icons_handler(
     // Build trusted headers with session info
     let mut forward_headers = HeaderMap::new();
 
-    if let Some(cookie) = jar.get("admin_session") {
-        if let Ok(session_id) = ulid::Ulid::from_string(cookie.value()) {
-            if let Some(session) = state.session_manager.validate_session(session_id) {
-                if let Ok(username_value) = axum::http::HeaderValue::from_str(&session.username) {
-                    forward_headers.insert("x-session-user", username_value);
-                }
-            }
-        }
+    if let Some(cookie) = jar.get("admin_session")
+        && let Ok(session_id) = ulid::Ulid::from_string(cookie.value())
+        && let Some(session) = state.session_manager.validate_session(session_id)
+        && let Ok(username_value) = axum::http::HeaderValue::from_str(&session.username)
+    {
+        forward_headers.insert("x-session-user", username_value);
     }
 
     match proxy::proxy_to_bun(&path_with_query, state, forward_headers).await {

@@ -1,19 +1,15 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 // Site settings models
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DbSiteIdentity {
-    pub id: i32,
     pub display_name: String,
     pub occupation: String,
     pub bio: String,
     pub site_title: String,
-    pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -25,8 +21,6 @@ pub struct DbSocialLink {
     pub icon: String,
     pub visible: bool,
     pub display_order: i32,
-    pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
 }
 
 // API response types
@@ -119,7 +113,7 @@ pub async fn get_site_settings(pool: &PgPool) -> Result<ApiSiteSettings, sqlx::E
     let identity = sqlx::query_as!(
         DbSiteIdentity,
         r#"
-        SELECT id, display_name, occupation, bio, site_title, created_at, updated_at
+        SELECT display_name, occupation, bio, site_title
         FROM site_identity
         WHERE id = 1
         "#
@@ -131,7 +125,7 @@ pub async fn get_site_settings(pool: &PgPool) -> Result<ApiSiteSettings, sqlx::E
     let social_links = sqlx::query_as!(
         DbSocialLink,
         r#"
-        SELECT id, platform, label, value, icon, visible, display_order, created_at, updated_at
+        SELECT id, platform, label, value, icon, visible, display_order
         FROM social_links
         ORDER BY display_order ASC
         "#
@@ -155,7 +149,7 @@ pub async fn update_site_identity(
         UPDATE site_identity
         SET display_name = $1, occupation = $2, bio = $3, site_title = $4
         WHERE id = 1
-        RETURNING id, display_name, occupation, bio, site_title, created_at, updated_at
+        RETURNING display_name, occupation, bio, site_title
         "#,
         req.display_name,
         req.occupation,
@@ -177,7 +171,7 @@ pub async fn update_social_link(
         UPDATE social_links
         SET platform = $2, label = $3, value = $4, icon = $5, visible = $6, display_order = $7
         WHERE id = $1
-        RETURNING id, platform, label, value, icon, visible, display_order, created_at, updated_at
+        RETURNING id, platform, label, value, icon, visible, display_order
         "#,
         link_id,
         req.platform,

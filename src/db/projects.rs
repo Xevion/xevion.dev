@@ -24,7 +24,6 @@ pub struct DbProject {
     pub demo_url: Option<String>,
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
 }
 
 // API response types
@@ -168,8 +167,7 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             github_repo,
             demo_url,
             last_github_activity,
-            created_at,
-            updated_at
+            created_at
         FROM projects
         WHERE status != 'hidden'
         ORDER BY COALESCE(last_github_activity, created_at) DESC
@@ -209,8 +207,7 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             github_repo,
             demo_url,
             last_github_activity,
-            created_at,
-            updated_at
+            created_at
         FROM projects
         ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
@@ -249,10 +246,8 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
-
             last_github_activity,
-            created_at,
-            updated_at
+            created_at
         FROM projects
         WHERE id = $1
         "#,
@@ -279,37 +274,8 @@ pub async fn get_project_by_id_with_tags(
     }
 }
 
-/// Get single project by slug
-pub async fn get_project_by_slug(
-    pool: &PgPool,
-    slug: &str,
-) -> Result<Option<DbProject>, sqlx::Error> {
-    query_as!(
-        DbProject,
-        r#"
-        SELECT
-            id,
-            slug,
-            name,
-            short_description,
-            description,
-            status as "status: ProjectStatus",
-            github_repo,
-            demo_url,
-
-            last_github_activity,
-            created_at,
-            updated_at
-        FROM projects
-        WHERE slug = $1
-        "#,
-        slug
-    )
-    .fetch_optional(pool)
-    .await
-}
-
 /// Create project (without tags - tags handled separately)
+#[allow(clippy::too_many_arguments)]
 pub async fn create_project(
     pool: &PgPool,
     name: &str,
@@ -320,9 +286,7 @@ pub async fn create_project(
     github_repo: Option<&str>,
     demo_url: Option<&str>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override
-        .map(|s| slugify(s))
-        .unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
 
     query_as!(
         DbProject,
@@ -330,7 +294,7 @@ pub async fn create_project(
         INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, updated_at
+                  github_repo, demo_url, last_github_activity, created_at
         "#,
         slug,
         name,
@@ -345,6 +309,7 @@ pub async fn create_project(
 }
 
 /// Update project (without tags - tags handled separately)
+#[allow(clippy::too_many_arguments)]
 pub async fn update_project(
     pool: &PgPool,
     id: Uuid,
@@ -356,9 +321,7 @@ pub async fn update_project(
     github_repo: Option<&str>,
     demo_url: Option<&str>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override
-        .map(|s| slugify(s))
-        .unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
 
     query_as!(
         DbProject,
@@ -368,7 +331,7 @@ pub async fn update_project(
             status = $6, github_repo = $7, demo_url = $8
         WHERE id = $1
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, updated_at
+                  github_repo, demo_url, last_github_activity, created_at
         "#,
         id,
         slug,
@@ -447,8 +410,7 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             github_repo,
             demo_url,
             last_github_activity,
-            created_at,
-            updated_at
+            created_at
         FROM projects
         WHERE github_repo IS NOT NULL
         ORDER BY updated_at DESC

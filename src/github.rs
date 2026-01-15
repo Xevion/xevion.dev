@@ -350,7 +350,7 @@ pub async fn sync_github_activity(pool: &PgPool) -> Result<SyncStats, Box<dyn st
                 // Only update if newer than current value
                 let should_update = project
                     .last_github_activity
-                    .map_or(true, |current| activity_time > current);
+                    .is_none_or(|current| activity_time > current);
 
                 if should_update {
                     if let Err(e) = crate::db::projects::update_last_github_activity(

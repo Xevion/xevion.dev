@@ -84,12 +84,12 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     }
 
     // Check if this is a static asset that exists in embedded CLIENT_ASSETS
-    if utils::is_static_asset(path) {
-        if let Some(response) = assets::try_serve_embedded_asset(path) {
-            return response;
-        }
-        // If not found in embedded assets, continue to proxy (might be in Bun's static dir)
+    if utils::is_static_asset(path)
+        && let Some(response) = assets::try_serve_embedded_asset(path)
+    {
+        return response;
     }
+    // If not found in embedded assets, continue to proxy (might be in Bun's static dir)
 
     // Check if this is a prerendered page
     if let Some(response) = assets::try_serve_prerendered_page(path) {
@@ -104,39 +104,36 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let mut is_authenticated = false;
 
     // Forward request ID to Bun (set by RequestIdLayer)
-    if let Some(request_id) = req.extensions().get::<crate::middleware::RequestId>() {
-        if let Ok(header_value) = axum::http::HeaderValue::from_str(&request_id.0) {
-            forward_headers.insert("x-request-id", header_value);
-        }
+    if let Some(request_id) = req.extensions().get::<crate::middleware::RequestId>()
+        && let Ok(header_value) = axum::http::HeaderValue::from_str(&request_id.0)
+    {
+        forward_headers.insert("x-request-id", header_value);
     }
 
     // SECURITY: Strip any X-Session-User header from incoming request to prevent spoofing
 
     // Extract and validate session from cookie
-    if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
-        if let Ok(cookie_str) = cookie_header.to_str() {
-            // Parse cookies manually to find admin_session
-            for cookie_pair in cookie_str.split(';') {
-                let cookie_pair = cookie_pair.trim();
-                if let Some((name, value)) = cookie_pair.split_once('=') {
-                    if name == "admin_session" {
-                        // Found session cookie, validate it
-                        if let Ok(session_id) = ulid::Ulid::from_string(value) {
-                            if let Some(session) =
-                                state.session_manager.validate_session(session_id)
-                            {
-                                // Session is valid - add trusted header
-                                if let Ok(username_value) =
-                                    axum::http::HeaderValue::from_str(&session.username)
-                                {
-                                    forward_headers.insert("x-session-user", username_value);
-                                    is_authenticated = true;
-                                }
-                            }
-                        }
-                        break;
+    if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE)
+        && let Ok(cookie_str) = cookie_header.to_str()
+    {
+        // Parse cookies manually to find admin_session
+        for cookie_pair in cookie_str.split(';') {
+            let cookie_pair = cookie_pair.trim();
+            if let Some((name, value)) = cookie_pair.split_once('=')
+                && name == "admin_session"
+            {
+                // Found session cookie, validate it
+                if let Ok(session_id) = ulid::Ulid::from_string(value)
+                    && let Some(session) = state.session_manager.validate_session(session_id)
+                {
+                    // Session is valid - add trusted header
+                    if let Ok(username_value) = axum::http::HeaderValue::from_str(&session.username)
+                    {
+                        forward_headers.insert("x-session-user", username_value);
+                        is_authenticated = true;
                     }
                 }
+                break;
             }
         }
     }
@@ -146,35 +143,33 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let use_cache = !is_authenticated && cache::is_cacheable_path(path);
 
     // Try to serve from cache for public requests
-    if use_cache {
-        if let Some(cached) = state.isr_cache.get(&path_with_query).await {
-            let fresh_duration = state.isr_cache.config.fresh_duration;
-            let stale_duration = state.isr_cache.config.stale_duration;
+    if use_cache && let Some(cached) = state.isr_cache.get(&path_with_query).await {
+        let fresh_duration = state.isr_cache.config.fresh_duration;
+        let stale_duration = state.isr_cache.config.stale_duration;
 
-            if cached.is_fresh(fresh_duration) {
-                // Fresh cache hit - serve immediately
-                let age_ms = cached.age().as_millis() as u64;
-                tracing::debug!(cache = "hit", age_ms, "ISR cache hit (fresh)");
+        if cached.is_fresh(fresh_duration) {
+            // Fresh cache hit - serve immediately
+            let age_ms = cached.age().as_millis() as u64;
+            tracing::debug!(cache = "hit", age_ms, "ISR cache hit (fresh)");
 
-                return serve_cached_response(&cached, is_head);
-            } else if cached.is_stale_but_usable(fresh_duration, stale_duration) {
-                // Stale cache hit - serve immediately and refresh in background
-                let age_ms = cached.age().as_millis() as u64;
-                tracing::debug!(cache = "stale", age_ms, "ISR cache hit (stale, refreshing)");
+            return serve_cached_response(&cached, is_head);
+        } else if cached.is_stale_but_usable(fresh_duration, stale_duration) {
+            // Stale cache hit - serve immediately and refresh in background
+            let age_ms = cached.age().as_millis() as u64;
+            tracing::debug!(cache = "stale", age_ms, "ISR cache hit (stale, refreshing)");
 
-                // Spawn background refresh if not already refreshing
-                if state.isr_cache.start_refresh(&path_with_query) {
-                    let state_clone = state.clone();
-                    let path_clone = path_with_query.clone();
-                    tokio::spawn(async move {
-                        refresh_cache_entry(state_clone, path_clone).await;
-                    });
-                }
-
-                return serve_cached_response(&cached, is_head);
+            // Spawn background refresh if not already refreshing
+            if state.isr_cache.start_refresh(&path_with_query) {
+                let state_clone = state.clone();
+                let path_clone = path_with_query.clone();
+                tokio::spawn(async move {
+                    refresh_cache_entry(state_clone, path_clone).await;
+                });
             }
-            // Cache entry is too old - fall through to fetch
+
+            return serve_cached_response(&cached, is_head);
         }
+        // Cache entry is too old - fall through to fetch
     }
 
     // Cache miss or non-cacheable - fetch from Bun

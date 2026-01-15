@@ -1,4 +1,3 @@
-use reqwest::Method;
 use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
@@ -85,10 +84,6 @@ impl HttpClient {
 
     pub fn post(&self, path: &str) -> reqwest::RequestBuilder {
         self.client.post(self.build_url(path))
-    }
-
-    pub fn request(&self, method: Method, path: &str) -> reqwest::RequestBuilder {
-        self.client.request(method, self.build_url(path))
     }
 }
 

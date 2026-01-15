@@ -57,27 +57,6 @@ impl R2Client {
             .cloned()
     }
 
-    pub async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
-        let result = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .map_err(|e| format!("Failed to get object from R2: {e}"))?;
-
-        let bytes = result
-            .body
-            .collect()
-            .await
-            .map_err(|e| format!("Failed to read object body: {e}"))?
-            .into_bytes()
-            .to_vec();
-
-        Ok(bytes)
-    }
-
     pub async fn put_object(
         &self,
         key: &str,

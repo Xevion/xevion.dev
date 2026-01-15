@@ -56,17 +56,17 @@ pub async fn create_tag_handler(
     }
 
     // Validate color if provided
-    if let Some(ref color) = payload.color {
-        if !utils::validate_hex_color(color) {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Validation error",
-                    "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
-                })),
-            )
-                .into_response();
-        }
+    if let Some(ref color) = payload.color
+        && !utils::validate_hex_color(color)
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
+            })),
+        )
+            .into_response();
     }
 
     match db::create_tag(
@@ -176,17 +176,17 @@ pub async fn update_tag_handler(
     }
 
     // Validate color if provided
-    if let Some(ref color) = payload.color {
-        if !utils::validate_hex_color(color) {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Validation error",
-                    "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
-                })),
-            )
-                .into_response();
-        }
+    if let Some(ref color) = payload.color
+        && !utils::validate_hex_color(color)
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Validation error",
+                "message": "Invalid color format. Must be 6-character hex (e.g., '3b82f6')"
+            })),
+        )
+            .into_response();
     }
 
     let tag = match db::get_tag_by_slug(&state.pool, &slug).await {

@@ -36,7 +36,7 @@ pub enum Command {
     Seed,
 
     /// API client for managing content remotely
-    Api(ApiArgs),
+    Api(Box<ApiArgs>),
 }
 
 #[derive(Parser, Debug)]

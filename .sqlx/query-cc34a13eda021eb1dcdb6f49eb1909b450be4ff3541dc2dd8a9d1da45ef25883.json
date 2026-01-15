@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO tags (slug, name, icon, color)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, slug, name, icon, color, created_at\n        ",
+  "query": "\n        SELECT t.id, t.slug, t.name, t.icon, t.color\n        FROM tags t\n        JOIN project_tags pt ON t.id = pt.tag_id\n        WHERE pt.project_id = $1\n        ORDER BY t.name ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -27,19 +27,11 @@
         "ordinal": 4,
         "name": "color",
         "type_info": "Varchar"
-      },
-      {
-        "ordinal": 5,
-        "name": "created_at",
-        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
-        "Text",
-        "Varchar"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -47,9 +39,8 @@
       false,
       false,
       true,
-      true,
-      false
+      true
     ]
   },
-  "hash": "99a63a1f9b888490418aa4e81f5c185e8de55044321c5f85883610e40e51d286"
+  "hash": "cc34a13eda021eb1dcdb6f49eb1909b450be4ff3541dc2dd8a9d1da45ef25883"
 }

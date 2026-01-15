@@ -1,42 +1,42 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, display_name, occupation, bio, site_title, created_at, updated_at\n        FROM site_identity\n        WHERE id = 1\n        ",
+  "query": "\n        SELECT id, platform, label, value, icon, visible, display_order\n        FROM social_links\n        ORDER BY display_order ASC\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Int4"
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "display_name",
+        "name": "platform",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "occupation",
+        "name": "label",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "bio",
+        "name": "value",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "site_title",
+        "name": "icon",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
-        "name": "created_at",
-        "type_info": "Timestamptz"
+        "name": "visible",
+        "type_info": "Bool"
       },
       {
         "ordinal": 6,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
+        "name": "display_order",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "f45329eab47a84c6c921f4e78c443835135fa095f16a7a0a9080249c4136fc7d"
+  "hash": "d2c1348ab4e37c89c815e3cb916070279265d0cc5bbd2e4bcdcecb17b8998338"
 }

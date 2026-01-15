@@ -20,14 +20,19 @@
 
   let { data }: Props = $props();
 
-  // Form state - initialize from loaded data
+  // Form state - initialize from loaded data (intentionally captures initial values)
+  // svelte-ignore state_referenced_locally
   let name = $state(data.tag.name);
+  // svelte-ignore state_referenced_locally
   let slug = $state(data.tag.slug);
+  // svelte-ignore state_referenced_locally
   let icon = $state(data.tag.icon ?? "");
+  // svelte-ignore state_referenced_locally
   let color = $state<string | undefined>(data.tag.color);
   let saving = $state(false);
 
   // Preview icon SVG - starts with server-rendered, updates on icon change
+  // svelte-ignore state_referenced_locally
   let previewIconSvg = $state(data.tag.iconSvg ?? "");
   let iconLoadTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -179,9 +184,9 @@
 
     <!-- Preview -->
     <div class="mt-6 pt-4 border-t border-admin-border">
-      <label class="block text-sm font-medium text-admin-text mb-2">
+      <span class="block text-sm font-medium text-admin-text mb-2">
         Preview
-      </label>
+      </span>
       <TagChip name={name || "Tag Name"} {color} iconSvg={previewIconSvg} />
     </div>
 

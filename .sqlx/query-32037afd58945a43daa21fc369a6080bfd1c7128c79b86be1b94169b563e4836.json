@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4, description = $5,\n            status = $6, github_repo = $7, demo_url = $8\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at\n        ",
+  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at\n        FROM projects\n        ORDER BY COALESCE(last_github_activity, created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -64,36 +64,10 @@
         "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 10,
-        "name": "updated_at",
-        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "project_status",
-            "kind": {
-              "Enum": [
-                "active",
-                "maintained",
-                "archived",
-                "hidden"
-              ]
-            }
-          }
-        },
-        "Text",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -105,9 +79,8 @@
       true,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "fdd7f3743ad2e6d1d571ee2d3dbd8b4d49074ef2cbe74dc79c6f4f638bdd3a88"
+  "hash": "32037afd58945a43daa21fc369a6080bfd1c7128c79b86be1b94169b563e4836"
 }

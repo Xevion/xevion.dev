@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id,\n            project_id,\n            display_order,\n            media_type as \"media_type: MediaType\",\n            r2_base_path,\n            variants,\n            blurhash,\n            metadata\n        FROM project_media\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "display_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "media_type: MediaType",
+        "type_info": {
+          "Custom": {
+            "name": "media_type",
+            "kind": {
+              "Enum": [
+                "image",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "r2_base_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "variants",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "blurhash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "62a61815450f395f31570d77194084ac90072472d4c309b2080d1f104f26dd0d"
+}
