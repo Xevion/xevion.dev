@@ -1,22 +1,86 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { themeStore } from "$lib/stores/theme.svelte";
   import { telemetry } from "$lib/telemetry";
   import IconSun from "~icons/lucide/sun";
   import IconMoon from "~icons/lucide/moon";
 
-  function handleToggle() {
+  /**
+   * Theme toggle with View Transitions API circular reveal animation.
+   * The clip-path circle expands from the click point to cover the viewport.
+   */
+  async function handleToggle(event: MouseEvent) {
     const newTheme = themeStore.isDark ? "light" : "dark";
-    themeStore.toggle();
-    telemetry.track({
-      name: "theme_change",
-      properties: { theme: newTheme },
+
+    const supportsViewTransition =
+      typeof document !== "undefined" &&
+      "startViewTransition" in document &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (!supportsViewTransition) {
+      themeStore.toggle();
+      telemetry.track({
+        name: "theme_change",
+        properties: { theme: newTheme },
+      });
+      return;
+    }
+
+    // Calculate animation origin from click coordinates
+    const x = event.clientX;
+    const y = event.clientY;
+    const endRadius = Math.hypot(
+      Math.max(x, innerWidth - x),
+      Math.max(y, innerHeight - y),
+    );
+
+    // Remove view-transition-names so all elements are captured in root snapshot
+    // (named elements would otherwise appear through "holes" in the circular reveal)
+    const elementsWithVTN = document.querySelectorAll(
+      '[style*="view-transition-name"]',
+    );
+    const savedStyles: Array<{ el: Element; style: string }> = [];
+    elementsWithVTN.forEach((el) => {
+      savedStyles.push({ el, style: el.getAttribute("style") || "" });
+      (el as HTMLElement).style.viewTransitionName = "none";
     });
+    void document.documentElement.offsetHeight;
+
+    const transition = document.startViewTransition(async () => {
+      themeStore.toggle();
+      await tick();
+    });
+
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 500,
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    });
+
+    await transition.finished;
+
+    // Restore original view-transition-name styles
+    savedStyles.forEach(({ el, style }) => {
+      el.setAttribute("style", style);
+    });
+
+    telemetry.track({ name: "theme_change", properties: { theme: newTheme } });
   }
 </script>
 
 <button
   type="button"
-  onclick={handleToggle}
+  onclick={(e) => handleToggle(e)}
   aria-label={themeStore.isDark
     ? "Switch to light mode"
     : "Switch to dark mode"}

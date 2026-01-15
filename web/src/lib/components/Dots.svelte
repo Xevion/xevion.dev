@@ -409,9 +409,7 @@
 <!-- Wrapper for background + dots canvas - single persistent unit -->
 <div class="pointer-events-none fixed inset-0 -z-20" {style}>
   <!-- Background overlay -->
-  <div
-    class="absolute inset-0 bg-white dark:bg-black transition-colors duration-300"
-  ></div>
+  <div class="absolute inset-0 bg-white dark:bg-black"></div>
 
   <!-- Dots canvas -->
   <canvas

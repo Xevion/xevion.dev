@@ -26,7 +26,7 @@
   }
 </script>
 
-<main class="page-main overflow-x-hidden font-schibsted">
+<main class="page-main overflow-x-hidden font-schibsted pb-12">
   <div class="flex items-center flex-col pt-14">
     <div
       class="max-w-2xl mx-4 border-b border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-200 dark:divide-zinc-700 sm:mx-6"

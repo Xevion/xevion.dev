@@ -56,9 +56,7 @@
   {@render children()}
 {:else}
   <!-- Admin layout with sidebar -->
-  <div
-    class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg transition-colors duration-300"
-  ></div>
+  <div class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg"></div>
   <Sidebar
     projectCount={stats?.totalProjects ?? 0}
     tagCount={stats?.totalTags ?? 0}

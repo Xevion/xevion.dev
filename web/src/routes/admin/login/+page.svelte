@@ -38,9 +38,7 @@
   <title>Admin Login | xevion.dev</title>
 </svelte:head>
 
-<div
-  class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg transition-colors duration-300"
-></div>
+<div class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg"></div>
 <main class="page-main text-admin-text">
   <div class="flex min-h-screen items-center justify-center px-4">
     <div class="w-full max-w-md space-y-4">

@@ -879,9 +879,7 @@
 <!-- Wrapper for background + ASCII clouds canvas -->
 <div class="pointer-events-none fixed inset-0 -z-20" {style}>
   <!-- Background overlay (also serves as fallback when WebGL fails) -->
-  <div
-    class="absolute inset-0 bg-white dark:bg-black transition-colors duration-300"
-  ></div>
+  <div class="absolute inset-0 bg-white dark:bg-black"></div>
 
   <!-- ASCII Clouds canvas (hidden if WebGL failed) -->
   {#if !webglFailed}

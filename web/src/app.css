@@ -77,27 +77,11 @@ html,
 body {
   @apply font-inter overflow-x-hidden;
   color: var(--color-text-primary);
-  transition:
-    background-color 0.3s ease-in-out,
-    color 0.3s ease-in-out;
 }
 
 body {
   @apply h-full;
   background-color: var(--color-bg-primary);
-}
-
-/* Smooth theme transitions for all elements */
-*:not(canvas):not([class*="animate-"]) {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 0.3s;
-  transition-timing-function: ease-in-out;
-}
-
-/* Elements with explicit transition classes should extend, not replace */
-[class*="transition-colors"],
-[class*="transition-all"] {
-  transition-duration: 0.3s !important;
 }
 
 html:not(.dark) {
@@ -120,7 +104,7 @@ html.dark {
   border-radius: 4px;
 }
 
-/* Native scrollbars (Webkit: Chrome, Safari, Edge) */
+/* Native scrollbars for other elements (Webkit: Chrome, Safari, Edge) */
 html:not(.dark) ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -167,25 +151,46 @@ html.dark ::-webkit-scrollbar-thumb:active {
   background: rgba(255, 255, 255, 0.55);
 }
 
-/* Native scrollbars (Firefox) */
-html:not(.dark) {
-  scrollbar-color: rgba(0, 0, 0, 0.25) rgba(0, 0, 0, 0.05);
+/* Native scrollbars for other elements (Firefox) - applied to a wrapper class */
+.native-scrollbar {
   scrollbar-width: thin;
 }
 
-html.dark {
+html:not(.dark) .native-scrollbar {
+  scrollbar-color: rgba(0, 0, 0, 0.25) rgba(0, 0, 0, 0.05);
+}
+
+html.dark .native-scrollbar {
   scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.05);
-  scrollbar-width: thin;
+}
+
+/* Hide native scrollbar on html/body - OverlayScrollbars handles body scrolling */
+/* Must come AFTER general scrollbar styles to win via cascade */
+html,
+body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 /* Utility class for page main wrapper */
 .page-main {
-  @apply relative min-h-screen text-zinc-900 dark:text-zinc-50 transition-colors duration-300;
+  @apply relative min-h-screen text-zinc-900 dark:text-zinc-50;
 }
 
-/* View Transitions API - page transition animations */
+/* View Transitions API - theme toggle animation */
+/* Disable default cross-fade so JS can animate clip-path instead */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
 
-/* Persistent elements (background with dots, theme toggle) - excluded from transition */
+/* Persistent elements (background with dots, theme toggle) - excluded from page transitions */
 /* Hide old snapshots entirely so only the live element shows (prevents doubling/ghosting) */
 ::view-transition-old(background),
 ::view-transition-old(theme-toggle) {
@@ -218,12 +223,6 @@ html.dark {
     transform: translateX(0);
     opacity: 1;
   }
-}
-
-/* Only animate page content, not root (persistent UI stays static) */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
 }
 
 ::view-transition-old(page-content) {
