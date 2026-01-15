@@ -83,10 +83,11 @@ class TelemetryClient {
 
   /**
    * Convenience method for tracking page views
+   * Uses PostHog's standard $pageview event for Web Analytics compatibility
    */
   trackPageView(route: string): void {
     this.track({
-      name: "page_view",
+      name: "$pageview",
       properties: {
         route,
         referrer: browser ? document.referrer : undefined,

@@ -5,9 +5,10 @@
 
 /**
  * Page view tracking event
+ * Uses PostHog's standard $pageview event name for Web Analytics compatibility
  */
 export type PageViewEvent = {
-  name: "page_view";
+  name: "$pageview";
   properties: {
     route: string;
     referrer?: string;

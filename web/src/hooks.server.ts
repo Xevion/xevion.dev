@@ -1,12 +1,20 @@
 import type { Handle, HandleServerError } from "@sveltejs/kit";
 import { dev } from "$app/environment";
+import { env } from "$env/dynamic/private";
 import { initLogger } from "$lib/logger";
 import { requestContext } from "$lib/server/context";
 import { preCacheCollections } from "$lib/server/icons";
 import { getLogger } from "@logtape/logtape";
 import { minify } from "html-minifier-terser";
+import { PostHog } from "posthog-node";
 
 await initLogger();
+
+// Initialize PostHog for server-side error tracking
+const posthog =
+  env.POSTHOG_KEY && env.POSTHOG_HOST
+    ? new PostHog(env.POSTHOG_KEY, { host: env.POSTHOG_HOST })
+    : null;
 
 // Pre-cache icon collections before handling any requests
 await preCacheCollections();
@@ -74,6 +82,15 @@ export const handleError: HandleServerError = async ({
     path: event.url.pathname,
     error: error instanceof Error ? error.message : String(error),
   });
+
+  if (posthog && status !== 404) {
+    const requestId = event.request.headers.get("x-request-id") ?? "unknown";
+    posthog.captureException(error, requestId, {
+      method: event.request.method,
+      path: event.url.pathname,
+      status,
+    });
+  }
 
   return {
     message: status === 404 ? "Not Found" : "Internal Error",
