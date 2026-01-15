@@ -2,7 +2,7 @@
   import TagChip from "./TagChip.svelte";
   import OverflowPill from "./OverflowPill.svelte";
 
-  export type Tag = { iconSvg?: string; name: string; color?: string };
+  export type Tag = { icon?: string; name: string; color?: string };
 
   interface Props {
     tags: Tag[];
@@ -134,7 +134,7 @@
   {style}
 >
   {#each visibleTags as tag (tag.name)}
-    <TagChip name={tag.name} color={tag.color} iconSvg={tag.iconSvg} />
+    <TagChip name={tag.name} color={tag.color} icon={tag.icon} />
   {/each}
   {#if hiddenTags.length > 0}
     <OverflowPill count={hiddenTags.length} {hiddenTagNames} />

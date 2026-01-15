@@ -4,14 +4,8 @@
   import TagList from "./TagList.svelte";
   import type { AdminProject } from "$lib/admin-types";
 
-  // Extended tag type with icon SVG for display
-  type ProjectTag = { iconSvg?: string; name: string; color?: string };
-
   interface Props {
-    project: AdminProject & {
-      tags: ProjectTag[];
-      clockIconSvg?: string;
-    };
+    project: AdminProject;
     class?: string;
   }
 

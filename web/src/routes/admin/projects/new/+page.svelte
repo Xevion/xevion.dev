@@ -2,16 +2,12 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
+  import IconSprite from "$lib/components/IconSprite.svelte";
   import { createAdminProject } from "$lib/api";
-  import type { CreateProjectData, TagWithIcon } from "$lib/admin-types";
+  import type { CreateProjectData } from "$lib/admin-types";
+  import type { PageData } from "./$types";
 
-  interface Props {
-    data: {
-      availableTags: TagWithIcon[];
-    };
-  }
-
-  let { data }: Props = $props();
+  let { data }: { data: PageData } = $props();
 
   async function handleSubmit(formData: CreateProjectData) {
     await createAdminProject(formData);
@@ -22,6 +18,8 @@
 <svelte:head>
   <title>New Project | Admin</title>
 </svelte:head>
+
+<IconSprite icons={data.icons} />
 
 <div class="max-w-3xl space-y-6">
   <!-- Header -->

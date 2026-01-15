@@ -1,7 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { apiFetch } from "$lib/api.server";
 import { renderIconsBatch } from "$lib/server/icons";
-import { addIconsToTags } from "$lib/server/tag-icons";
 import { error } from "@sveltejs/kit";
 import type { AdminTag, AdminProject } from "$lib/admin-types";
 
@@ -12,12 +11,6 @@ interface TagWithProjectsResponse {
 
 interface RelatedTagResponse extends AdminTag {
   cooccurrenceCount: number;
-}
-
-export interface TagPageData {
-  tag: AdminTag & { iconSvg?: string };
-  projects: AdminProject[];
-  relatedTags: Array<RelatedTagResponse & { iconSvg?: string }>;
 }
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
@@ -44,30 +37,30 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
     // Non-fatal - just show empty related tags
   }
 
-  // Render main tag icon (single icon, just use renderIconsBatch directly)
+  // Collect all unique icons
   const iconIds = new Set<string>();
   if (tagData.tag.icon) {
     iconIds.add(tagData.tag.icon);
   }
-  const icons = await renderIconsBatch([...iconIds], { size: 12 });
+  for (const tag of relatedTags) {
+    if (tag.icon) {
+      iconIds.add(tag.icon);
+    }
+  }
 
-  const tagWithIcon = {
-    ...tagData.tag,
-    iconSvg: tagData.tag.icon
-      ? (icons.get(tagData.tag.icon) ?? undefined)
-      : undefined,
-  };
+  // Batch render all icons
+  const iconsMap = await renderIconsBatch([...iconIds]);
 
-  // Add icons to related tags using helper (preserving cooccurrenceCount)
-  const relatedTagsWithIconsBase = await addIconsToTags(relatedTags);
-  const relatedTagsWithIcons = relatedTags.map((tag, i) => ({
-    ...relatedTagsWithIconsBase[i],
-    cooccurrenceCount: tag.cooccurrenceCount,
-  }));
+  // Convert Map to plain object for serialization
+  const icons: Record<string, string> = {};
+  for (const [id, svg] of iconsMap) {
+    icons[id] = svg;
+  }
 
   return {
-    tag: tagWithIcon,
+    tag: tagData.tag,
     projects: tagData.projects,
-    relatedTags: relatedTagsWithIcons,
-  } satisfies TagPageData;
+    relatedTags,
+    icons,
+  };
 };

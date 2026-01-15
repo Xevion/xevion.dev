@@ -5,20 +5,17 @@
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
+  import IconSprite from "$lib/components/IconSprite.svelte";
   import { updateAdminTag, deleteAdminTag } from "$lib/api";
   import { goto, invalidateAll } from "$app/navigation";
-  import type { TagPageData } from "./+page.server";
+  import type { PageData } from "./$types";
   import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconExternalLink from "~icons/lucide/external-link";
   import { getLogger } from "@logtape/logtape";
 
   const logger = getLogger(["admin", "tags", "edit"]);
 
-  interface Props {
-    data: TagPageData;
-  }
-
-  let { data }: Props = $props();
+  let { data }: { data: PageData } = $props();
 
   // Form state - initialize from loaded data (intentionally captures initial values)
   // svelte-ignore state_referenced_locally
@@ -33,7 +30,9 @@
 
   // Preview icon SVG - starts with server-rendered, updates on icon change
   // svelte-ignore state_referenced_locally
-  let previewIconSvg = $state(data.tag.iconSvg ?? "");
+  let previewIconSvg = $state(
+    data.tag.icon ? (data.icons[data.tag.icon] ?? "") : "",
+  );
   let iconLoadTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Watch for icon changes and fetch new preview
@@ -50,7 +49,13 @@
       return;
     }
 
-    // Debounce icon fetching
+    // Check if icon is already in sprite
+    if (data.icons[currentIcon]) {
+      previewIconSvg = data.icons[currentIcon];
+      return;
+    }
+
+    // Debounce icon fetching for new icons
     iconLoadTimeout = setTimeout(async () => {
       try {
         const response = await fetch(
@@ -130,11 +135,17 @@
       alert("Failed to delete tag");
     }
   }
+
+  // Base classes for tag chip styling (matches TagChip component)
+  const tagBaseClasses =
+    "inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3 shadow-sm";
 </script>
 
 <svelte:head>
   <title>Edit {data.tag.name} | Tags | Admin</title>
 </svelte:head>
+
+<IconSprite icons={data.icons} />
 
 <div class="space-y-6 max-w-3xl">
   <!-- Back Link -->
@@ -182,12 +193,23 @@
       <ColorPicker bind:selectedColor={color} />
     </div>
 
-    <!-- Preview -->
+    <!-- Preview - rendered inline with dynamic icon SVG -->
     <div class="mt-6 pt-4 border-t border-admin-border">
       <span class="block text-sm font-medium text-admin-text mb-2">
         Preview
       </span>
-      <TagChip name={name || "Tag Name"} {color} iconSvg={previewIconSvg} />
+      <span
+        class={tagBaseClasses}
+        style="border-left-color: #{color || '06b6d4'}"
+      >
+        {#if previewIconSvg}
+          <span class="size-4.25 sm:size-3.75 [&>svg]:w-full [&>svg]:h-full">
+            <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+            {@html previewIconSvg}
+          </span>
+        {/if}
+        <span>{name || "Tag Name"}</span>
+      </span>
     </div>
 
     <!-- Actions -->
@@ -248,7 +270,7 @@
           <TagChip
             name={tag.name}
             color={tag.color}
-            iconSvg={tag.iconSvg}
+            icon={tag.icon}
             href={`/admin/tags/${tag.slug}`}
           />
         {/each}

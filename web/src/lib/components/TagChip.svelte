@@ -1,15 +1,16 @@
 <script lang="ts">
   import { cn } from "$lib/utils";
+  import { toSymbolId } from "./IconSprite.svelte";
 
   interface Props {
     name: string;
     color?: string;
-    iconSvg?: string;
+    icon?: string;
     href?: string;
     class?: string;
   }
 
-  let { name, color, iconSvg, href, class: className }: Props = $props();
+  let { name, color, icon, href, class: className }: Props = $props();
 
   const baseClasses =
     "inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3 shadow-sm";
@@ -18,10 +19,11 @@
 </script>
 
 {#snippet iconAndName()}
-  {#if iconSvg}
-    <span class="size-4.25 sm:size-3.75 [&>svg]:w-full [&>svg]:h-full">
-      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-      {@html iconSvg}
+  {#if icon}
+    <span class="size-4.25 sm:size-3.75">
+      <svg class="w-full h-full" aria-hidden="true">
+        <use href="#{toSymbolId(icon)}" />
+      </svg>
     </span>
   {/if}
   <span>{name}</span>

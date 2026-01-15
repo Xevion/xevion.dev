@@ -2,8 +2,9 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Table from "$lib/components/admin/Table.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
+  import IconSprite from "$lib/components/IconSprite.svelte";
   import { goto } from "$app/navigation";
-  import type { ProjectWithTagIcons } from "./+page.server";
+  import type { PageData } from "./$types";
   import type { ProjectStatus } from "$lib/admin-types";
   import IconPlus from "~icons/lucide/plus";
 
@@ -16,13 +17,7 @@
       hidden: { color: "52525b", label: "Hidden" },
     };
 
-  interface Props {
-    data: {
-      projects: ProjectWithTagIcons[];
-    };
-  }
-
-  let { data }: Props = $props();
+  let { data }: { data: PageData } = $props();
 
   function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
@@ -67,6 +62,8 @@
 <svelte:head>
   <title>Projects | Admin</title>
 </svelte:head>
+
+<IconSprite icons={data.icons} />
 
 <div class="space-y-6">
   <!-- Header -->
@@ -157,7 +154,7 @@
                   <TagChip
                     name={tag.name}
                     color={tag.color}
-                    iconSvg={tag.iconSvg}
+                    icon={tag.icon}
                     href={`/admin/tags/${tag.slug}`}
                   />
                 {/each}

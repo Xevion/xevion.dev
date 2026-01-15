@@ -5,9 +5,10 @@
   import ColorPicker from "$lib/components/admin/ColorPicker.svelte";
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
+  import IconSprite from "$lib/components/IconSprite.svelte";
   import { createAdminTag, deleteAdminTag } from "$lib/api";
-  import type { CreateTagData } from "$lib/admin-types";
-  import type { TagWithIconAndCount } from "./+page.server";
+  import type { CreateTagData, AdminTagWithCount } from "$lib/admin-types";
+  import type { PageData } from "./$types";
   import IconPlus from "~icons/lucide/plus";
   import IconX from "~icons/lucide/x";
   import IconInfo from "~icons/lucide/info";
@@ -16,13 +17,7 @@
 
   const logger = getLogger(["admin", "tags"]);
 
-  interface Props {
-    data: {
-      tags: TagWithIconAndCount[];
-    };
-  }
-
-  let { data }: Props = $props();
+  let { data }: { data: PageData } = $props();
 
   // Create form state
   let showCreateForm = $state(false);
@@ -61,7 +56,7 @@
 
   // Delete state
   let deleteModalOpen = $state(false);
-  let deleteTarget = $state<TagWithIconAndCount | null>(null);
+  let deleteTarget = $state<AdminTagWithCount | null>(null);
   let deleteConfirmReady = $state(false);
   let deleteTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -93,7 +88,7 @@
     }
   }
 
-  function handleTagClick(tag: TagWithIconAndCount, event: MouseEvent) {
+  function handleTagClick(tag: AdminTagWithCount, event: MouseEvent) {
     if (deleteMode) {
       event.preventDefault();
       event.stopPropagation();
@@ -102,14 +97,14 @@
     // Otherwise, let the link navigate normally
   }
 
-  function handleTagKeyDown(tag: TagWithIconAndCount, event: KeyboardEvent) {
+  function handleTagKeyDown(tag: AdminTagWithCount, event: KeyboardEvent) {
     if (deleteMode && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();
       initiateDelete(tag);
     }
   }
 
-  function initiateDelete(tag: TagWithIconAndCount) {
+  function initiateDelete(tag: AdminTagWithCount) {
     deleteTarget = tag;
     deleteConfirmReady = false;
 
@@ -150,6 +145,8 @@
 <svelte:head>
   <title>Tags | Admin</title>
 </svelte:head>
+
+<IconSprite icons={data.icons} />
 
 <div class="space-y-6">
   <!-- Header -->
@@ -261,7 +258,7 @@
             <TagChip
               name={tag.name}
               color={deleteMode ? "ef4444" : tag.color}
-              iconSvg={tag.iconSvg}
+              icon={tag.icon}
               href={`/admin/tags/${tag.slug}`}
               class="transition-all duration-150 {deleteMode
                 ? 'bg-red-100/80 dark:bg-red-900/40 cursor-pointer'

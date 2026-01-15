@@ -3,30 +3,18 @@
   import { page } from "$app/state";
   import ProjectCard from "$lib/components/ProjectCard.svelte";
   import DiscordProfileModal from "$lib/components/DiscordProfileModal.svelte";
+  import IconSprite, { toSymbolId } from "$lib/components/IconSprite.svelte";
   import { telemetry } from "$lib/telemetry";
   import type { PageData } from "./$types";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
 
-  interface ExtendedPageData extends PageData {
-    socialLinksWithIcons: Array<{
-      id: string;
-      platform: string;
-      label: string;
-      value: string;
-      icon: string;
-      iconSvg: string;
-      visible: boolean;
-      displayOrder: number;
-    }>;
-  }
-
-  let { data }: { data: ExtendedPageData } = $props();
+  let { data }: { data: PageData } = $props();
   const projects = $derived(data.projects);
-  const socialLinksWithIcons = $derived(data.socialLinksWithIcons);
+  const socialLinks = $derived(data.socialLinksWithIcons);
 
   // Filter visible social links
   const visibleSocialLinks = $derived(
-    socialLinksWithIcons.filter((link: { visible: boolean }) => link.visible),
+    socialLinks.filter((link) => link.visible),
   );
 
   function openDiscordModal(username: string) {
@@ -37,6 +25,9 @@
     telemetry.trackExternalLink(url, "social");
   }
 </script>
+
+<!-- Icon sprite containing all unique icons for symbol references -->
+<IconSprite icons={data.icons} />
 
 <main class="page-main overflow-x-hidden font-schibsted">
   <div class="flex items-center flex-col pt-14">
@@ -73,8 +64,9 @@
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
-                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                  {@html link.iconSvg}
+                  <svg class="w-full h-full" aria-hidden="true">
+                    <use href="#{toSymbolId(link.icon)}" />
+                  </svg>
                 </span>
                 <span
                   class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
@@ -92,8 +84,9 @@
                 }}
               >
                 <span class="size-4 text-zinc-600 dark:text-zinc-300">
-                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                  {@html link.iconSvg}
+                  <svg class="w-full h-full" aria-hidden="true">
+                    <use href="#{toSymbolId(link.icon)}" />
+                  </svg>
                 </span>
                 <span
                   class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
@@ -108,8 +101,9 @@
                 class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
               >
                 <span class="size-4.5 text-zinc-600 dark:text-zinc-300">
-                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                  {@html link.iconSvg}
+                  <svg class="w-full h-full" aria-hidden="true">
+                    <use href="#{toSymbolId(link.icon)}" />
+                  </svg>
                 </span>
                 <span
                   class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"

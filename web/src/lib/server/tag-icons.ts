@@ -1,18 +1,17 @@
 import { renderIconsBatch } from "./icons";
-import type { AdminTag, TagWithIcon } from "$lib/admin-types";
+import type { AdminTag } from "$lib/admin-types";
 
 /**
- * Add rendered icon SVG strings to tags by batch-rendering all icons
+ * Collect and render icons from an array of tags.
+ * Returns a record mapping icon identifiers to rendered SVG strings.
  *
- * @param tags - Array of tags to add icons to
- * @param options - Render options (size, etc.)
- * @returns Array of tags with iconSvg property populated
+ * @param tags - Array of tags to extract icons from
+ * @returns Record of icon identifier to SVG string
  */
-export async function addIconsToTags(
+export async function collectTagIcons(
   tags: AdminTag[],
-  options?: { size?: number },
-): Promise<TagWithIcon[]> {
-  // Collect all icon identifiers
+): Promise<Record<string, string>> {
+  // Collect unique icon identifiers
   const iconIds = new Set<string>();
   for (const tag of tags) {
     if (tag.icon) {
@@ -20,19 +19,19 @@ export async function addIconsToTags(
     }
   }
 
-  // Return early if no icons to render
+  // Return early if no icons
   if (iconIds.size === 0) {
-    return tags.map((tag) => ({ ...tag, iconSvg: undefined }));
+    return {};
   }
 
   // Batch render all icons
-  const icons = await renderIconsBatch([...iconIds], {
-    size: options?.size ?? 12,
-  });
+  const iconsMap = await renderIconsBatch([...iconIds]);
 
-  // Map icons back to tags
-  return tags.map((tag) => ({
-    ...tag,
-    iconSvg: tag.icon ? (icons.get(tag.icon) ?? undefined) : undefined,
-  }));
+  // Convert Map to plain object for serialization
+  const icons: Record<string, string> = {};
+  for (const [id, svg] of iconsMap) {
+    icons[id] = svg;
+  }
+
+  return icons;
 }

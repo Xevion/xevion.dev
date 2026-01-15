@@ -86,7 +86,7 @@
             <TagChip
               name={tag.name}
               color={hoveredTagId === tag.id ? "ef4444" : tag.color}
-              iconSvg={tag.iconSvg}
+              icon={tag.icon}
               class="transition-all duration-150 {hoveredTagId === tag.id
                 ? 'bg-red-100/80 dark:bg-red-900/40'
                 : ''}"
@@ -119,7 +119,7 @@
             class="w-full px-3 py-1.5 text-left hover:bg-admin-surface-hover transition-colors flex items-center"
             onclick={() => addTag(tag.id)}
           >
-            <TagChip name={tag.name} color={tag.color} iconSvg={tag.iconSvg} />
+            <TagChip name={tag.name} color={tag.color} icon={tag.icon} />
           </button>
         {/each}
       </div>

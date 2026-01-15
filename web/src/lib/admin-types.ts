@@ -15,9 +15,8 @@ export interface AdminTagWithCount extends AdminTag {
   projectCount: number;
 }
 
-export interface TagWithIcon extends AdminTag {
-  iconSvg?: string;
-}
+// TagWithIcon is now just an alias for AdminTag since icons are rendered via sprite
+export type TagWithIcon = AdminTag;
 
 // Media types for project carousel
 export type MediaType = "image" | "video";

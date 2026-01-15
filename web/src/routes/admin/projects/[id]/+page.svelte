@@ -3,24 +3,15 @@
   import { resolve } from "$app/paths";
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
+  import IconSprite from "$lib/components/IconSprite.svelte";
   import { updateAdminProject, deleteAdminProject } from "$lib/api";
-  import type {
-    UpdateProjectData,
-    CreateProjectData,
-    TagWithIcon,
-  } from "$lib/admin-types";
+  import type { UpdateProjectData, CreateProjectData } from "$lib/admin-types";
+  import type { PageData } from "./$types";
   import { getLogger } from "@logtape/logtape";
 
   const logger = getLogger(["admin", "projects", "edit"]);
 
-  interface Props {
-    data: {
-      project: import("$lib/admin-types").AdminProject | null;
-      availableTags: TagWithIcon[];
-    };
-  }
-
-  let { data }: Props = $props();
+  let { data }: { data: PageData } = $props();
 
   // Delete modal state
   let deleteModalOpen = $state(false);
@@ -69,6 +60,8 @@
 <svelte:head>
   <title>Edit Project | Admin</title>
 </svelte:head>
+
+<IconSprite icons={data.icons} />
 
 <div class="max-w-3xl space-y-6">
   <!-- Header -->
