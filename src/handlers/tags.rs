@@ -106,12 +106,12 @@ pub async fn create_tag_handler(
     }
 }
 
-/// Get a tag by slug with associated projects
+/// Get a tag by ref (UUID or slug) with associated projects
 pub async fn get_tag_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(slug): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
 ) -> impl IntoResponse {
-    match db::get_tag_by_slug(&state.pool, &slug).await {
+    match db::get_tag_by_ref(&state.pool, &ref_str).await {
         Ok(Some(tag)) => match db::get_projects_for_tag(&state.pool, tag.id).await {
             Ok(projects) => {
                 let response = serde_json::json!({
@@ -157,7 +157,7 @@ pub async fn get_tag_handler(
 /// Update a tag (requires authentication)
 pub async fn update_tag_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(slug): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<UpdateTagRequest>,
 ) -> impl IntoResponse {
@@ -189,7 +189,7 @@ pub async fn update_tag_handler(
             .into_response();
     }
 
-    let tag = match db::get_tag_by_slug(&state.pool, &slug).await {
+    let tag = match db::get_tag_by_ref(&state.pool, &ref_str).await {
         Ok(Some(tag)) => tag,
         Ok(None) => {
             return (
@@ -255,9 +255,9 @@ pub async fn update_tag_handler(
 /// Get related tags by cooccurrence
 pub async fn get_related_tags_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(slug): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
 ) -> impl IntoResponse {
-    let tag = match db::get_tag_by_slug(&state.pool, &slug).await {
+    let tag = match db::get_tag_by_ref(&state.pool, &ref_str).await {
         Ok(Some(tag)) => tag,
         Ok(None) => {
             return (

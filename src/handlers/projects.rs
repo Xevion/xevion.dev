@@ -57,29 +57,15 @@ pub async fn projects_handler(
     }
 }
 
-/// Get a single project by ID
+/// Get a single project by ref (UUID or slug)
 pub async fn get_project_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
 ) -> impl IntoResponse {
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
-                })),
-            )
-                .into_response();
-        }
-    };
-
     let is_admin = auth::check_session(&state, &jar).is_some();
 
-    match db::get_project_by_id_with_tags(&state.pool, project_id).await {
+    match db::get_project_by_ref_with_tags(&state.pool, &ref_str).await {
         Ok(Some((project, tags, media))) => {
             // If project is hidden and user is not admin, return 404
             if project.status == db::ProjectStatus::Hidden && !is_admin {
@@ -258,7 +244,7 @@ pub async fn create_project_handler(
 /// Update an existing project (requires authentication)
 pub async fn update_project_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<db::UpdateProjectRequest>,
 ) -> impl IntoResponse {
@@ -267,37 +253,33 @@ pub async fn update_project_handler(
         return auth::require_auth_response().into_response();
     }
 
-    // Parse project ID
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Find project by ref (UUID or slug)
+    let existing_project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
         }
     };
 
-    // Validate exists
-    if db::get_project_by_id(&state.pool, project_id)
-        .await
-        .ok()
-        .flatten()
-        .is_none()
-    {
-        return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({
-                "error": "Not found",
-                "message": "Project not found"
-            })),
-        )
-            .into_response();
-    }
+    let project_id = existing_project.id;
 
     // Validate request
     if payload.name.trim().is_empty() {
@@ -426,7 +408,7 @@ pub async fn update_project_handler(
 /// Delete a project (requires authentication)
 pub async fn delete_project_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
 ) -> impl IntoResponse {
     // Check auth
@@ -434,52 +416,37 @@ pub async fn delete_project_handler(
         return auth::require_auth_response().into_response();
     }
 
-    // Parse project ID
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Fetch project before deletion to return it (lookup by UUID or slug)
+    let (project, tags, media) = match db::get_project_by_ref_with_tags(&state.pool, &ref_str).await
+    {
+        Ok(Some(data)) => data,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project before deletion");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to delete project"
                 })),
             )
                 .into_response();
         }
     };
 
-    // Fetch project before deletion to return it
-    let (project, tags, media) =
-        match db::get_project_by_id_with_tags(&state.pool, project_id).await {
-            Ok(Some(data)) => data,
-            Ok(None) => {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({
-                        "error": "Not found",
-                        "message": "Project not found"
-                    })),
-                )
-                    .into_response();
-            }
-            Err(err) => {
-                tracing::error!(error = %err, "Failed to fetch project before deletion");
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({
-                        "error": "Internal server error",
-                        "message": "Failed to delete project"
-                    })),
-                )
-                    .into_response();
-            }
-        };
-
     // Delete project (CASCADE handles tags and media)
-    match db::delete_project(&state.pool, project_id).await {
+    match db::delete_project(&state.pool, project.id).await {
         Ok(()) => {
-            tracing::info!(project_id = %project_id, project_name = %project.name, "Project deleted");
+            tracing::info!(project_id = %project.id, project_name = %project.name, "Project deleted");
 
             // Invalidate cached pages that display projects
             state.isr_cache.invalidate("/").await;
@@ -529,23 +496,35 @@ pub async fn get_admin_stats_handler(
 /// Get tags for a project
 pub async fn get_project_tags_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
 ) -> impl IntoResponse {
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
         }
     };
 
-    match db::get_tags_for_project(&state.pool, project_id).await {
+    match db::get_tags_for_project(&state.pool, project.id).await {
         Ok(tags) => {
             let api_tags: Vec<db::ApiTag> = tags.into_iter().map(|t| t.to_api_tag()).collect();
             Json(api_tags).into_response()
@@ -567,21 +546,34 @@ pub async fn get_project_tags_handler(
 /// Add a tag to a project (requires authentication)
 pub async fn add_project_tag_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<AddProjectTagRequest>,
 ) -> impl IntoResponse {
     if auth::check_session(&state, &jar).is_none() {
         return auth::require_auth_response().into_response();
     }
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
+
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
@@ -602,7 +594,7 @@ pub async fn add_project_tag_handler(
         }
     };
 
-    match db::add_tag_to_project(&state.pool, project_id, tag_id).await {
+    match db::add_tag_to_project(&state.pool, project.id, tag_id).await {
         Ok(()) => {
             // Invalidate cached pages - tags affect how projects are displayed
             state.isr_cache.invalidate("/").await;
@@ -640,41 +632,66 @@ pub async fn add_project_tag_handler(
 /// Remove a tag from a project (requires authentication)
 pub async fn remove_project_tag_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path((id, tag_id)): axum::extract::Path<(String, String)>,
+    axum::extract::Path((ref_str, tag_ref)): axum::extract::Path<(String, String)>,
     jar: axum_extra::extract::CookieJar,
 ) -> impl IntoResponse {
     if auth::check_session(&state, &jar).is_none() {
         return auth::require_auth_response().into_response();
     }
-    let project_id = match uuid::Uuid::parse_str(&id) {
-        Ok(id) => id,
-        Err(_) => {
+
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
         }
     };
 
-    let tag_id = match uuid::Uuid::parse_str(&tag_id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Find tag by ref (UUID or slug)
+    let tag = match db::get_tag_by_ref(&state.pool, &tag_ref).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid tag ID",
-                    "message": "Tag ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Tag not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch tag");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch tag"
                 })),
             )
                 .into_response();
         }
     };
 
-    match db::remove_tag_from_project(&state.pool, project_id, tag_id).await {
+    match db::remove_tag_from_project(&state.pool, project.id, tag.id).await {
         Ok(()) => {
             // Invalidate cached pages - tags affect how projects are displayed
             state.isr_cache.invalidate("/").await;

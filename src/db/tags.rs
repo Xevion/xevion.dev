@@ -97,6 +97,29 @@ pub async fn get_tag_by_slug(pool: &PgPool, slug: &str) -> Result<Option<DbTag>,
     .await
 }
 
+pub async fn get_tag_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbTag>, sqlx::Error> {
+    sqlx::query_as!(
+        DbTag,
+        r#"
+        SELECT id, slug, name, icon, color
+        FROM tags
+        WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Get a tag by either UUID or slug (auto-detects format)
+pub async fn get_tag_by_ref(pool: &PgPool, ref_str: &str) -> Result<Option<DbTag>, sqlx::Error> {
+    if let Ok(uuid) = Uuid::parse_str(ref_str) {
+        get_tag_by_id(pool, uuid).await
+    } else {
+        get_tag_by_slug(pool, ref_str).await
+    }
+}
+
 pub async fn get_all_tags_with_counts(pool: &PgPool) -> Result<Vec<(DbTag, i32)>, sqlx::Error> {
     let rows = sqlx::query!(
         r#"

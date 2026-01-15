@@ -24,7 +24,7 @@ pub struct ReorderMediaRequest {
 /// Images are processed into variants (thumb, medium, full) and uploaded to R2.
 pub async fn upload_media_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(project_id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
     mut multipart: Multipart,
 ) -> impl IntoResponse {
@@ -33,22 +33,9 @@ pub async fn upload_media_handler(
         return auth::require_auth_response().into_response();
     }
 
-    let project_id = match Uuid::parse_str(&project_id) {
-        Ok(id) => id,
-        Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
-                })),
-            )
-                .into_response();
-        }
-    };
-
-    // Verify project exists
-    match db::get_project_by_id(&state.pool, project_id).await {
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -60,7 +47,7 @@ pub async fn upload_media_handler(
                 .into_response();
         }
         Err(err) => {
-            tracing::error!(error = %err, "Failed to check project existence");
+            tracing::error!(error = %err, "Failed to fetch project");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -70,8 +57,9 @@ pub async fn upload_media_handler(
             )
                 .into_response();
         }
-        Ok(Some(_)) => {}
-    }
+    };
+
+    let project_id = project.id;
 
     // Get R2 client
     let r2 = match R2Client::get().await {
@@ -393,24 +381,11 @@ async fn upload_image_variants(
 /// Get all media for a project
 pub async fn get_project_media_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(project_id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
 ) -> impl IntoResponse {
-    let project_id = match Uuid::parse_str(&project_id) {
-        Ok(id) => id,
-        Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
-                })),
-            )
-                .into_response();
-        }
-    };
-
-    // Verify project exists
-    match db::get_project_by_id(&state.pool, project_id).await {
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
@@ -422,7 +397,7 @@ pub async fn get_project_media_handler(
                 .into_response();
         }
         Err(err) => {
-            tracing::error!(error = %err, "Failed to check project existence");
+            tracing::error!(error = %err, "Failed to fetch project");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -432,17 +407,16 @@ pub async fn get_project_media_handler(
             )
                 .into_response();
         }
-        Ok(Some(_)) => {}
-    }
+    };
 
-    match db::get_media_for_project(&state.pool, project_id).await {
+    match db::get_media_for_project(&state.pool, project.id).await {
         Ok(media) => {
             let response: Vec<db::ApiProjectMedia> =
                 media.into_iter().map(|m| m.to_api_media()).collect();
             Json(response).into_response()
         }
         Err(err) => {
-            tracing::error!(error = %err, project_id = %project_id, "Failed to fetch project media");
+            tracing::error!(error = %err, project_id = %project.id, "Failed to fetch project media");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -458,7 +432,7 @@ pub async fn get_project_media_handler(
 /// Delete a media item (requires authentication)
 pub async fn delete_media_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path((project_id, media_id)): axum::extract::Path<(String, String)>,
+    axum::extract::Path((ref_str, media_id)): axum::extract::Path<(String, String)>,
     jar: axum_extra::extract::CookieJar,
 ) -> impl IntoResponse {
     // Check auth
@@ -466,14 +440,26 @@ pub async fn delete_media_handler(
         return auth::require_auth_response().into_response();
     }
 
-    let project_id = match Uuid::parse_str(&project_id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
@@ -497,7 +483,7 @@ pub async fn delete_media_handler(
     // Get media first to verify it belongs to the project
     match db::get_media_by_id(&state.pool, media_id).await {
         Ok(Some(media)) => {
-            if media.project_id != project_id {
+            if media.project_id != project.id {
                 return (
                     StatusCode::NOT_FOUND,
                     Json(serde_json::json!({
@@ -538,7 +524,7 @@ pub async fn delete_media_handler(
                 Ok(Some(deleted)) => {
                     tracing::info!(
                         media_id = %media_id,
-                        project_id = %project_id,
+                        project_id = %project.id,
                         r2_base_path = %deleted.r2_base_path,
                         "Media deleted from database"
                     );
@@ -594,7 +580,7 @@ pub async fn delete_media_handler(
 /// Reorder media items for a project (requires authentication)
 pub async fn reorder_media_handler(
     State(state): State<Arc<AppState>>,
-    axum::extract::Path(project_id): axum::extract::Path<String>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<ReorderMediaRequest>,
 ) -> impl IntoResponse {
@@ -603,14 +589,26 @@ pub async fn reorder_media_handler(
         return auth::require_auth_response().into_response();
     }
 
-    let project_id = match Uuid::parse_str(&project_id) {
-        Ok(id) => id,
-        Err(_) => {
+    // Find project by ref (UUID or slug)
+    let project = match db::get_project_by_ref(&state.pool, &ref_str).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
             return (
-                StatusCode::BAD_REQUEST,
+                StatusCode::NOT_FOUND,
                 Json(serde_json::json!({
-                    "error": "Invalid project ID",
-                    "message": "Project ID must be a valid UUID"
+                    "error": "Not found",
+                    "message": "Project not found"
+                })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            tracing::error!(error = %err, "Failed to fetch project");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Internal server error",
+                    "message": "Failed to fetch project"
                 })),
             )
                 .into_response();
@@ -638,37 +636,11 @@ pub async fn reorder_media_handler(
         }
     };
 
-    // Verify project exists
-    match db::get_project_by_id(&state.pool, project_id).await {
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(serde_json::json!({
-                    "error": "Not found",
-                    "message": "Project not found"
-                })),
-            )
-                .into_response();
-        }
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to check project existence");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to verify project"
-                })),
-            )
-                .into_response();
-        }
-        Ok(Some(_)) => {}
-    }
-
     // Reorder media
-    match db::reorder_media(&state.pool, project_id, &media_ids).await {
+    match db::reorder_media(&state.pool, project.id, &media_ids).await {
         Ok(()) => {
             // Fetch updated media list
-            match db::get_media_for_project(&state.pool, project_id).await {
+            match db::get_media_for_project(&state.pool, project.id).await {
                 Ok(media) => {
                     // Invalidate cache since project data changed
                     state.isr_cache.invalidate("/").await;

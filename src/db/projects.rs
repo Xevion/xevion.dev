@@ -274,6 +274,63 @@ pub async fn get_project_by_id_with_tags(
     }
 }
 
+/// Get single project by slug
+pub async fn get_project_by_slug(
+    pool: &PgPool,
+    slug: &str,
+) -> Result<Option<DbProject>, sqlx::Error> {
+    query_as!(
+        DbProject,
+        r#"
+        SELECT
+            id,
+            slug,
+            name,
+            short_description,
+            description,
+            status as "status: ProjectStatus",
+            github_repo,
+            demo_url,
+            last_github_activity,
+            created_at
+        FROM projects
+        WHERE slug = $1
+        "#,
+        slug
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+/// Get a project by either UUID or slug (auto-detects format)
+pub async fn get_project_by_ref(
+    pool: &PgPool,
+    ref_str: &str,
+) -> Result<Option<DbProject>, sqlx::Error> {
+    if let Ok(uuid) = Uuid::parse_str(ref_str) {
+        get_project_by_id(pool, uuid).await
+    } else {
+        get_project_by_slug(pool, ref_str).await
+    }
+}
+
+/// Get a project by ref (UUID or slug) with tags and media
+pub async fn get_project_by_ref_with_tags(
+    pool: &PgPool,
+    ref_str: &str,
+) -> Result<Option<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {
+    let project = get_project_by_ref(pool, ref_str).await?;
+
+    match project {
+        Some(p) => {
+            let tags = get_tags_for_project(pool, p.id).await?;
+            let media = get_media_for_project(pool, p.id).await?;
+            Ok(Some((p, tags, media)))
+        }
+        None => Ok(None),
+    }
+}
+
 /// Create project (without tags - tags handled separately)
 #[allow(clippy::too_many_arguments)]
 pub async fn create_project(

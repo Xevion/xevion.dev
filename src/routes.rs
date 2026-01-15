@@ -24,49 +24,51 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         .route("/session", get(handlers::api_session_handler))
         // Projects - GET is public (shows all for admin, only non-hidden for public)
         // POST/PUT/DELETE require authentication
+        // {ref} accepts either UUID or slug
         .route(
             "/projects",
             get(handlers::projects_handler).post(handlers::create_project_handler),
         )
         .route(
-            "/projects/{id}",
+            "/projects/{ref}",
             get(handlers::get_project_handler)
                 .put(handlers::update_project_handler)
                 .delete(handlers::delete_project_handler),
         )
         // Project tags - authentication checked in handlers
         .route(
-            "/projects/{id}/tags",
+            "/projects/{ref}/tags",
             get(handlers::get_project_tags_handler).post(handlers::add_project_tag_handler),
         )
         .route(
-            "/projects/{id}/tags/{tag_id}",
+            "/projects/{ref}/tags/{tag_ref}",
             delete(handlers::remove_project_tag_handler),
         )
         // Project media - GET is public, POST/PUT/DELETE require authentication
         .route(
-            "/projects/{id}/media",
+            "/projects/{ref}/media",
             get(handlers::get_project_media_handler).post(handlers::upload_media_handler),
         )
         .route(
-            "/projects/{id}/media/reorder",
+            "/projects/{ref}/media/reorder",
             put(handlers::reorder_media_handler),
         )
         .route(
-            "/projects/{id}/media/{media_id}",
+            "/projects/{ref}/media/{media_id}",
             delete(handlers::delete_media_handler),
         )
         // Tags - authentication checked in handlers
+        // {ref} accepts either UUID or slug
         .route(
             "/tags",
             get(handlers::list_tags_handler).post(handlers::create_tag_handler),
         )
         .route(
-            "/tags/{slug}",
+            "/tags/{ref}",
             get(handlers::get_tag_handler).put(handlers::update_tag_handler),
         )
         .route(
-            "/tags/{slug}/related",
+            "/tags/{ref}/related",
             get(handlers::get_related_tags_handler),
         )
         .route(
