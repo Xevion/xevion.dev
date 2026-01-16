@@ -104,12 +104,13 @@ html.dark {
   border-radius: 4px;
 }
 
-/* Give scrollbars unique view-transition-names so they persist through page transitions */
-.os-scrollbar-horizontal {
+/* Give body scrollbars unique view-transition-names so they persist through page transitions */
+/* Use child combinator to exclude nested OverlayScrollbarsComponent instances (e.g., /pgp page) */
+body > .os-scrollbar-horizontal {
   view-transition-name: scrollbar-h;
 }
 
-.os-scrollbar-vertical {
+body > .os-scrollbar-vertical {
   view-transition-name: scrollbar-v;
 }
 
