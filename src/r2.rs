@@ -1,17 +1,11 @@
-use aws_config::BehaviorVersion;
-use aws_sdk_s3::{
-    Client,
-    config::{Credentials, Region},
-    primitives::ByteStream,
-};
+use opendal::{Operator, services::S3};
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 
 static R2_CLIENT: OnceCell<Arc<R2Client>> = OnceCell::const_new();
 
 pub struct R2Client {
-    client: Client,
-    bucket: String,
+    op: Operator,
 }
 
 impl R2Client {
@@ -26,19 +20,18 @@ impl R2Client {
 
         let endpoint = format!("https://{account_id}.r2.cloudflarestorage.com");
 
-        let credentials_provider =
-            Credentials::new(access_key_id, secret_access_key, None, None, "static");
+        let builder = S3::default()
+            .bucket(&bucket)
+            .region("auto")
+            .endpoint(&endpoint)
+            .access_key_id(&access_key_id)
+            .secret_access_key(&secret_access_key);
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(Region::new("auto"))
-            .endpoint_url(endpoint)
-            .credentials_provider(credentials_provider)
-            .load()
-            .await;
+        let op = Operator::new(builder)
+            .map_err(|e| format!("Failed to build R2 operator: {e}"))?
+            .finish();
 
-        let client = Client::new(&config);
-
-        Ok(Self { client, bucket })
+        Ok(Self { op })
     }
 
     pub async fn get() -> Option<Arc<R2Client>> {
@@ -63,13 +56,9 @@ impl R2Client {
         body: Vec<u8>,
         content_type: &str,
     ) -> Result<(), String> {
-        self.client
-            .put_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .body(ByteStream::from(body))
+        self.op
+            .write_with(key, body)
             .content_type(content_type)
-            .send()
             .await
             .map_err(|e| format!("Failed to put object to R2: {e}"))?;
 
@@ -77,11 +66,8 @@ impl R2Client {
     }
 
     pub async fn delete_object(&self, key: &str) -> Result<(), String> {
-        self.client
-            .delete_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
+        self.op
+            .delete(key)
             .await
             .map_err(|e| format!("Failed to delete object from R2: {e}"))?;
 
@@ -90,22 +76,18 @@ impl R2Client {
 
     /// Delete all objects under a prefix (e.g., "projects/{id}/{ulid}/")
     pub async fn delete_prefix(&self, prefix: &str) -> Result<usize, String> {
-        let list_result = self
-            .client
-            .list_objects_v2()
-            .bucket(&self.bucket)
-            .prefix(prefix)
-            .send()
+        let entries = self
+            .op
+            .list(prefix)
             .await
             .map_err(|e| format!("Failed to list objects in R2: {e}"))?;
 
         let mut deleted = 0;
-        if let Some(contents) = list_result.contents {
-            for object in contents {
-                if let Some(key) = object.key {
-                    self.delete_object(&key).await?;
-                    deleted += 1;
-                }
+        for entry in entries {
+            let path = entry.path();
+            if !path.ends_with('/') {
+                self.delete_object(path).await?;
+                deleted += 1;
             }
         }
 
@@ -113,12 +95,6 @@ impl R2Client {
     }
 
     pub async fn object_exists(&self, key: &str) -> bool {
-        self.client
-            .head_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .is_ok()
+        self.op.stat(key).await.is_ok()
     }
 }

@@ -66,6 +66,11 @@ fn init_tracing() {
 
 #[tokio::main]
 async fn main() {
+    // Install ring as the default TLS crypto provider (must happen before any TLS usage)
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install ring crypto provider");
+
     // Load .env file if present
     dotenvy::dotenv().ok();
 
