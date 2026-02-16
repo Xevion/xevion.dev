@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { css, cva, cx } from "styled-system/css";
+  import { flex, hstack } from "styled-system/patterns";
   import { page } from "$app/stores";
-  import { cn } from "$lib/utils";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+  import { iconSm, iconMd } from "$lib/styles/admin";
   import IconLayoutDashboard from "~icons/lucide/layout-dashboard";
   import IconFolder from "~icons/lucide/folder";
   import IconTags from "~icons/lucide/tags";
@@ -54,58 +56,152 @@
   function handleLogout() {
     onlogout?.();
   }
+
+  const navLink = cva({
+    base: {
+      display: "flex",
+      alignItems: "center",
+      gap: "3",
+      rounded: "md",
+      px: "3",
+      py: "2",
+      fontSize: "sm",
+      fontWeight: "medium",
+      transition: "all",
+      position: "relative",
+    },
+    variants: {
+      state: {
+        active: {
+          bg: "admin.surfaceHover",
+          color: "admin.text",
+          _before: {
+            content: '""',
+            position: "absolute",
+            left: "0",
+            top: "1",
+            bottom: "1",
+            w: "0.5",
+            bg: "admin.accent",
+            borderTopRightRadius: "sm",
+            borderBottomRightRadius: "sm",
+          },
+        },
+        inactive: {
+          color: "admin.textMuted",
+          _hover: { color: "admin.text", bg: "admin.surfaceHover/50" },
+        },
+      },
+    },
+    defaultVariants: {
+      state: "inactive",
+    },
+  });
+
+  const bottomLink = hstack({
+    gap: "3",
+    rounded: "md",
+    px: "3",
+    py: "2",
+    fontSize: "sm",
+    fontWeight: "medium",
+    color: "admin.textMuted",
+    transition: "all",
+    _hover: { color: "admin.text", bg: "admin.surfaceHover/50" },
+  });
 </script>
 
 <!-- Mobile menu button -->
 <button
-  class="fixed top-4 right-4 z-50 lg:hidden rounded-md bg-admin-surface p-2 text-admin-text border border-admin-border"
+  class={css({
+    position: "fixed",
+    top: "4",
+    right: "4",
+    zIndex: 50,
+    lg: { display: "none" },
+    rounded: "md",
+    bg: "admin.surface",
+    p: "2",
+    color: "admin.text",
+    borderWidth: "1px",
+    borderColor: "admin.border",
+  })}
   onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
   aria-label="Toggle menu"
 >
   {#if mobileMenuOpen}
-    <IconX class="w-5 h-5" />
+    <IconX class={iconMd} />
   {:else}
-    <IconMenu class="w-5 h-5" />
+    <IconMenu class={iconMd} />
   {/if}
 </button>
 
 <!-- Sidebar -->
 <aside
-  class={cn(
-    "fixed left-0 top-0 z-40 h-screen w-64 border-r border-admin-border bg-admin-bg transition-transform lg:translate-x-0",
-    mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+  class={cx(
+    css({
+      position: "fixed",
+      left: "0",
+      top: "0",
+      zIndex: 40,
+      h: "100vh",
+      w: "64",
+      borderRightWidth: "1px",
+      borderColor: "admin.border",
+      bg: "admin.bg",
+      transition: "transform",
+      lg: { transform: "translateX(0)" },
+    }),
+    mobileMenuOpen
+      ? css({ transform: "translateX(0)" })
+      : css({ transform: "translateX(-100%)" }),
   )}
 >
-  <div class="flex h-full flex-col">
+  <div class={flex({ direction: "column", h: "full" })}>
     <!-- Logo -->
     <div
-      class="border-b border-admin-border px-4 py-5 flex items-center justify-between"
+      class={hstack({
+        justify: "space-between",
+        gap: "0",
+        borderBottomWidth: "1px",
+        borderColor: "admin.border",
+        px: "4",
+        py: "5",
+      })}
     >
-      <h1 class="text-base font-semibold text-admin-text">
+      <h1
+        class={css({
+          fontSize: "base",
+          fontWeight: "semibold",
+          color: "admin.text",
+        })}
+      >
         xevion.dev
-        <span class="text-xs font-normal text-admin-text-muted ml-1.5"
-          >Admin</span
+        <span
+          class={css({
+            fontSize: "xs",
+            fontWeight: "normal",
+            color: "admin.textMuted",
+            ml: "1.5",
+          })}>Admin</span
         >
       </h1>
       <ThemeToggle />
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 space-y-0.5 p-3">
+    <nav class={css({ flex: "1", spaceY: "0.5", p: "3" })}>
       {#each navItems as item (item.href)}
         <a
           href={item.href}
-          class={cn(
-            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all relative",
-            isActive(item.href)
-              ? "bg-admin-surface-hover text-admin-text before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-admin-accent before:rounded-r"
-              : "text-admin-text-muted hover:text-admin-text hover:bg-admin-surface-hover/50",
-          )}
+          class={navLink({
+            state: isActive(item.href) ? "active" : "inactive",
+          })}
         >
-          <item.icon class="w-4 h-4 flex-shrink-0" />
-          <span class="flex-1">{item.label}</span>
+          <item.icon class={cx(iconSm, css({ flexShrink: "0" }))} />
+          <span class={css({ flex: "1" })}>{item.label}</span>
           {#if item.badge}
-            <span class="text-xs text-admin-text-muted">
+            <span class={css({ fontSize: "xs", color: "admin.textMuted" })}>
               {item.badge}
             </span>
           {/if}
@@ -115,20 +211,20 @@
 
     <!-- Bottom actions -->
     <div
-      class="space-y-0.5 border-t border-admin-border bg-admin-surface/50 p-3"
+      class={css({
+        spaceY: "0.5",
+        borderTopWidth: "1px",
+        borderColor: "admin.border",
+        bg: "admin.surface/50",
+        p: "3",
+      })}
     >
-      <a
-        href="/"
-        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-admin-text-muted transition-all hover:text-admin-text hover:bg-admin-surface-hover/50"
-      >
-        <IconArrowLeft class="w-4 h-4" />
+      <a href="/" class={bottomLink}>
+        <IconArrowLeft class={iconSm} />
         <span>Back to Site</span>
       </a>
-      <button
-        onclick={handleLogout}
-        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-admin-text-muted transition-all hover:text-admin-text hover:bg-admin-surface-hover/50"
-      >
-        <IconLogOut class="w-4 h-4" />
+      <button onclick={handleLogout} class={cx(bottomLink, css({ w: "full" }))}>
+        <IconLogOut class={iconSm} />
         <span>Logout</span>
       </button>
     </div>
@@ -138,7 +234,13 @@
 <!-- Backdrop for mobile -->
 {#if mobileMenuOpen}
   <div
-    class="fixed inset-0 z-30 bg-black/50 lg:hidden"
+    class={css({
+      position: "fixed",
+      inset: "0",
+      zIndex: 30,
+      bg: "black/50",
+      lg: { display: "none" },
+    })}
     onclick={() => (mobileMenuOpen = false)}
     onkeydown={(e) => e.key === "Escape" && (mobileMenuOpen = false)}
     role="presentation"

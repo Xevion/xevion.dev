@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { center, hstack } from "styled-system/patterns";
   import { decode } from "blurhash";
   import type { ProjectMedia } from "$lib/admin-types";
   import VideoThumbnail from "./VideoThumbnail.svelte";
@@ -53,10 +54,18 @@
 </script>
 
 <!-- Outer wrapper allows delete button to escape bounds -->
-<div class={cn("group relative", className)}>
+<div class={cx("group", css({ position: "relative" }), className)}>
   <!-- Media container with fixed height -->
   <div
-    class="relative h-28 rounded-lg border border-admin-border bg-admin-bg-secondary overflow-hidden"
+    class={css({
+      position: "relative",
+      h: "28",
+      rounded: "lg",
+      borderWidth: "1px",
+      borderColor: "admin.border",
+      bg: "admin.bgSecondary",
+      overflow: "hidden",
+    })}
   >
     <!-- Blurhash placeholder -->
     {#if media.blurhash && !imageLoaded}
@@ -64,7 +73,13 @@
         bind:this={canvasRef}
         width="32"
         height="32"
-        class="absolute inset-0 w-full h-full object-cover"
+        class={css({
+          position: "absolute",
+          inset: "0",
+          w: "full",
+          h: "full",
+          objectFit: "cover",
+        })}
       ></canvas>
     {/if}
 
@@ -76,21 +91,33 @@
       <img
         src={thumbUrl}
         alt=""
-        class={cn(
-          "absolute inset-0 w-full h-full object-cover transition-opacity duration-200",
-          imageLoaded ? "opacity-100" : "opacity-0",
+        class={cx(
+          css({
+            position: "absolute",
+            inset: "0",
+            w: "full",
+            h: "full",
+            objectFit: "cover",
+            transition: "opacity",
+            transitionDuration: "200ms",
+          }),
+          imageLoaded ? css({ opacity: "1" }) : css({ opacity: "0" }),
         )}
         onload={handleImageLoad}
       />
     {:else}
       <!-- Fallback for missing thumbnail -->
       <div
-        class="absolute inset-0 flex items-center justify-center text-admin-text-muted"
+        class={center({
+          position: "absolute",
+          inset: "0",
+          color: "admin.textMuted",
+        })}
       >
         {#if media.mediaType === "video"}
-          <IconFilm class="size-6" />
+          <IconFilm class={css({ w: "6", h: "6" })} />
         {:else}
-          <IconImage class="size-6" />
+          <IconImage class={css({ w: "6", h: "6" })} />
         {/if}
       </div>
     {/if}
@@ -98,9 +125,20 @@
     <!-- Video badge -->
     {#if media.mediaType === "video"}
       <div
-        class="absolute top-2 left-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded flex items-center gap-1"
+        class={hstack({
+          gap: "1",
+          position: "absolute",
+          top: "2",
+          left: "2",
+          bg: "black/70",
+          color: "white",
+          fontSize: "xs",
+          px: "1.5",
+          py: "0.5",
+          rounded: "sm",
+        })}
       >
-        <IconPlay class="size-2.5" />
+        <IconPlay class={css({ w: "2.5", h: "2.5" })} />
         <span>Video</span>
       </div>
     {/if}
@@ -110,9 +148,24 @@
   <button
     type="button"
     onclick={ondelete}
-    class="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
+    class={center({
+      position: "absolute",
+      top: "-2",
+      right: "-2",
+      w: "6",
+      h: "6",
+      bg: "red.600",
+      _hover: { bg: "red.500" },
+      color: "white",
+      rounded: "full",
+      opacity: "0",
+      _groupHover: { opacity: "1" },
+      transition: "opacity",
+      shadow: "md",
+      zIndex: 10,
+    })}
     aria-label="Delete media"
   >
-    <IconX class="size-3.5" />
+    <IconX class={css({ w: "3.5", h: "3.5" })} />
   </button>
 </div>

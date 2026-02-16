@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { css, cx } from "styled-system/css";
+  import { hstack } from "styled-system/patterns";
   import type { AdminEvent } from "$lib/admin-types";
   import { OverlayScrollbarsComponent } from "overlayscrollbars-svelte";
   import "overlayscrollbars/overlayscrollbars.css";
@@ -30,6 +32,12 @@
   function toggleMetadata(eventId: string) {
     expandedEventId = expandedEventId === eventId ? null : eventId;
   }
+
+  const levelColorStyles = {
+    info: css({ color: "cyan.500/60" }),
+    warning: css({ color: "amber.500/70" }),
+    error: css({ color: "rose.500/70" }),
+  };
 </script>
 
 <OverlayScrollbarsComponent
@@ -39,63 +47,115 @@
   defer
   style="max-height: {maxHeight}"
 >
-  <div class="divide-y divide-admin-border/50 bg-admin-bg">
+  <div
+    class={css({
+      divideY: "1px",
+      divideColor: "admin.border/50",
+      bg: "admin.bg",
+    })}
+  >
     {#each events as event (event.id)}
-      {@const levelColors = {
-        info: "text-cyan-500/60",
-        warning: "text-amber-500/70",
-        error: "text-rose-500/70",
-      }}
       {@const levelLabels = {
         info: "INFO",
         warning: "WARN",
         error: "ERR",
       }}
-      <div class="hover:bg-admin-surface-hover/50 transition-colors">
-        <div class="px-4 py-1.5">
-          <div class="flex items-center justify-between gap-4 text-xs">
-            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+      <div
+        class={css({
+          _hover: { bg: "admin.surfaceHover/50" },
+          transition: "colors",
+        })}
+      >
+        <div class={css({ px: "4", py: "1.5" })}>
+          <div
+            class={hstack({
+              justify: "space-between",
+              gap: "4",
+              fontSize: "xs",
+            })}
+          >
+            <div class={hstack({ gap: "2.5", flex: "1", minW: "0" })}>
               <span
-                class={`${levelColors[event.level]} font-mono font-medium shrink-0 w-10`}
+                class={cx(
+                  levelColorStyles[event.level],
+                  css({
+                    fontFamily: "mono",
+                    fontWeight: "medium",
+                    flexShrink: "0",
+                    w: "10",
+                  }),
+                )}
               >
                 {levelLabels[event.level]}
               </span>
-              <span class="text-admin-text truncate">
+              <span
+                class={css({
+                  color: "admin.text",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                })}
+              >
                 {event.message}
               </span>
-              <span class="text-admin-text-muted shrink-0">
-                target=<span class="text-admin-text-secondary"
+              <span class={css({ color: "admin.textMuted", flexShrink: "0" })}>
+                target=<span class={css({ color: "admin.textSecondary" })}
                   >{event.target}</span
                 >
               </span>
             </div>
-            <div class="flex items-center gap-3 shrink-0">
+            <div class={hstack({ gap: "3", flexShrink: "0" })}>
               {#if showMetadata && event.metadata}
                 <button
-                  class="text-[11px] text-admin-accent hover:text-admin-accent-hover transition-colors"
+                  class={css({
+                    fontSize: "11px",
+                    color: "admin.accent",
+                    _hover: { color: "admin.accentHover" },
+                    transition: "colors",
+                  })}
                   onclick={() => toggleMetadata(event.id)}
                 >
                   {expandedEventId === event.id ? "hide" : "show"}
                 </button>
               {/if}
-              <span class="text-admin-text-muted text-[11px] tabular-nums">
+              <span
+                class={css({
+                  color: "admin.textMuted",
+                  fontSize: "11px",
+                  fontVariantNumeric: "tabular-nums",
+                })}
+              >
                 {formatTimestamp(event.timestamp)}
               </span>
             </div>
           </div>
         </div>
         {#if showMetadata && expandedEventId === event.id && event.metadata}
-          <div class="px-4 pb-2">
+          <div class={css({ px: "4", pb: "2" })}>
             <div
-              class="bg-admin-surface border border-admin-border rounded p-3 text-[11px]"
+              class={css({
+                bg: "admin.surface",
+                borderWidth: "1px",
+                borderColor: "admin.border",
+                rounded: "sm",
+                p: "3",
+                fontSize: "11px",
+              })}
             >
-              <p class="text-admin-text-muted mb-2 font-medium">Metadata:</p>
+              <p
+                class={css({
+                  color: "admin.textMuted",
+                  mb: "2",
+                  fontWeight: "medium",
+                })}
+              >
+                Metadata:
+              </p>
               <pre
-                class="text-admin-text-secondary overflow-x-auto">{JSON.stringify(
-                  event.metadata,
-                  null,
-                  2,
-                )}</pre>
+                class={css({
+                  color: "admin.textSecondary",
+                  overflowX: "auto",
+                })}>{JSON.stringify(event.metadata, null, 2)}</pre>
             </div>
           </div>
         {/if}

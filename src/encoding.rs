@@ -138,27 +138,13 @@ pub fn negotiate_encoding(headers: &HeaderMap) -> ContentEncoding {
 pub fn is_compressible_content_type(content_type: &str) -> bool {
     let ct = content_type.to_lowercase();
 
-    // Text types
-    if ct.starts_with("text/") {
-        return true;
-    }
-
-    // JSON, XML, SVG
-    if ct.contains("json") || ct.contains("xml") || ct.contains("svg") {
-        return true;
-    }
-
-    // JavaScript
-    if ct.contains("javascript") || ct.contains("ecmascript") {
-        return true;
-    }
-
-    // Font formats (woff/woff2 are already compressed)
-    if ct.contains("font") && !ct.contains("woff") {
-        return true;
-    }
-
-    false
+    ct.starts_with("text/")
+        || ct.contains("json")
+        || ct.contains("xml")
+        || ct.contains("svg")
+        || ct.contains("javascript")
+        || ct.contains("ecmascript")
+        || (ct.contains("font") && !ct.contains("woff"))
 }
 
 /// Compress data with zstd at fast level (level 3)

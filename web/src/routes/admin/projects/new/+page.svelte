@@ -5,6 +5,8 @@
   import { createAdminProject } from "$lib/api";
   import type { CreateProjectData } from "$lib/admin-types";
   import type { PageData } from "./$types";
+  import { css } from "styled-system/css";
+  import { pageDescriptionClass, adminCardClass } from "$lib/styles/admin";
 
   let { data }: { data: PageData } = $props();
 
@@ -18,17 +20,19 @@
   <title>New Project | Admin</title>
 </svelte:head>
 
-<div class="max-w-3xl space-y-6">
+<div class={css({ maxW: "48rem", spaceY: "6" })}>
   <!-- Header -->
   <div>
-    <h1 class="text-2xl font-bold text-admin-text">Create Project</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
-      Add a new project to your portfolio
-    </p>
+    <h1
+      class={css({ fontSize: "2xl", fontWeight: "bold", color: "admin.text" })}
+    >
+      Create Project
+    </h1>
+    <p class={pageDescriptionClass}>Add a new project to your portfolio</p>
   </div>
 
   <!-- Form -->
-  <div class="rounded-lg border border-admin-border bg-admin-surface p-6">
+  <div class={adminCardClass}>
     <ProjectForm
       availableTags={data.availableTags}
       onsubmit={handleSubmit}

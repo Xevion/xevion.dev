@@ -1,6 +1,8 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import { page } from "$app/stores";
+  import { css, cx } from "styled-system/css";
+  import { center } from "styled-system/patterns";
 
   const status = $derived($page.status);
 
@@ -20,15 +22,35 @@
   <title>{status} - {message}</title>
 </svelte:head>
 
-<main class="page-main">
-  <div class="flex min-h-screen items-center justify-center">
-    <div class="mx-4 max-w-2xl text-center">
-      <h1 class="mb-4 font-hanken text-8xl text-text-secondary">{status}</h1>
-      <p class="mb-8 text-2xl text-text-tertiary">{message}</p>
+<main class={cx("page-main")}>
+  <div class={center({ minH: "100vh" })}>
+    <div class={css({ mx: "4", maxW: "42rem", textAlign: "center" })}>
+      <h1
+        class={css({
+          mb: "4",
+          fontFamily: "hanken",
+          fontSize: "8xl",
+          color: "text.secondary",
+        })}
+      >
+        {status}
+      </h1>
+      <p class={css({ mb: "8", fontSize: "2xl", color: "text.tertiary" })}>
+        {message}
+      </p>
       {#if showHomeLink}
         <a
           href={resolve("/")}
-          class="inline-block rounded-sm bg-surface px-4 py-2 text-text-primary transition-colors hover:bg-surface-hover"
+          class={css({
+            display: "inline-block",
+            rounded: "sm",
+            bg: "surface",
+            px: "4",
+            py: "2",
+            color: "text.primary",
+            transition: "colors",
+            _hover: { bg: "surface.secondary" },
+          })}
         >
           Return home
         </a>

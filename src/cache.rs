@@ -212,41 +212,16 @@ impl IsrCache {
     }
 }
 
-/// Determines if a path should be cached
-///
-/// Excludes:
-/// - Admin pages (session-specific)
-/// - API routes (handled separately)
-/// - Internal routes
-/// - Static assets (served directly from embedded files)
+/// Excludes admin, API, internal, and static asset paths.
 pub fn is_cacheable_path(path: &str) -> bool {
-    // Never cache admin pages - they're session-specific
-    if path.starts_with("/admin") {
-        return false;
-    }
-
-    // Never cache API routes
-    if path.starts_with("/api/") {
-        return false;
-    }
-
-    // Never cache internal routes
-    if path.starts_with("/internal/") {
-        return false;
-    }
-
-    // Don't cache static assets (they're served from embedded files anyway)
-    if path.starts_with("/_app/") || path.starts_with("/.") {
-        return false;
-    }
-
-    true
+    !path.starts_with("/admin")
+        && !path.starts_with("/api/")
+        && !path.starts_with("/internal/")
+        && !path.starts_with("/_app/")
+        && !path.starts_with("/.")
 }
 
-/// Normalize a path into a cache key
-///
-/// For now, keeps query strings as part of the key since SSR pages
-/// may render differently based on query params (e.g., ?tag=rust)
+/// Normalize a path into a cache key (includes query string).
 pub fn cache_key(path: &str, query: Option<&str>) -> String {
     match query {
         Some(q) if !q.is_empty() => format!("{path}?{q}"),

@@ -1,7 +1,11 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { css, cx } from "styled-system/css";
+  import { center } from "styled-system/patterns";
   import { themeStore } from "$lib/stores/theme.svelte";
   import { telemetry } from "$lib/telemetry";
+  import { iconButton } from "styled-system/recipes";
+  import { iconMd } from "$lib/styles/admin";
   import IconSun from "~icons/lucide/sun";
   import IconMoon from "~icons/lucide/moon";
 
@@ -76,6 +80,13 @@
 
     telemetry.track({ name: "theme_change", properties: { theme: newTheme } });
   }
+
+  const themeIconBase = css({
+    color: "zinc.600",
+    transition: "all",
+    transitionDuration: "300ms",
+    _dark: { color: "zinc.400" },
+  });
 </script>
 
 <button
@@ -84,18 +95,27 @@
   aria-label={themeStore.isDark
     ? "Switch to light mode"
     : "Switch to dark mode"}
-  class="relative size-9 rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900/50 hover:bg-zinc-200 dark:hover:bg-zinc-800/70 transition-all duration-200 cursor-pointer"
+  class={iconButton()}
 >
-  <div class="absolute inset-0 flex items-center justify-center">
+  <div class={center({ position: "absolute", inset: "0" })}>
     <IconSun
-      class="size-5 text-zinc-600 dark:text-zinc-400 transition-all duration-300 {themeStore.isDark
-        ? 'rotate-90 scale-0 opacity-0'
-        : 'rotate-0 scale-100 opacity-100'}"
+      class={cx(
+        iconMd,
+        themeIconBase,
+        themeStore.isDark
+          ? css({ rotate: "90deg", scale: "0", opacity: "0" })
+          : css({ rotate: "0deg", scale: "1", opacity: "1" }),
+      )}
     />
     <IconMoon
-      class="absolute size-5 text-zinc-600 dark:text-zinc-400 transition-all duration-300 {themeStore.isDark
-        ? 'rotate-0 scale-100 opacity-100'
-        : '-rotate-90 scale-0 opacity-0'}"
+      class={cx(
+        iconMd,
+        css({ position: "absolute" }),
+        themeIconBase,
+        themeStore.isDark
+          ? css({ rotate: "0deg", scale: "1", opacity: "1" })
+          : css({ rotate: "-90deg", scale: "0", opacity: "0" }),
+      )}
     />
   </div>
 </button>

@@ -13,7 +13,9 @@ const config = {
     }),
     alias: {
       $components: "src/lib/components",
+      "styled-system": "./styled-system/*",
     },
+
     paths: {
       relative: false, // Required for PostHog session replay with SSR
     },

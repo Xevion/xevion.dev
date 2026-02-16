@@ -12,7 +12,8 @@
     "strict": true,
     "moduleResolution": "bundler",
     "types": ["unplugin-icons/types/svelte"]
-  }
+  },
+  "exclude": ["styled-system/**/*.mjs"]
   // Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
   // except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
   //

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { css } from "styled-system/css";
+  import { flex, hstack } from "styled-system/patterns";
+  import { token } from "styled-system/tokens";
   import { fade, scale } from "svelte/transition";
   import IconCopy from "~icons/material-symbols/content-copy-rounded";
   import IconCheck from "~icons/material-symbols/check-rounded";
@@ -47,7 +50,17 @@
 
 <div
   use:portal
-  class="fixed inset-0 z-[60] flex items-start justify-center bg-black/30 backdrop-blur-[3px] p-6 pt-[15vh]"
+  class={flex({
+    align: "flex-start",
+    justify: "center",
+    position: "fixed",
+    inset: "0",
+    zIndex: "60",
+    bg: "black/30",
+    backdropFilter: "blur(3px)",
+    p: "6",
+    pt: "15vh",
+  })}
   onclick={handleBackdropClick}
   onkeydown={(e) => e.key === "Escape" && handleClose()}
   role="presentation"
@@ -56,7 +69,23 @@
 >
   <!-- SCALE: Adjust the scale() value to resize entire modal proportionally -->
   <div
-    class="relative w-full max-w-md rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg overflow-hidden sm:scale-110 origin-top"
+    class={css({
+      position: "relative",
+      w: "full",
+      maxW: "28rem",
+      rounded: "xl",
+      bg: "zinc.100",
+      borderWidth: "1px",
+      borderColor: "zinc.200",
+      shadow: "lg",
+      overflow: "hidden",
+      transformOrigin: "top",
+      sm: { scale: "1.1" },
+      _dark: {
+        bg: "zinc.900",
+        borderColor: "zinc.700",
+      },
+    })}
     role="dialog"
     aria-modal="true"
     aria-labelledby="discord-profile-title"
@@ -67,24 +96,46 @@
       <img
         src={bannerUrl}
         alt=""
-        class="h-28 w-full object-cover"
+        class={css({ h: "28", w: "full", objectFit: "cover" })}
         onerror={() => (bannerFailed = true)}
       />
     {:else}
       <div
-        class="h-28 bg-linear-to-br from-zinc-300 to-zinc-400 dark:from-zinc-700 dark:to-zinc-800"
+        class={css({
+          h: "28",
+          backgroundImage: `linear-gradient(to bottom right, ${token.var("colors.zinc.300")}, ${token.var("colors.zinc.400")})`,
+          _dark: {
+            backgroundImage: `linear-gradient(to bottom right, ${token.var("colors.zinc.700")}, ${token.var("colors.zinc.800")})`,
+          },
+        })}
       ></div>
     {/if}
 
     <!-- Content area -->
-    <div class="px-5 pb-5">
+    <div class={css({ px: "5", pb: "5" })}>
       <!-- Avatar with stroke effect -->
-      <div class="relative -mt-14 mb-3 w-fit">
+      <div
+        class={css({
+          position: "relative",
+          mt: "-14",
+          mb: "3",
+          w: "fit-content",
+        })}
+      >
         <!-- Stroke ring (larger circle behind avatar) -->
         <!-- SIZE: avatar (96px) + stroke (4px * 2) = 104px -->
         <!-- POSITION: -m-1 centers the stroke ring behind the avatar -->
         <div
-          class="absolute inset-0 -m-1 size-[104px] rounded-full bg-zinc-100 dark:bg-zinc-900"
+          class={css({
+            position: "absolute",
+            inset: "0",
+            m: "-1",
+            w: "104px",
+            h: "104px",
+            rounded: "full",
+            bg: "zinc.100",
+            _dark: { bg: "zinc.900" },
+          })}
         ></div>
 
         <!-- Avatar circle -->
@@ -93,12 +144,27 @@
           <img
             src={avatarUrl}
             alt="Profile avatar"
-            class="relative size-24 rounded-full object-cover"
+            class={css({
+              position: "relative",
+              w: "24",
+              h: "24",
+              rounded: "full",
+              objectFit: "cover",
+            })}
             onerror={() => (avatarFailed = true)}
           />
         {:else}
           <div
-            class="relative size-24 rounded-full bg-linear-to-br from-zinc-400 to-zinc-500 dark:from-zinc-500 dark:to-zinc-600"
+            class={css({
+              position: "relative",
+              w: "24",
+              h: "24",
+              rounded: "full",
+              backgroundImage: `linear-gradient(to bottom right, ${token.var("colors.zinc.400")}, ${token.var("colors.zinc.500")})`,
+              _dark: {
+                backgroundImage: `linear-gradient(to bottom right, ${token.var("colors.zinc.500")}, ${token.var("colors.zinc.600")})`,
+              },
+            })}
           ></div>
         {/if}
 
@@ -106,55 +172,135 @@
         <!-- POSITION: bottom/right values place center on avatar circumference -->
         <!-- For 96px avatar at 315° (bottom-right): ~4px from edge -->
         <div
-          class="absolute bottom-0.5 right-0.5 size-5 rounded-full bg-green-500 border-[3px] border-zinc-100 dark:border-zinc-900"
+          class={css({
+            position: "absolute",
+            bottom: "0.5",
+            right: "0.5",
+            w: "5",
+            h: "5",
+            rounded: "full",
+            bg: "green.500",
+            borderWidth: "3px",
+            borderColor: "zinc.100",
+            _dark: { borderColor: "zinc.900" },
+          })}
         ></div>
       </div>
 
       <!-- Profile info -->
       <!-- SPACING: mb-4 controls gap before About Me section -->
-      <div class="mb-4">
+      <div class={css({ mb: "4" })}>
         <h2
           id="discord-profile-title"
-          class="text-xl font-bold text-zinc-900 dark:text-zinc-100"
+          class={css({
+            fontSize: "xl",
+            fontWeight: "bold",
+            color: "zinc.900",
+            _dark: { color: "zinc.100" },
+          })}
         >
           Xevion
         </h2>
         <!-- USERNAME ROW: gap-1.5 controls spacing between elements -->
-        <div class="flex items-center gap-1.5 text-sm">
+        <div class={hstack({ gap: "1.5", fontSize: "sm" })}>
           <span
-            class="font-mono text-xs px-1.5 py-0.5 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400"
-            >{username}</span
+            class={css({
+              fontFamily: "mono",
+              fontSize: "xs",
+              px: "1.5",
+              py: "0.5",
+              rounded: "sm",
+              borderWidth: "1px",
+              borderColor: "zinc.300",
+              bg: "zinc.200/50",
+              color: "zinc.600",
+              _dark: {
+                borderColor: "zinc.700",
+                bg: "zinc.800/50",
+                color: "zinc.400",
+              },
+            })}>{username}</span
           >
           <button
             onclick={copyUsername}
-            class="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+            class={css({
+              p: "0.5",
+              rounded: "sm",
+              transition: "colors",
+              _hover: { bg: "zinc.200" },
+              _dark: { _hover: { bg: "zinc.800" } },
+            })}
             title={copySuccess ? "Copied!" : "Copy username"}
           >
             {#if copySuccess}
-              <IconCheck class="size-3.5 text-green-600 dark:text-green-500" />
+              <IconCheck
+                class={css({
+                  w: "3.5",
+                  h: "3.5",
+                  color: "green.600",
+                  _dark: { color: "green.500" },
+                })}
+              />
             {:else}
-              <IconCopy class="size-3.5 text-zinc-400 dark:text-zinc-500" />
+              <IconCopy
+                class={css({
+                  w: "3.5",
+                  h: "3.5",
+                  color: "zinc.400",
+                  _dark: { color: "zinc.500" },
+                })}
+              />
             {/if}
           </button>
-          <span class="text-zinc-400 dark:text-zinc-500">·</span>
-          <span class="text-zinc-500 dark:text-zinc-400">any/they</span>
+          <span class={css({ color: "zinc.400", _dark: { color: "zinc.500" } })}
+            >·</span
+          >
+          <span class={css({ color: "zinc.500", _dark: { color: "zinc.400" } })}
+            >any/they</span
+          >
         </div>
       </div>
 
       <!-- About Me section -->
       <div
-        class="p-3 rounded-lg bg-zinc-200/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
+        class={css({
+          p: "3",
+          rounded: "lg",
+          bg: "zinc.200/50",
+          borderWidth: "1px",
+          borderColor: "zinc.200",
+          _dark: {
+            bg: "zinc.800/50",
+            borderColor: "zinc.700",
+          },
+        })}
       >
         <h3
-          class="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-500 mb-1"
+          class={css({
+            fontSize: "xs",
+            fontWeight: "semibold",
+            textTransform: "uppercase",
+            color: "zinc.500",
+            mb: "1",
+          })}
         >
           About Me
         </h3>
-        <p class="text-sm text-zinc-700 dark:text-zinc-300">
+        <p
+          class={css({
+            fontSize: "sm",
+            color: "zinc.700",
+            _dark: { color: "zinc.300" },
+          })}
+        >
           Live with dignity.<br />
           <a
             href="https://xevion.dev"
-            class="text-blue-600 dark:text-blue-400 hover:underline"
+            class={css({
+              color: "blue.600",
+              _dark: { color: "blue.400" },
+              _hover: { textDecoration: "underline" },
+            })}
             target="_blank"
             rel="noopener noreferrer">https://xevion.dev</a
           >

@@ -5,7 +5,15 @@
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
   import type { SiteSettings } from "$lib/admin-types";
-  import { cn } from "$lib/utils";
+  import { css } from "styled-system/css";
+  import { flex, hstack, grid } from "styled-system/patterns";
+  import {
+    pageTitleClass,
+    pageDescriptionClass,
+    adminCardClass,
+    sectionHeadingClass,
+    settingsTab,
+  } from "$lib/styles/admin";
 
   type Tab = "identity" | "social";
 
@@ -71,49 +79,47 @@
   function navigateToTab(tab: Tab) {
     goto(`/admin/settings/${tab}`, { replaceState: true });
   }
+
+  // Tab styling now uses shared settingsTab cva recipe from admin styles
 </script>
 
 <svelte:head>
   <title>Settings | Admin</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class={css({ spaceY: "6" })}>
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-admin-text">Settings</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
+    <h1 class={pageTitleClass}>Settings</h1>
+    <p class={pageDescriptionClass}>
       Configure your site identity and social links
     </p>
   </div>
 
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">
+    <div
+      class={css({ textAlign: "center", py: "12", color: "admin.textMuted" })}
+    >
       Loading settings...
     </div>
   {:else if formData}
     <!-- Tabs -->
-    <div class="border-b border-admin-border">
-      <nav class="flex gap-6" aria-label="Settings tabs">
+    <div class={css({ borderBottomWidth: "1px", borderColor: "admin.border" })}>
+      <nav class={flex({ gap: "6" })} aria-label="Settings tabs">
         <button
           type="button"
-          class={cn(
-            "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
-            activeTab === "identity"
-              ? "border-admin-accent text-admin-text"
-              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
-          )}
+          class={settingsTab({
+            state: activeTab === "identity" ? "active" : "inactive",
+          })}
           onclick={() => navigateToTab("identity")}
         >
           Identity
         </button>
         <button
           type="button"
-          class={cn(
-            "pb-3 px-1 text-sm font-medium border-b-2 transition-colors",
-            activeTab === "social"
-              ? "border-admin-accent text-admin-text"
-              : "border-transparent text-admin-text-muted hover:text-admin-text hover:border-admin-border-hover",
-          )}
+          class={settingsTab({
+            state: activeTab === "social" ? "active" : "inactive",
+          })}
           onclick={() => navigateToTab("social")}
         >
           Social Links
@@ -122,14 +128,10 @@
     </div>
 
     <!-- Tab Content -->
-    <div
-      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-    >
+    <div class={adminCardClass}>
       {#if activeTab === "identity"}
-        <div class="space-y-4">
-          <h3 class="text-base font-medium text-admin-text mb-4">
-            Site Identity
-          </h3>
+        <div class={css({ spaceY: "4" })}>
+          <h3 class={sectionHeadingClass}>Site Identity</h3>
           <Input
             label="Display Name"
             type="text"
@@ -162,46 +164,72 @@
           />
         </div>
       {:else if activeTab === "social"}
-        <div class="space-y-4">
-          <h3 class="text-base font-medium text-admin-text mb-4">
-            Social Links
-          </h3>
-          <p class="text-sm text-admin-text-muted mb-4">
+        <div class={css({ spaceY: "4" })}>
+          <h3 class={sectionHeadingClass}>Social Links</h3>
+          <p class={css({ fontSize: "sm", color: "admin.textMuted", mb: "4" })}>
             Configure your social media presence on the homepage. Display order
             and icon identifiers can be edited here.
           </p>
 
-          <div class="space-y-3">
+          <div class={css({ spaceY: "3" })}>
             {#each formData.socialLinks as link (link.id)}
               <div
-                class="rounded-lg border border-admin-border bg-admin-surface-hover/50 p-4 hover:border-admin-border-hover transition-colors"
+                class={css({
+                  rounded: "lg",
+                  borderWidth: "1px",
+                  borderColor: "admin.border",
+                  bg: "admin.surfaceHover/50",
+                  p: "4",
+                  _hover: { borderColor: "admin.borderHover" },
+                  transition: "colors",
+                })}
               >
-                <div class="flex items-start gap-4">
-                  <div class="flex-1 space-y-3">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-3">
+                <div class={flex({ align: "flex-start", gap: "4" })}>
+                  <div class={css({ flex: "1", spaceY: "3" })}>
+                    <div class={hstack({ justify: "space-between", gap: "0" })}>
+                      <div class={hstack({ gap: "3" })}>
                         <Input
                           label="Label"
                           type="text"
                           bind:value={link.label}
                           placeholder="GitHub"
-                          class="w-32"
+                          class={css({ w: "32" })}
                         />
                         <label
-                          class="flex items-center gap-2 cursor-pointer pt-6"
+                          class={hstack({
+                            gap: "2",
+                            cursor: "pointer",
+                            pt: "6",
+                          })}
                         >
-                          <span class="text-xs text-admin-text-muted"
-                            >Visible</span
+                          <span
+                            class={css({
+                              fontSize: "xs",
+                              color: "admin.textMuted",
+                            })}>Visible</span
                           >
                           <input
                             type="checkbox"
                             bind:checked={link.visible}
-                            class="w-4 h-4 rounded border-admin-border bg-admin-bg-secondary text-admin-accent focus:ring-2 focus:ring-admin-accent focus:ring-offset-0 cursor-pointer"
+                            class={css({
+                              w: "4",
+                              h: "4",
+                              rounded: "sm",
+                              borderColor: "admin.border",
+                              bg: "admin.bgSecondary",
+                              color: "admin.accent",
+                              cursor: "pointer",
+                              _focus: {
+                                ringWidth: "2px",
+                                ringColor: "admin.accent",
+                                ringOffset: "0",
+                              },
+                            })}
                           />
                         </label>
                       </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class={grid({ columns: 2, gap: "3" })}>
                       <Input
                         label="Platform"
                         type="text"
@@ -249,7 +277,7 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex justify-end gap-3">
+    <div class={flex({ justify: "flex-end", gap: "3" })}>
       <Button
         variant="secondary"
         onclick={handleCancel}

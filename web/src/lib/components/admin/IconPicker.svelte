@@ -1,7 +1,14 @@
 <script lang="ts">
+  import { css, cx } from "styled-system/css";
+  import { hstack, center, wrap, grid } from "styled-system/patterns";
   import { SvelteMap } from "svelte/reactivity";
-  import { cn } from "$lib/utils";
   import type { IconCollection } from "$lib/types/icons";
+  import {
+    labelClass,
+    helpTextClass,
+    adminInputBase,
+    dropdownPanelClass,
+  } from "$lib/styles/admin";
 
   interface Props {
     selectedIcon: string;
@@ -194,9 +201,9 @@
   }
 </script>
 
-<div class={cn("space-y-2", className)}>
+<div class={cx(css({ spaceY: "2" }), className)}>
   {#if label}
-    <label for={inputId} class="block text-sm font-medium text-admin-text">
+    <label for={inputId} class={labelClass}>
       {label}
     </label>
   {/if}
@@ -204,10 +211,17 @@
   <!-- Selected icon preview -->
   {#if selectedIcon}
     <div
-      class="flex items-center gap-3 rounded-md border border-admin-border bg-admin-bg-secondary p-3"
+      class={hstack({
+        gap: "3",
+        rounded: "md",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        bg: "admin.bgSecondary",
+        p: "3",
+      })}
     >
       <div
-        class="flex size-10 items-center justify-center rounded bg-admin-bg"
+        class={center({ w: "10", h: "10", rounded: "sm", bg: "admin.bg" })}
         data-icon-container
       >
         {#if selectedIconSvg}
@@ -215,17 +229,38 @@
           {@html selectedIconSvg}
         {:else}
           <div
-            class="size-6 animate-pulse rounded bg-admin-surface-hover"
+            class={css({
+              w: "6",
+              h: "6",
+              animation: "pulse",
+              rounded: "sm",
+              bg: "admin.surfaceHover",
+            })}
           ></div>
         {/if}
       </div>
-      <div class="flex-1">
-        <p class="text-sm font-medium text-admin-text">{selectedIcon}</p>
+      <div class={css({ flex: "1" })}>
+        <p
+          class={css({
+            fontSize: "sm",
+            fontWeight: "medium",
+            color: "admin.text",
+          })}
+        >
+          {selectedIcon}
+        </p>
       </div>
       <button
         type="button"
         onclick={clearSelection}
-        class="rounded px-2 py-1 text-sm text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text"
+        class={css({
+          rounded: "sm",
+          px: "2",
+          py: "1",
+          fontSize: "sm",
+          color: "admin.textMuted",
+          _hover: { bg: "admin.surfaceHover", color: "admin.text" },
+        })}
       >
         Clear
       </button>
@@ -233,14 +268,25 @@
   {/if}
 
   <!-- Collection tabs -->
-  <div class="flex flex-wrap gap-1">
+  <div class={wrap({ gap: "1" })}>
     <button
       type="button"
-      class={cn(
-        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+      class={cx(
+        css({
+          rounded: "md",
+          px: "3",
+          py: "1.5",
+          fontSize: "sm",
+          fontWeight: "medium",
+          transition: "colors",
+        }),
         selectedCollection === "all"
-          ? "bg-admin-accent text-white"
-          : "bg-admin-surface text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text",
+          ? css({ bg: "admin.accent", color: "white" })
+          : css({
+              bg: "admin.surface",
+              color: "admin.textMuted",
+              _hover: { bg: "admin.surfaceHover", color: "admin.text" },
+            }),
       )}
       onclick={() => (selectedCollection = "all")}
     >
@@ -249,63 +295,110 @@
     {#each collections as collection (collection.id)}
       <button
         type="button"
-        class={cn(
-          "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        class={cx(
+          css({
+            rounded: "md",
+            px: "3",
+            py: "1.5",
+            fontSize: "sm",
+            fontWeight: "medium",
+            transition: "colors",
+          }),
           selectedCollection === collection.id
-            ? "bg-admin-accent text-white"
-            : "bg-admin-surface text-admin-text-muted hover:bg-admin-surface-hover hover:text-admin-text",
+            ? css({ bg: "admin.accent", color: "white" })
+            : css({
+                bg: "admin.surface",
+                color: "admin.textMuted",
+                _hover: { bg: "admin.surfaceHover", color: "admin.text" },
+              }),
         )}
         onclick={() => (selectedCollection = collection.id)}
       >
         {collection.name}
-        <span class="ml-1 text-xs opacity-60">({collection.total})</span>
+        <span class={css({ ml: "1", fontSize: "xs", opacity: "0.6" })}
+          >({collection.total})</span
+        >
       </button>
     {/each}
   </div>
 
   <!-- Search input -->
-  <div class="relative">
+  <div class={css({ position: "relative" })}>
     <input
       id={inputId}
       type="text"
       bind:value={searchQuery}
       {placeholder}
-      class="w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2 text-sm text-admin-text placeholder:text-admin-text-muted focus:border-admin-accent focus:outline-none focus:ring-1 focus:ring-admin-accent"
+      class={adminInputBase}
       onfocus={handleInputFocus}
       onblur={handleInputBlur}
     />
 
     <!-- Search results dropdown -->
     {#if showDropdown && searchResults.length > 0}
-      <div
-        class="absolute z-10 mt-1 max-h-96 w-full overflow-auto rounded-md border border-admin-border bg-admin-surface shadow-lg"
-      >
+      <div class={cx(dropdownPanelClass, css({ maxH: "96" }))}>
         <!-- Grid layout for icons -->
-        <div class="grid grid-cols-8 gap-1 p-2">
+        <div class={grid({ columns: 8, gap: "1", p: "2" })}>
           {#each searchResults as result (result.identifier)}
             {@const cachedSvg = iconSvgCache.get(result.identifier)}
             <button
               type="button"
               data-icon-id={result.identifier}
-              class="group relative flex size-12 items-center justify-center rounded hover:bg-admin-surface-hover"
+              class={cx(
+                "group",
+                center({
+                  position: "relative",
+                  w: "12",
+                  h: "12",
+                  rounded: "sm",
+                  _hover: { bg: "admin.surfaceHover" },
+                }),
+              )}
               onclick={() => selectIcon(result.identifier)}
               title={result.identifier}
             >
               <!-- Lazy load icon SVG via IntersectionObserver -->
-              <div class="size-9 text-admin-text" data-icon-container>
+              <div
+                class={css({ w: "9", h: "9", color: "admin.text" })}
+                data-icon-container
+              >
                 {#if cachedSvg}
                   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                   {@html cachedSvg}
                 {:else}
                   <div
-                    class="size-full animate-pulse rounded bg-admin-surface-hover"
+                    class={css({
+                      w: "full",
+                      h: "full",
+                      animation: "pulse",
+                      rounded: "sm",
+                      bg: "admin.surfaceHover",
+                    })}
                   ></div>
                 {/if}
               </div>
 
               <!-- Tooltip on hover -->
               <div
-                class="pointer-events-none absolute -top-8 left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded bg-admin-surface border border-admin-border px-2 py-1 text-xs text-admin-text group-hover:block"
+                class={css({
+                  pointerEvents: "none",
+                  position: "absolute",
+                  top: "-8",
+                  left: "50%",
+                  zIndex: 20,
+                  display: "none",
+                  transform: "translateX(-50%)",
+                  whiteSpace: "nowrap",
+                  rounded: "sm",
+                  bg: "admin.surface",
+                  borderWidth: "1px",
+                  borderColor: "admin.border",
+                  px: "2",
+                  py: "1",
+                  fontSize: "xs",
+                  color: "admin.text",
+                  _groupHover: { display: "block" },
+                })}
               >
                 {result.name}
               </div>
@@ -315,7 +408,14 @@
 
         {#if isLoading}
           <div
-            class="border-t border-admin-border p-3 text-center text-sm text-admin-text-muted"
+            class={css({
+              borderTopWidth: "1px",
+              borderColor: "admin.border",
+              p: "3",
+              textAlign: "center",
+              fontSize: "sm",
+              color: "admin.textMuted",
+            })}
           >
             Loading...
           </div>
@@ -323,14 +423,22 @@
       </div>
     {:else if showDropdown && searchQuery && !isLoading}
       <div
-        class="absolute z-10 mt-1 w-full rounded-md border border-admin-border bg-admin-surface p-3 text-center text-sm text-admin-text-muted shadow-lg"
+        class={cx(
+          dropdownPanelClass,
+          css({
+            p: "3",
+            textAlign: "center",
+            fontSize: "sm",
+            color: "admin.textMuted",
+          }),
+        )}
       >
         No icons found for "{searchQuery}"
       </div>
     {/if}
   </div>
 
-  <p class="text-xs text-admin-text-muted">
+  <p class={helpTextClass}>
     Tip: Use "collection:search" to filter (e.g., "lucide:home" or
     "simple-icons:react")
   </p>

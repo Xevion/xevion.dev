@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
-  import type { ClassValue } from "clsx";
+  import { css, cx } from "styled-system/css";
   import { onMount, onDestroy } from "svelte";
 
   let {
@@ -20,7 +19,7 @@
     randomOpacityMax = 1.0,
     dotColor = [200 / 255, 200 / 255, 200 / 255] as [number, number, number],
   }: {
-    class?: ClassValue;
+    class?: string;
     style?: string;
     scale?: number;
     length?: number;
@@ -407,16 +406,38 @@
 </script>
 
 <!-- Wrapper for background + dots canvas - single persistent unit -->
-<div class="pointer-events-none fixed inset-0 -z-20" {style}>
+<div
+  class={css({
+    pointerEvents: "none",
+    position: "fixed",
+    inset: "0",
+    zIndex: "-20",
+  })}
+  {style}
+>
   <!-- Background overlay -->
-  <div class="absolute inset-0 bg-white dark:bg-black"></div>
+  <div
+    class={css({
+      position: "absolute",
+      inset: "0",
+      bg: "white",
+      _dark: { bg: "black" },
+    })}
+  ></div>
 
   <!-- Dots canvas -->
   <canvas
     bind:this={canvas}
-    class={cn(
-      "absolute inset-0 z-10 transition-opacity duration-1300 ease-out",
-      ready ? "opacity-100" : "opacity-0",
+    class={cx(
+      css({
+        position: "absolute",
+        inset: "0",
+        zIndex: "10",
+        transition: "opacity",
+        transitionDuration: "1300ms",
+        transitionTimingFunction: "ease-out",
+      }),
+      ready ? css({ opacity: "1" }) : css({ opacity: "0" }),
       className,
     )}
   ></canvas>

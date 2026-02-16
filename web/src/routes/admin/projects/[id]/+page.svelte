@@ -7,6 +7,8 @@
   import type { UpdateProjectData, CreateProjectData } from "$lib/admin-types";
   import type { PageData } from "./$types";
   import { getLogger } from "@logtape/logtape";
+  import { css } from "styled-system/css";
+  import { pageDescriptionClass, adminCardClass } from "$lib/styles/admin";
 
   const logger = getLogger(["admin", "projects", "edit"]);
 
@@ -60,28 +62,35 @@
   <title>Edit Project | Admin</title>
 </svelte:head>
 
-<div class="max-w-3xl space-y-6">
+<div class={css({ maxW: "48rem", spaceY: "6" })}>
   <!-- Header -->
   <div>
-    <h1 class="text-2xl font-bold text-admin-text">Edit Project</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
-      Update project details and settings
-    </p>
+    <h1
+      class={css({ fontSize: "2xl", fontWeight: "bold", color: "admin.text" })}
+    >
+      Edit Project
+    </h1>
+    <p class={pageDescriptionClass}>Update project details and settings</p>
   </div>
 
   <!-- Form -->
   {#if !data.project}
-    <div class="text-center py-12">
-      <p class="text-admin-text-muted mb-4">Project not found</p>
+    <div class={css({ textAlign: "center", py: "12" })}>
+      <p class={css({ color: "admin.textMuted", mb: "4" })}>
+        Project not found
+      </p>
       <a
         href={resolve("/admin/projects")}
-        class="text-admin-accent hover:text-admin-accent-hover"
+        class={css({
+          color: "admin.accent",
+          _hover: { color: "admin.accentHover" },
+        })}
       >
         Back to projects
       </a>
     </div>
   {:else}
-    <div class="rounded-lg border border-admin-border bg-admin-surface p-6">
+    <div class={adminCardClass}>
       <ProjectForm
         project={data.project}
         availableTags={data.availableTags}
@@ -105,10 +114,20 @@
 >
   {#if data.project}
     <div
-      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+      class={css({
+        rounded: "md",
+        bg: "admin.surfaceHover/50",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        p: "3",
+      })}
     >
-      <p class="font-medium text-admin-text">{data.project.name}</p>
-      <p class="text-sm text-admin-text-secondary">{data.project.slug}</p>
+      <p class={css({ fontWeight: "medium", color: "admin.text" })}>
+        {data.project.name}
+      </p>
+      <p class={css({ fontSize: "sm", color: "admin.textSecondary" })}>
+        {data.project.slug}
+      </p>
     </div>
   {/if}
 </Modal>

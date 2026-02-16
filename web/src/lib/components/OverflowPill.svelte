@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
 
   interface Props {
     count: number;
@@ -13,8 +13,26 @@
 </script>
 
 <span
-  class={cn(
-    "inline-flex items-center rounded-sm bg-zinc-200/50 dark:bg-zinc-600/30 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-500 dark:text-zinc-400",
+  class={cx(
+    css({
+      display: "inline-flex",
+      alignItems: "center",
+      rounded: "sm",
+      bg: "zinc.200/50",
+      px: "2",
+      py: "1",
+      fontSize: "sm",
+      color: "zinc.500",
+      sm: {
+        px: "1.5",
+        py: "0.75",
+        fontSize: "xs",
+      },
+      _dark: {
+        bg: "zinc.600/30",
+        color: "zinc.400",
+      },
+    }),
     className,
   )}
   title={tooltipText}

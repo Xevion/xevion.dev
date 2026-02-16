@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { button } from "styled-system/recipes";
 
   interface Props {
     variant?: "primary" | "secondary" | "danger" | "ghost";
@@ -22,38 +23,12 @@
     onclick,
     children,
   }: Props = $props();
-
-  const baseStyles =
-    "inline-flex items-center justify-center font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-admin-bg disabled:pointer-events-none disabled:opacity-50";
-
-  const variantStyles = {
-    primary:
-      "bg-admin-accent text-white hover:bg-admin-accent-hover focus-visible:ring-admin-accent shadow-sm hover:shadow",
-    secondary:
-      "bg-zinc-200/60 dark:bg-zinc-600/50 text-admin-text border border-zinc-400/50 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-300/70 dark:hover:bg-zinc-500/60 focus-visible:ring-admin-accent",
-    danger:
-      "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 shadow-sm hover:shadow",
-    ghost:
-      "text-admin-text hover:bg-admin-surface-hover focus-visible:ring-admin-accent",
-  };
-
-  const sizeStyles = {
-    sm: "h-8 px-3 text-sm rounded",
-    md: "h-9 px-4 text-sm rounded-md",
-    lg: "h-11 px-6 text-base rounded-md",
-  };
 </script>
 
 {#if href}
   <a
     {href}
-    class={cn(
-      baseStyles,
-      variantStyles[variant],
-      sizeStyles[size],
-      "cursor-pointer",
-      className,
-    )}
+    class={cx(button({ variant, size }), css({ cursor: "pointer" }), className)}
     aria-disabled={disabled}
   >
     {@render children?.()}
@@ -62,7 +37,7 @@
   <button
     {type}
     {disabled}
-    class={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
+    class={cx(button({ variant, size }), className)}
     {onclick}
   >
     {@render children?.()}

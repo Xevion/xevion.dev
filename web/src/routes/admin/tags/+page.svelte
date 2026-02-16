@@ -13,6 +13,15 @@
   import IconInfo from "~icons/lucide/info";
   import { invalidateAll } from "$app/navigation";
   import { getLogger } from "@logtape/logtape";
+  import { css, cx } from "styled-system/css";
+  import { hstack, flex, wrap, grid } from "styled-system/patterns";
+  import {
+    pageTitleClass,
+    pageDescriptionClass,
+    iconSm,
+    adminCardClass,
+    sectionHeadingClass,
+  } from "$lib/styles/admin";
 
   const logger = getLogger(["admin", "tags"]);
 
@@ -145,31 +154,34 @@
   <title>Tags | Admin</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class={css({ spaceY: "6" })}>
   <!-- Header -->
-  <div class="flex items-center justify-between">
+  <div class={hstack({ justify: "space-between", gap: "0" })}>
     <div>
-      <div class="flex items-center gap-2">
-        <h1 class="text-xl font-semibold text-admin-text">Tags</h1>
+      <div class={hstack({ gap: "2" })}>
+        <h1 class={pageTitleClass}>Tags</h1>
         <span
-          class="text-admin-text-muted hover:text-admin-text cursor-help transition-colors"
+          class={css({
+            color: "admin.textMuted",
+            cursor: "help",
+            transition: "colors",
+            _hover: { color: "admin.text" },
+          })}
           title="Hold Shift and click a tag to delete it"
         >
-          <IconInfo class="w-4 h-4" />
+          <IconInfo class={iconSm} />
         </span>
       </div>
-      <p class="mt-1 text-sm text-admin-text-muted">
-        Manage project tags and categories
-      </p>
+      <p class={pageDescriptionClass}>Manage project tags and categories</p>
     </div>
     <Button
       variant="primary"
       onclick={() => (showCreateForm = !showCreateForm)}
     >
       {#if showCreateForm}
-        <IconX class="w-4 h-4 mr-2" />
+        <IconX class={cx(iconSm, css({ mr: "2" }))} />
       {:else}
-        <IconPlus class="w-4 h-4 mr-2" />
+        <IconPlus class={cx(iconSm, css({ mr: "2" }))} />
       {/if}
       {showCreateForm ? "Cancel" : "New Tag"}
     </Button>
@@ -177,11 +189,9 @@
 
   <!-- Create Form -->
   {#if showCreateForm}
-    <div
-      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-    >
-      <h3 class="text-base font-medium text-admin-text mb-4">Create New Tag</h3>
-      <div class="grid gap-4 md:grid-cols-2">
+    <div class={adminCardClass}>
+      <h3 class={sectionHeadingClass}>Create New Tag</h3>
+      <div class={grid({ columns: { md: 2 }, gap: "4" })}>
         <Input
           label="Name"
           type="text"
@@ -196,13 +206,13 @@
           placeholder="Leave empty to auto-generate"
         />
       </div>
-      <div class="mt-4">
+      <div class={css({ mt: "4" })}>
         <IconPicker bind:selectedIcon={createIcon} label="Icon (optional)" />
       </div>
-      <div class="mt-4">
+      <div class={css({ mt: "4" })}>
         <ColorPicker bind:selectedColor={createColor} />
       </div>
-      <div class="mt-4 flex justify-end gap-2">
+      <div class={flex({ justify: "flex-end", gap: "2", mt: "4" })}>
         <Button variant="secondary" onclick={() => (showCreateForm = false)}>
           Cancel
         </Button>
@@ -219,30 +229,42 @@
 
   <!-- Tags Grid -->
   {#if data.tags.length === 0}
-    <div class="text-center py-12">
-      <p class="text-admin-text-muted mb-4">No tags yet</p>
+    <div class={css({ textAlign: "center", py: "12" })}>
+      <p class={css({ color: "admin.textMuted", mb: "4" })}>No tags yet</p>
       <Button variant="primary" onclick={() => (showCreateForm = true)}>
         Create your first tag
       </Button>
     </div>
   {:else}
-    <div class="space-y-3">
+    <div class={css({ spaceY: "3" })}>
       <!-- Delete mode indicator -->
       <div
-        class="h-6 flex items-center transition-opacity duration-150"
-        class:opacity-100={deleteMode}
-        class:opacity-0={!deleteMode}
+        class={cx(
+          flex({
+            align: "center",
+            h: "6",
+            transition: "all",
+            transitionDuration: "150ms",
+          }),
+          deleteMode ? css({ opacity: "1" }) : css({ opacity: "0" }),
+        )}
       >
         <span
-          class="text-sm text-red-500 dark:text-red-400 font-medium flex items-center gap-1.5"
+          class={hstack({
+            gap: "1.5",
+            fontSize: "sm",
+            color: "red.500",
+            fontWeight: "medium",
+            _dark: { color: "red.400" },
+          })}
         >
-          <IconX class="w-4 h-4" />
+          <IconX class={iconSm} />
           Click a tag to delete it
         </span>
       </div>
 
       <!-- Tags -->
-      <div class="flex flex-wrap gap-2 max-w-3xl">
+      <div class={wrap({ gap: "2", maxW: "48rem" })}>
         {#each data.tags as tag (tag.id)}
           <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
           <div
@@ -250,16 +272,23 @@
             onkeydown={(e) => handleTagKeyDown(tag, e)}
             role={deleteMode ? "button" : undefined}
             tabindex={deleteMode ? 0 : undefined}
-            class="contents"
+            class={css({ display: "contents" })}
           >
             <TagChip
               name={tag.name}
               color={deleteMode ? "ef4444" : tag.color}
               icon={tag.icon}
               href={`/admin/tags/${tag.slug}`}
-              class="transition-all duration-150 {deleteMode
-                ? 'bg-red-100/80 dark:bg-red-900/40 cursor-pointer'
-                : ''}"
+              class={cx(
+                css({ transition: "all", transitionDuration: "150ms" }),
+                deleteMode
+                  ? css({
+                      bg: "red.100/80",
+                      cursor: "pointer",
+                      _dark: { bg: "red.900/40" },
+                    })
+                  : "",
+              )}
             />
           </div>
         {/each}
@@ -280,10 +309,18 @@
 >
   {#if deleteTarget}
     <div
-      class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+      class={css({
+        rounded: "md",
+        bg: "admin.surfaceHover/50",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        p: "3",
+      })}
     >
-      <p class="font-medium text-admin-text">{deleteTarget.name}</p>
-      <p class="text-sm text-admin-text-secondary">
+      <p class={css({ fontWeight: "medium", color: "admin.text" })}>
+        {deleteTarget.name}
+      </p>
+      <p class={css({ fontSize: "sm", color: "admin.textSecondary" })}>
         Used in {deleteTarget.projectCount} project{deleteTarget.projectCount ===
         1
           ? ""

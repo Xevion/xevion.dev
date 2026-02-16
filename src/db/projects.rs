@@ -11,7 +11,6 @@ use super::{
     tags::{self, ApiTag, DbTag, get_tags_for_project},
 };
 
-// Database model
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DbProject {
     pub id: Uuid,
@@ -26,7 +25,6 @@ pub struct DbProject {
     pub created_at: OffsetDateTime,
 }
 
-// API response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiProjectLink {
     pub url: String,
@@ -62,7 +60,6 @@ pub struct ApiAdminProject {
 }
 
 impl DbProject {
-    /// Convert database project to API response format
     pub fn to_api_project(&self) -> ApiProject {
         let mut links = Vec::new();
 
@@ -114,8 +111,6 @@ impl DbProject {
     }
 }
 
-// Request types for CRUD operations
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProjectRequest {
@@ -142,7 +137,6 @@ pub struct UpdateProjectRequest {
     pub tag_ids: Vec<String>, // UUID strings
 }
 
-// Admin stats response
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminStats {
@@ -150,8 +144,6 @@ pub struct AdminStats {
     pub projects_by_status: serde_json::Value,
     pub total_tags: i32,
 }
-
-// Query functions
 
 pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::Error> {
     query_as!(

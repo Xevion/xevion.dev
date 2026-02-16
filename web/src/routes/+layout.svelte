@@ -15,6 +15,7 @@
   import Dots from "$lib/components/Dots.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import AdminButton from "$lib/components/AdminButton.svelte";
+  import { hstack } from "styled-system/patterns";
 
   let { children, data } = $props();
 
@@ -144,7 +145,13 @@
 
   <!-- Header buttons - persistent across page transitions -->
   <div
-    class="fixed top-5 right-6 z-50 flex items-center gap-2"
+    class={hstack({
+      gap: "2",
+      position: "fixed",
+      top: "5",
+      right: "6",
+      zIndex: 50,
+    })}
     style="view-transition-name: theme-toggle"
   >
     <AdminButton />

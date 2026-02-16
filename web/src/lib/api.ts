@@ -13,11 +13,10 @@ import type {
 } from "./admin-types";
 import { ApiError } from "./errors";
 
-// Client-side fetch wrapper for browser requests
 async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
-    credentials: "same-origin", // Include cookies for auth
+    credentials: "same-origin",
   });
 
   if (!response.ok) {
@@ -27,7 +26,6 @@ async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-// Admin Projects API
 export async function getAdminProjects(): Promise<AdminProject[]> {
   return clientApiFetch<AdminProject[]>("/api/projects");
 }
@@ -71,7 +69,6 @@ export async function deleteAdminProject(id: string): Promise<AdminProject> {
   });
 }
 
-// Admin Tags API
 export async function getAdminTags(): Promise<AdminTagWithCount[]> {
   return clientApiFetch<AdminTagWithCount[]>("/api/tags");
 }
@@ -85,8 +82,6 @@ export async function createAdminTag(data: CreateTagData): Promise<AdminTag> {
 }
 
 export async function updateAdminTag(data: UpdateTagData): Promise<AdminTag> {
-  // Use the tag ID to construct the URL - need to get slug first
-  // For now, use ID directly (may need adjustment if backend expects slug)
   return clientApiFetch<AdminTag>(`/api/tags/${data.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -95,7 +90,6 @@ export async function updateAdminTag(data: UpdateTagData): Promise<AdminTag> {
 }
 
 export async function deleteAdminTag(id: string): Promise<void> {
-  // Delete by ID - may need to fetch slug first if backend expects it
   await clientApiFetch(`/api/tags/${id}`, {
     method: "DELETE",
   });
@@ -127,7 +121,6 @@ export async function getRelatedTags(slug: string): Promise<RelatedTag[]> {
   return clientApiFetch<RelatedTag[]>(`/api/tags/${slug}/related`);
 }
 
-// Admin Media API
 export async function uploadProjectMedia(
   projectId: string,
   file: File,
@@ -189,19 +182,15 @@ export async function reorderProjectMedia(
   );
 }
 
-// Admin Events API (currently mocked - no backend implementation yet)
+// TODO: Implement when events table is added to backend
 export async function getAdminEvents(): Promise<AdminEvent[]> {
-  // TODO: Implement when events table is added to backend
-  // filters parameter will be added when backend implementation is complete
   return [];
 }
 
-// Admin Stats API
 export async function getAdminStats(): Promise<AdminStats> {
   return clientApiFetch<AdminStats>("/api/stats");
 }
 
-// Settings API
 export async function getSettings(): Promise<SiteSettings> {
   return clientApiFetch<SiteSettings>("/api/settings");
 }

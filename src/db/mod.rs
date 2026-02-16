@@ -3,7 +3,6 @@ pub mod projects;
 pub mod settings;
 pub mod tags;
 
-// Re-export all types and functions
 pub use media::*;
 pub use projects::*;
 pub use settings::*;
@@ -57,7 +56,6 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
     Err(last_error.unwrap())
 }
 
-/// Health check query
 pub async fn health_check(pool: &PgPool) -> Result<(), sqlx::Error> {
     query!("SELECT 1 as check")
         .fetch_one(pool)
@@ -65,7 +63,6 @@ pub async fn health_check(pool: &PgPool) -> Result<(), sqlx::Error> {
         .map(|_| ())
 }
 
-/// Slugify text for URL-safe identifiers
 pub fn slugify(text: &str) -> String {
     text.to_lowercase()
         .chars()
@@ -85,7 +82,6 @@ pub fn slugify(text: &str) -> String {
         .join("-")
 }
 
-/// Project status enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, serde::Serialize, serde::Deserialize)]
 #[sqlx(type_name = "project_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]

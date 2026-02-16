@@ -8,7 +8,6 @@ use crate::{
     utils,
 };
 
-/// List all tags with project counts (public endpoint)
 pub async fn list_tags_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     match db::get_all_tags_with_counts(&state.pool).await {
         Ok(tags_with_counts) => {

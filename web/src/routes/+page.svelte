@@ -7,6 +7,8 @@
   import { telemetry } from "$lib/telemetry";
   import type { PageData } from "./$types";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
+  import { css, cx } from "styled-system/css";
+  import { flex, wrap, grid } from "styled-system/patterns";
 
   let { data }: { data: PageData } = $props();
   const projects = $derived(data.projects);
@@ -24,110 +26,153 @@
   function trackSocialClick(url: string) {
     telemetry.trackExternalLink(url, "social");
   }
+
+  const socialBtnClass = flex({
+    align: "center",
+    columnGap: "1.5",
+    px: "1.5",
+    py: "1",
+    rounded: "sm",
+    bg: "zinc.100",
+    shadow: "sm",
+    transition: "colors",
+    cursor: "pointer",
+    _dark: { bg: "zinc.900" },
+    _hover: { bg: "zinc.200", _dark: { bg: "zinc.800" } },
+    _focusVisible: {
+      outline: "none",
+      ringWidth: "2px",
+      ringColor: "zinc.400",
+      _dark: { ringColor: "zinc.500" },
+    },
+  });
+
+  const socialIconClass = css({
+    color: "zinc.600",
+    _dark: { color: "zinc.300" },
+  });
+
+  const socialLabelClass = css({
+    whiteSpace: "nowrap",
+    fontSize: "sm",
+    color: "zinc.800",
+    _dark: { color: "zinc.100" },
+  });
 </script>
 
-<main class="page-main overflow-x-hidden font-schibsted pb-12">
-  <div class="flex items-center flex-col pt-14">
+<main
+  class={cx(
+    "page-main",
+    css({ overflowX: "hidden", fontFamily: "schibsted", pb: "12" }),
+  )}
+>
+  <div class={flex({ direction: "column", align: "center", pt: "14" })}>
     <div
-      class="max-w-2xl mx-4 border-b border-zinc-200 dark:border-zinc-700 divide-y divide-zinc-200 dark:divide-zinc-700 sm:mx-6"
+      class={css({
+        maxW: "42rem",
+        mx: "4",
+        borderBottomWidth: "1px",
+        borderColor: "zinc.200",
+        divideY: "1px",
+        divideColor: "zinc.200",
+        _dark: { borderColor: "zinc.700", divideColor: "zinc.700" },
+        sm: { mx: "6" },
+      })}
     >
-      <div class="flex flex-col pb-4">
+      <div class={flex({ direction: "column", pb: "4" })}>
         <span
-          class="text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl"
-          >{data.settings.identity.displayName},</span
+          class={css({
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "zinc.900",
+            _dark: { color: "white" },
+            sm: { fontSize: "3xl" },
+          })}>{data.settings.identity.displayName},</span
         >
         <span
-          class="text-xl font-normal text-zinc-600 dark:text-zinc-400 sm:text-2xl"
+          class={css({
+            fontSize: "xl",
+            fontWeight: "normal",
+            color: "zinc.600",
+            _dark: { color: "zinc.400" },
+            sm: { fontSize: "2xl" },
+          })}
         >
           {data.settings.identity.occupation}
         </span>
       </div>
 
-      <div class="py-4 text-zinc-700 dark:text-zinc-200">
-        <p class="sm:text-[0.95em] whitespace-pre-line">
+      <div
+        class={css({
+          py: "4",
+          color: "zinc.700",
+          _dark: { color: "zinc.200" },
+        })}
+      >
+        <p class={css({ sm: { fontSize: "0.95em" }, whiteSpace: "pre-line" })}>
           {data.settings.identity.bio}
         </p>
       </div>
 
-      <div class="py-3">
-        <span class="text-zinc-700 dark:text-zinc-200">Connect with me</span>
-        <div class="flex flex-wrap gap-2 pl-3 pt-3 pb-2">
+      <div class={css({ py: "3" })}>
+        <span class={css({ color: "zinc.700", _dark: { color: "zinc.200" } })}
+          >Connect with me</span
+        >
+        <div class={wrap({ gap: "2", pl: "3", pt: "3", pb: "2" })}>
           {#each visibleSocialLinks as link (link.id)}
             {#if link.platform === "github" || link.platform === "linkedin"}
               <!-- Simple link platforms -->
               <a
                 href={link.value}
                 onclick={() => trackSocialClick(link.value)}
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
+                class={socialBtnClass}
               >
-                <Icon
-                  icon={link.icon}
-                  size="size-4"
-                  class="text-zinc-600 dark:text-zinc-300"
-                />
-                <span
-                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
-                  >{link.label}</span
-                >
+                <Icon icon={link.icon} size="4" class={socialIconClass} />
+                <span class={socialLabelClass}>{link.label}</span>
               </a>
             {:else if link.platform === "discord"}
               <!-- Discord - button that opens profile modal -->
               <button
                 type="button"
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
+                class={socialBtnClass}
                 onclick={() => {
                   trackSocialClick(`discord:${link.value}`);
                   openDiscordModal(link.value);
                 }}
               >
-                <Icon
-                  icon={link.icon}
-                  size="size-4"
-                  class="text-zinc-600 dark:text-zinc-300"
-                />
-                <span
-                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
-                  >{link.label}</span
-                >
+                <Icon icon={link.icon} size="4" class={socialIconClass} />
+                <span class={socialLabelClass}>{link.label}</span>
               </button>
             {:else if link.platform === "email"}
               <!-- Email - mailto link -->
               <a
                 href="mailto:{link.value}"
                 onclick={() => trackSocialClick(`mailto:${link.value}`)}
-                class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
+                class={socialBtnClass}
               >
-                <Icon
-                  icon={link.icon}
-                  size="size-4.5"
-                  class="text-zinc-600 dark:text-zinc-300"
-                />
-                <span
-                  class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
-                  >{link.label}</span
-                >
+                <Icon icon={link.icon} size="4.5" class={socialIconClass} />
+                <span class={socialLabelClass}>{link.label}</span>
               </a>
             {/if}
           {/each}
           <!-- PGP Key - links to dedicated page (tracked via page view) -->
-          <a
-            href="/pgp"
-            class="flex items-center gap-x-1.5 px-1.5 py-1 rounded-sm bg-zinc-100 dark:bg-zinc-900 shadow-sm hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500 cursor-pointer"
-          >
+          <a href="/pgp" class={socialBtnClass}>
             <MaterialSymbolsVpnKey
-              class="size-4.5 text-zinc-600 dark:text-zinc-300"
+              class={css({
+                w: "4.5",
+                h: "4.5",
+                color: "zinc.600",
+                _dark: { color: "zinc.300" },
+              })}
             />
-            <span
-              class="whitespace-nowrap text-sm text-zinc-800 dark:text-zinc-100"
-              >PGP Key</span
-            >
+            <span class={socialLabelClass}>PGP Key</span>
           </a>
         </div>
       </div>
     </div>
 
-    <div class="max-w-2xl mx-4 mt-5 sm:mx-6">
-      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+    <div class={css({ maxW: "42rem", mx: "4", mt: "5", sm: { mx: "6" } })}>
+      <div class={grid({ columns: { base: 1, sm: 2 }, gap: "2.5" })}>
         {#each projects as project (project.id)}
           <ProjectCard {project} />
         {/each}

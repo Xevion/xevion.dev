@@ -5,6 +5,13 @@
   import { getAdminEvents } from "$lib/api";
   import type { AdminEvent } from "$lib/admin-types";
   import IconPlus from "~icons/lucide/plus";
+  import { css, cx } from "styled-system/css";
+  import { wrap, hstack } from "styled-system/patterns";
+  import {
+    pageTitleClass,
+    pageDescriptionClass,
+    iconSm,
+  } from "$lib/styles/admin";
 
   let recentEvents = $state<AdminEvent[]>([]);
   let loading = $state(true);
@@ -29,24 +36,26 @@
   <title>Dashboard | Admin</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class={css({ spaceY: "6" })}>
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-admin-text">Dashboard</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
+    <h1 class={pageTitleClass}>Dashboard</h1>
+    <p class={cx(pageDescriptionClass, css({ mt: "1" }))}>
       Overview of your portfolio and recent activity
     </p>
   </div>
 
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">
+    <div
+      class={css({ textAlign: "center", py: "12", color: "admin.textMuted" })}
+    >
       Loading dashboard...
     </div>
   {:else}
     <!-- Quick Actions -->
-    <div class="flex flex-wrap gap-3">
+    <div class={wrap({ gap: "3" })}>
       <Button variant="primary" href="/admin/projects/new">
-        <IconPlus class="w-4 h-4 mr-2" />
+        <IconPlus class={cx(iconSm, css({ mr: "2" }))} />
         New Project
       </Button>
       <Button variant="secondary" href="/admin/projects">
@@ -58,24 +67,59 @@
 
     <!-- Recent Events -->
     <div
-      class="rounded-xl border border-admin-border bg-admin-surface overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
+      class={css({
+        rounded: "xl",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        bg: "admin.surface",
+        overflow: "hidden",
+        shadow: "sm",
+        shadowColor: "black/10",
+        _dark: { shadowColor: "black/20" },
+      })}
     >
       <div
-        class="flex items-center justify-between px-6 py-3.5 bg-admin-surface-hover border-b border-admin-border"
+        class={hstack({
+          justify: "space-between",
+          gap: "0",
+          px: "6",
+          py: "3.5",
+          bg: "admin.surfaceHover",
+          borderBottomWidth: "1px",
+          borderColor: "admin.border",
+        })}
       >
-        <h2 class="text-sm font-medium text-admin-text-secondary">
+        <h2
+          class={css({
+            fontSize: "sm",
+            fontWeight: "medium",
+            color: "admin.textSecondary",
+          })}
+        >
           Recent Events
         </h2>
         <a
           href={resolve("/admin/events")}
-          class="text-sm text-admin-accent hover:text-admin-accent-hover transition-colors"
+          class={css({
+            fontSize: "sm",
+            color: "admin.accent",
+            _hover: { color: "admin.accentHover" },
+            transition: "colors",
+          })}
         >
           View all →
         </a>
       </div>
 
       {#if recentEvents.length === 0}
-        <p class="text-sm text-admin-text-muted text-center py-8">
+        <p
+          class={css({
+            fontSize: "sm",
+            color: "admin.textMuted",
+            textAlign: "center",
+            py: "8",
+          })}
+        >
           No events yet
         </p>
       {:else}

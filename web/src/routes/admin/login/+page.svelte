@@ -5,6 +5,8 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { authStore } from "$lib/stores/auth.svelte";
+  import { css, cx } from "styled-system/css";
+  import { center } from "styled-system/patterns";
 
   let username = $state("");
   let password = $state("");
@@ -38,15 +40,32 @@
   <title>Admin Login | xevion.dev</title>
 </svelte:head>
 
-<div class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg"></div>
-<main class="page-main text-admin-text">
-  <div class="flex min-h-screen items-center justify-center px-4">
-    <div class="w-full max-w-md space-y-4">
+<div
+  class={css({
+    pointerEvents: "none",
+    position: "fixed",
+    inset: "0",
+    zIndex: -20,
+    bg: "admin.bg",
+  })}
+></div>
+<main class={cx("page-main", css({ color: "admin.text" }))}>
+  <div class={center({ minH: "100vh", px: "4" })}>
+    <div class={css({ w: "full", maxW: "md", spaceY: "4" })}>
       <!-- Login Form -->
       <div
-        class="rounded-lg bg-admin-surface border border-admin-border p-8 shadow-2xl shadow-black/10 dark:shadow-zinc-500/20"
+        class={css({
+          rounded: "lg",
+          bg: "admin.surface",
+          borderWidth: "1px",
+          borderColor: "admin.border",
+          p: "8",
+          shadow: "2xl",
+          shadowColor: "black/10",
+          _dark: { shadowColor: "zinc.500/20" },
+        })}
       >
-        <form onsubmit={handleSubmit} class="space-y-6">
+        <form onsubmit={handleSubmit} class={css({ spaceY: "6" })}>
           <Input
             label="Username"
             type="text"
@@ -67,7 +86,15 @@
 
           {#if error}
             <div
-              class="rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400"
+              class={css({
+                rounded: "md",
+                bg: "red.500/10",
+                borderWidth: "1px",
+                borderColor: "red.500/20",
+                p: "3",
+                fontSize: "sm",
+                color: "red.400",
+              })}
             >
               {error}
             </div>
@@ -76,7 +103,7 @@
           <Button
             type="submit"
             variant="primary"
-            class="w-full"
+            class={css({ w: "full" })}
             disabled={loading || !username || !password}
           >
             {loading ? "Signing in..." : "Sign in"}
@@ -85,10 +112,15 @@
       </div>
 
       <!-- Back to site link -->
-      <div class="text-center">
+      <div class={css({ textAlign: "center" })}>
         <a
           href={resolve("/")}
-          class="text-sm text-admin-text-muted hover:text-admin-text transition-colors"
+          class={css({
+            fontSize: "sm",
+            color: "admin.textMuted",
+            _hover: { color: "admin.text" },
+            transition: "colors",
+          })}
         >
           ← Back to site
         </a>

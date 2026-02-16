@@ -11,3 +11,6 @@ web/.svelte-kit/
 
 # Added by cargo
 /target
+
+# Panda CSS generated output
+web/styled-system/

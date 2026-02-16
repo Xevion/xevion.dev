@@ -23,7 +23,6 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let query = uri.query();
     let request_headers = req.headers().clone();
 
-    // Redirect trailing slashes to non-trailing (except root)
     if path.len() > 1 && path.ends_with('/') {
         let normalized = path.trim_end_matches('/');
         let redirect_uri = match query {
@@ -74,7 +73,6 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         return (StatusCode::INTERNAL_SERVER_ERROR, "Internal routing error").into_response();
     }
 
-    // Block internal routes from external access
     if path.starts_with("/internal/") {
         tracing::warn!(path = %path, "Attempted access to internal route");
 
@@ -91,9 +89,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     {
         return response;
     }
-    // If not found in embedded assets, continue to proxy (might be in Bun's static dir)
 
-    // Check if this is a prerendered page
     if let Some(response) = assets::try_serve_prerendered_page(path) {
         tracing::debug!(path = %path, "Serving prerendered page");
         return response;
@@ -112,9 +108,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         forward_headers.insert("x-request-id", header_value);
     }
 
-    // SECURITY: Strip any X-Session-User header from incoming request to prevent spoofing
-
-    // Extract and validate session from cookie
+    // Strip incoming X-Session-User to prevent spoofing; re-add only if session validates
     if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE)
         && let Ok(cookie_str) = cookie_header.to_str()
     {
@@ -140,17 +134,13 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         }
     }
 
-    // Determine if this request can use the cache
-    // Skip cache for authenticated requests (they see different content)
     let use_cache = !is_authenticated && cache::is_cacheable_path(path);
 
-    // Try to serve from cache for public requests
     if use_cache && let Some(cached) = state.isr_cache.get(&path_with_query).await {
         let fresh_duration = state.isr_cache.config.fresh_duration;
         let stale_duration = state.isr_cache.config.stale_duration;
 
         if cached.is_fresh(fresh_duration) {
-            // Fresh cache hit - serve immediately
             let age_ms = cached.age().as_millis() as u64;
             tracing::debug!(cache = "hit", age_ms, "ISR cache hit (fresh)");
 
@@ -240,13 +230,11 @@ fn serve_cached_response(
     request_headers: &HeaderMap,
     is_head: bool,
 ) -> Response {
-    // Negotiate encoding based on Accept-Encoding
     let desired_encoding = negotiate_encoding(request_headers);
     let (body, actual_encoding) = cached.get_body(desired_encoding);
 
     let mut headers = cached.headers.clone();
 
-    // Add Content-Encoding header if compressed
     if let Some(encoding_value) = actual_encoding.header_value() {
         headers.insert(header::CONTENT_ENCODING, encoding_value);
     }
@@ -254,7 +242,6 @@ fn serve_cached_response(
     // Add Vary header for caching
     headers.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
 
-    // Update Content-Length for compressed body
     if let Ok(len) = HeaderValue::from_str(&body.len().to_string()) {
         headers.insert(header::CONTENT_LENGTH, len);
     }
@@ -268,7 +255,6 @@ fn serve_cached_response(
 
 /// Background task to refresh a stale cache entry
 async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
-    // No auth headers for background refresh (public content only)
     let forward_headers = HeaderMap::new();
 
     match proxy_to_bun(&cache_key, state.clone(), forward_headers).await {
@@ -297,7 +283,6 @@ async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
         }
     }
 
-    // Mark refresh as complete
     state.isr_cache.end_refresh(&cache_key);
 }
 
@@ -413,7 +398,6 @@ pub async fn perform_health_check(
         }
     };
 
-    // Check database
     let db_healthy = if let Some(pool) = pool {
         match db::health_check(&pool).await {
             Ok(_) => true,

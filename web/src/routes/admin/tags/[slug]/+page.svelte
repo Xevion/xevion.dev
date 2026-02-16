@@ -12,6 +12,15 @@
   import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconExternalLink from "~icons/lucide/external-link";
   import { getLogger } from "@logtape/logtape";
+  import { css, cx } from "styled-system/css";
+  import { flex, hstack, wrap, grid } from "styled-system/patterns";
+  import {
+    pageTitleClass,
+    pageDescriptionClass,
+    adminCardClass,
+    sectionHeadingClass,
+    iconSm,
+  } from "$lib/styles/admin";
 
   const logger = getLogger(["admin", "tags", "edit"]);
 
@@ -94,37 +103,59 @@
   }
 
   // Base classes for tag chip styling (matches TagChip component)
-  const tagBaseClasses =
-    "inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3 shadow-sm";
+  const tagBaseClasses = css({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "1.25",
+    borderTopRightRadius: "sm",
+    borderBottomRightRadius: "sm",
+    borderTopLeftRadius: "xs",
+    borderBottomLeftRadius: "xs",
+    bg: "zinc.200/80",
+    px: "2",
+    py: "1",
+    fontSize: "sm",
+    color: "zinc.700",
+    borderLeftWidth: "3px",
+    shadow: "sm",
+    _dark: { bg: "zinc.700/50", color: "zinc.300" },
+    sm: { px: "1.5", py: "0.75", fontSize: "xs" },
+  });
 </script>
 
 <svelte:head>
   <title>Edit {data.tag.name} | Tags | Admin</title>
 </svelte:head>
 
-<div class="space-y-6 max-w-3xl">
+<div class={css({ spaceY: "6", maxW: "48rem" })}>
   <!-- Back Link -->
   <a
     href="/admin/tags"
-    class="inline-flex items-center gap-1.5 text-sm text-admin-text-muted hover:text-admin-text transition-colors"
+    class={css({
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "1.5",
+      fontSize: "sm",
+      color: "admin.textMuted",
+      _hover: { color: "admin.text" },
+      transition: "colors",
+    })}
   >
-    <IconArrowLeft class="w-4 h-4" />
+    <IconArrowLeft class={iconSm} />
     Back to Tags
   </a>
 
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-admin-text">Edit Tag</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
+    <h1 class={pageTitleClass}>Edit Tag</h1>
+    <p class={pageDescriptionClass}>
       Modify tag details and view associated projects
     </p>
   </div>
 
   <!-- Edit Form -->
-  <div
-    class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-  >
-    <div class="grid gap-4 md:grid-cols-2">
+  <div class={adminCardClass}>
+    <div class={grid({ columns: { md: 2 }, gap: "4" })}>
       <Input
         label="Name"
         type="text"
@@ -140,34 +171,58 @@
       />
     </div>
 
-    <div class="mt-4">
+    <div class={css({ mt: "4" })}>
       <IconPicker bind:selectedIcon={icon} label="Icon" />
     </div>
 
-    <div class="mt-4">
+    <div class={css({ mt: "4" })}>
       <ColorPicker bind:selectedColor={color} />
     </div>
 
     <!-- Preview -->
-    <div class="mt-6 pt-4 border-t border-admin-border">
-      <span class="block text-sm font-medium text-admin-text mb-2">
-        Preview
-      </span>
+    <div
+      class={css({
+        mt: "6",
+        pt: "4",
+        borderTopWidth: "1px",
+        borderColor: "admin.border",
+      })}
+    >
+      <span
+        class={css({
+          display: "block",
+          fontSize: "sm",
+          fontWeight: "medium",
+          color: "admin.text",
+          mb: "2",
+        })}>Preview</span
+      >
       <span
         class={tagBaseClasses}
         style="border-left-color: #{color || '06b6d4'}"
       >
         {#if icon}
-          <Icon {icon} size="size-4.25 sm:size-3.75" />
+          <Icon
+            {icon}
+            sizeClass={css({ w: "4", h: "4", sm: { w: "3.5", h: "3.5" } })}
+          /><!-- Icon has responsive sizing, can't use iconSm -->
         {/if}
         <span>{name || "Tag Name"}</span>
       </span>
     </div>
 
     <!-- Actions -->
-    <div class="mt-6 pt-4 border-t border-admin-border flex justify-between">
+    <div
+      class={flex({
+        justify: "space-between",
+        mt: "6",
+        pt: "4",
+        borderTopWidth: "1px",
+        borderColor: "admin.border",
+      })}
+    >
       <Button variant="danger" onclick={initiateDelete}>Delete Tag</Button>
-      <div class="flex gap-2">
+      <div class={flex({ gap: "2" })}>
         <Button variant="secondary" href="/admin/tags">Cancel</Button>
         <Button
           variant="primary"
@@ -182,24 +237,42 @@
 
   <!-- Projects using this tag -->
   {#if data.projects.length > 0}
-    <div
-      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-    >
-      <h2 class="text-base font-medium text-admin-text mb-4">
+    <div class={adminCardClass}>
+      <h2 class={sectionHeadingClass}>
         Projects using this tag ({data.projects.length})
       </h2>
-      <ul class="space-y-2">
+      <ul class={css({ spaceY: "2" })}>
         {#each data.projects as project (project.id)}
           <li>
             <a
               href={`/admin/projects/${project.id}`}
-              class="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-admin-surface-hover transition-colors group"
+              class={hstack({
+                justify: "space-between",
+                gap: "0",
+                p: "2",
+                mx: "-2",
+                rounded: "lg",
+                transition: "colors",
+                _hover: { bg: "admin.surfaceHover" },
+              })}
             >
-              <span class="text-admin-text group-hover:text-admin-primary">
+              <span
+                class={css({
+                  color: "admin.text",
+                  _groupHover: { color: "admin.accent" },
+                })}
+              >
                 {project.name}
               </span>
               <IconExternalLink
-                class="w-4 h-4 text-admin-text-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                class={cx(
+                  iconSm,
+                  css({
+                    color: "admin.textMuted",
+                    opacity: "0",
+                    transition: "opacity",
+                  }),
+                )}
               />
             </a>
           </li>
@@ -210,14 +283,12 @@
 
   <!-- Related Tags -->
   {#if data.relatedTags.length > 0}
-    <div
-      class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-    >
-      <h2 class="text-base font-medium text-admin-text mb-4">Related Tags</h2>
-      <p class="text-sm text-admin-text-muted mb-4">
+    <div class={adminCardClass}>
+      <h2 class={sectionHeadingClass}>Related Tags</h2>
+      <p class={css({ fontSize: "sm", color: "admin.textMuted", mb: "4" })}>
         Tags that frequently appear alongside this one
       </p>
-      <div class="flex flex-wrap gap-2">
+      <div class={wrap({ gap: "2" })}>
         {#each data.relatedTags as tag (tag.id)}
           <TagChip
             name={tag.name}
@@ -242,10 +313,18 @@
   oncancel={cancelDelete}
 >
   <div
-    class="rounded-md bg-admin-surface-hover/50 border border-admin-border p-3"
+    class={css({
+      rounded: "md",
+      bg: "admin.surfaceHover/50",
+      borderWidth: "1px",
+      borderColor: "admin.border",
+      p: "3",
+    })}
   >
-    <p class="font-medium text-admin-text">{data.tag.name}</p>
-    <p class="text-sm text-admin-text-secondary">
+    <p class={css({ fontWeight: "medium", color: "admin.text" })}>
+      {data.tag.name}
+    </p>
+    <p class={css({ fontSize: "sm", color: "admin.textSecondary" })}>
       Used in {data.projects.length} project{data.projects.length === 1
         ? ""
         : "s"}

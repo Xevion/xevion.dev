@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
 
   interface Props {
     class?: string;
@@ -10,12 +10,18 @@
 </script>
 
 <div
-  class={cn(
-    "overflow-x-auto rounded-lg border border-admin-border bg-admin-surface",
+  class={cx(
+    css({
+      overflowX: "auto",
+      rounded: "lg",
+      borderWidth: "1px",
+      borderColor: "admin.border",
+      bg: "admin.surface",
+    }),
     className,
   )}
 >
-  <table class="w-full text-sm">
+  <table class={css({ w: "full", fontSize: "sm" })}>
     {@render children?.()}
   </table>
 </div>

@@ -24,7 +24,6 @@ pub struct SessionResponse {
     pub username: String,
 }
 
-/// Login handler - creates a new session
 pub async fn api_login_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,

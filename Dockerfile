@@ -44,7 +44,7 @@ RUN bun install --frozen-lockfile
 # Build frontend with environment variables
 COPY web/ ./
 ARG VITE_OG_R2_BASE_URL
-RUN bun run build
+RUN bunx svelte-kit sync && bunx panda codegen && bun run build
 
 # Pre-compress static assets (gzip, brotli, zstd)
 RUN bun run scripts/compress-assets.ts

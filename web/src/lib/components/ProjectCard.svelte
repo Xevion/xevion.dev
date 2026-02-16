@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { flex } from "styled-system/patterns";
   import { telemetry } from "$lib/telemetry";
   import TagList from "./TagList.svelte";
   import type { AdminProject } from "$lib/admin-types";
@@ -77,8 +78,18 @@
   }
 
   // Shared classes for background media (image/video)
-  const mediaBaseClasses =
-    "media-mask-fade-left absolute right-0 top-0 h-full w-3/4 object-cover object-center";
+  const mediaBaseStyles = cx(
+    "media-mask-fade-left",
+    css({
+      position: "absolute",
+      right: "0",
+      top: "0",
+      h: "full",
+      w: "3/4",
+      objectFit: "cover",
+      objectPosition: "center",
+    }),
+  );
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -107,18 +118,50 @@
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   role={isLink ? undefined : "article"}
-  class={cn(
-    "group relative flex h-44 flex-col gap-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-3 overflow-hidden",
+  class={cx(
+    "group",
+    flex({
+      direction: "column",
+      gap: "2.5",
+      position: "relative",
+      h: "44",
+      rounded: "lg",
+      borderWidth: "1px",
+      borderColor: "zinc.200",
+      bg: "zinc.50",
+      p: "3",
+      overflow: "hidden",
+      _dark: {
+        borderColor: "zinc.800",
+        bg: "zinc.900/50",
+      },
+    }),
     isLink &&
-      "transition-all hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/50",
+      css({
+        transition: "all",
+        _hover: {
+          borderColor: "zinc.300",
+          bg: "zinc.100/80",
+          _dark: {
+            borderColor: "zinc.700",
+            bg: "zinc.800/50",
+          },
+        },
+      }),
     className,
   )}
 >
   <!-- Background media layer -->
   {#if hasMedia}
     <div
-      class="pointer-events-none absolute inset-0 opacity-25 group-hover:opacity-40"
-      style="transition: opacity 300ms ease-in-out;"
+      class={css({
+        pointerEvents: "none",
+        position: "absolute",
+        inset: "0",
+        opacity: "0.25",
+        transition: "opacity 300ms ease-in-out",
+        _groupHover: { opacity: "0.4" },
+      })}
       aria-hidden="true"
     >
       {#if isVideo && videoUrl}
@@ -126,40 +169,80 @@
           bind:this={videoElement}
           src={videoUrl}
           poster={videoPosterUrl}
-          class={cn(mediaBaseClasses, "grayscale group-hover:grayscale-0")}
-          style="transition: filter 300ms ease-in-out;"
+          class={cx(
+            mediaBaseStyles,
+            css({
+              filter: "grayscale(1)",
+              transition: "filter 300ms ease-in-out",
+              _groupHover: { filter: "grayscale(0)" },
+            }),
+          )}
           muted
           loop
           playsinline
           preload="metadata"
         ></video>
       {:else if imageUrl}
-        <img src={imageUrl} alt="" class={mediaBaseClasses} loading="lazy" />
+        <img src={imageUrl} alt="" class={mediaBaseStyles} loading="lazy" />
       {/if}
     </div>
   {/if}
 
   <!-- Content layer -->
   <div
-    class="relative z-10 flex flex-col gap-1 group-hover:opacity-80"
-    style="transition: opacity 300ms ease-in-out;"
+    class={flex({
+      direction: "column",
+      gap: "1",
+      position: "relative",
+      zIndex: "10",
+      transition: "opacity 300ms ease-in-out",
+      _groupHover: { opacity: "0.8" },
+    })}
   >
-    <div class="flex items-start justify-between gap-2">
+    <div
+      class={flex({ align: "flex-start", justify: "space-between", gap: "2" })}
+    >
       <h3
-        class={cn(
-          "truncate font-medium text-lg sm:text-base text-zinc-900 dark:text-zinc-100",
+        class={cx(
+          css({
+            truncate: true,
+            fontWeight: "medium",
+            fontSize: "lg",
+            color: "zinc.900",
+            sm: { fontSize: "base" },
+            _dark: { color: "zinc.100" },
+          }),
           isLink &&
-            "transition-colors group-hover:text-zinc-950 dark:group-hover:text-white",
+            css({
+              transition: "colors",
+              _groupHover: {
+                color: "zinc.950",
+                _dark: { color: "white" },
+              },
+            }),
         )}
       >
         {project.name}
       </h3>
-      <span class="shrink-0 sm:text-[0.83rem] text-zinc-600 dark:text-zinc-300">
+      <span
+        class={css({
+          flexShrink: "0",
+          color: "zinc.600",
+          sm: { fontSize: "0.83rem" },
+          _dark: { color: "zinc.300" },
+        })}
+      >
         {formatDate(project.lastActivity)}
       </span>
     </div>
     <p
-      class="line-clamp-3 sm:text-sm leading-relaxed text-zinc-600 dark:text-zinc-400"
+      class={css({
+        lineClamp: "3",
+        lineHeight: "relaxed",
+        color: "zinc.600",
+        sm: { fontSize: "sm" },
+        _dark: { color: "zinc.400" },
+      })}
     >
       {project.shortDescription}
     </p>
@@ -169,7 +252,12 @@
   <TagList
     tags={project.tags}
     maxRows={2}
-    class="relative z-10 mt-auto group-hover:opacity-90"
-    style="transition: opacity 300ms ease-in-out;"
+    class={css({
+      position: "relative",
+      zIndex: "10",
+      mt: "auto",
+      transition: "opacity 300ms ease-in-out",
+      _groupHover: { opacity: "0.9" },
+    })}
   />
 </svelte:element>

@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use super::slugify;
 
-// Tag database models
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DbTag {
     pub id: Uuid,
@@ -14,7 +13,6 @@ pub struct DbTag {
     pub color: Option<String>,
 }
 
-// API response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTag {
@@ -55,8 +53,6 @@ impl DbTag {
         }
     }
 }
-
-// Tag CRUD queries
 
 pub async fn create_tag(
     pool: &PgPool,

@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use crate::{assets, handlers, state::AppState};
 
-/// Build API routes
 pub fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", any(api_root_404_handler))
@@ -18,13 +17,9 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/health",
             get(handlers::health_handler).head(handlers::health_handler),
         )
-        // Authentication endpoints (public)
         .route("/login", post(handlers::api_login_handler))
         .route("/logout", post(handlers::api_logout_handler))
         .route("/session", get(handlers::api_session_handler))
-        // Projects - GET is public (shows all for admin, only non-hidden for public)
-        // POST/PUT/DELETE require authentication
-        // {ref} accepts either UUID or slug
         .route(
             "/projects",
             get(handlers::projects_handler).post(handlers::create_project_handler),
@@ -35,7 +30,6 @@ pub fn api_routes() -> Router<Arc<AppState>> {
                 .put(handlers::update_project_handler)
                 .delete(handlers::delete_project_handler),
         )
-        // Project tags - authentication checked in handlers
         .route(
             "/projects/{ref}/tags",
             get(handlers::get_project_tags_handler).post(handlers::add_project_tag_handler),
@@ -44,7 +38,6 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/projects/{ref}/tags/{tag_ref}",
             delete(handlers::remove_project_tag_handler),
         )
-        // Project media - GET is public, POST/PUT/DELETE require authentication
         .route(
             "/projects/{ref}/media",
             get(handlers::get_project_media_handler).post(handlers::upload_media_handler),
@@ -57,8 +50,6 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/projects/{ref}/media/{media_id}",
             delete(handlers::delete_media_handler),
         )
-        // Tags - authentication checked in handlers
-        // {ref} accepts either UUID or slug
         .route(
             "/tags",
             get(handlers::list_tags_handler).post(handlers::create_tag_handler),
@@ -77,25 +68,19 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/tags/recalculate-cooccurrence",
             post(handlers::recalculate_cooccurrence_handler),
         )
-        // Admin stats - requires authentication
         .route("/stats", get(handlers::get_admin_stats_handler))
-        // Site settings - GET is public, PUT requires authentication
         .route(
             "/settings",
             get(handlers::get_settings_handler).put(handlers::update_settings_handler),
         )
-        // Icon API - handles both cached SVG serving and JSON proxy
-        // SVG requests (e.g., /icons/lucide/star.svg) are cached; others proxy to Bun
         .route("/icons/{*path}", get(handlers::serve_icon_handler))
         .fallback(api_404_and_method_handler)
 }
 
-/// Build base router (shared routes for all listen addresses)
 pub fn build_base_router() -> Router<Arc<AppState>> {
     Router::new()
         .nest("/api", api_routes())
         .route("/api/", any(api_root_404_handler))
-        // Serve env.js explicitly before the wildcard (it's at build root, not in client/)
         .route("/_app/env.js", get(handlers::serve_env_js))
         .route(
             "/_app/{*path}",
@@ -137,7 +122,6 @@ async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
                     .into_response();
             }
         } else if method == Method::POST || method == Method::PUT || method == Method::PATCH {
-            // POST/PUT/PATCH require Content-Type header
             return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({
@@ -149,7 +133,6 @@ async fn api_404_and_method_handler(req: Request) -> impl IntoResponse {
         }
     }
 
-    // Route not found
     tracing::warn!(path = %path, method = %method, "API route not found");
     (
         StatusCode::NOT_FOUND,

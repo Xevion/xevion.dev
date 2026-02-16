@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { flex, center, grid } from "styled-system/patterns";
+  import {
+    labelClass,
+    adminInputBase,
+    adminInputError,
+  } from "$lib/styles/admin";
 
   interface Props {
     selectedColor: string | undefined;
@@ -75,21 +81,35 @@
   }
 </script>
 
-<div class={cn("space-y-3", className)}>
+<div class={cx(css({ spaceY: "3" }), className)}>
   {#if label}
-    <div class="block text-sm font-medium text-admin-text">{label}</div>
+    <div class={labelClass}>{label}</div>
   {/if}
 
   <!-- Preset Palette -->
-  <div class="grid grid-cols-8 gap-2">
+  <div class={grid({ columns: 8, gap: "2" })}>
     {#each PRESET_COLORS as preset (preset.value)}
       <button
         type="button"
-        class={cn(
-          "size-8 rounded border-2 transition-all hover:scale-110",
+        class={cx(
+          css({
+            w: "8",
+            h: "8",
+            rounded: "sm",
+            borderWidth: "2px",
+            transition: "all",
+            _hover: { transform: "scale(1.1)" },
+          }),
           selectedColor === preset.value
-            ? "border-admin-accent ring-2 ring-admin-accent/20"
-            : "border-admin-border hover:border-admin-border-hover",
+            ? css({
+                borderColor: "admin.accent",
+                ringWidth: "2px",
+                ringColor: "admin.accent/20",
+              })
+            : css({
+                borderColor: "admin.border",
+                _hover: { borderColor: "admin.borderHover" },
+              }),
         )}
         style="background-color: #{preset.value}"
         title={preset.name}
@@ -100,26 +120,47 @@
     <!-- Clear button -->
     <button
       type="button"
-      class={cn(
-        "size-8 rounded border-2 transition-all hover:scale-110 flex items-center justify-center",
+      class={cx(
+        center({
+          w: "8",
+          h: "8",
+          rounded: "sm",
+          borderWidth: "2px",
+          transition: "all",
+          _hover: { transform: "scale(1.1)" },
+        }),
         !selectedColor
-          ? "border-admin-accent ring-2 ring-admin-accent/20 bg-admin-surface-hover"
-          : "border-admin-border hover:border-admin-border-hover bg-admin-surface",
+          ? css({
+              borderColor: "admin.accent",
+              ringWidth: "2px",
+              ringColor: "admin.accent/20",
+              bg: "admin.surfaceHover",
+            })
+          : css({
+              borderColor: "admin.border",
+              _hover: { borderColor: "admin.borderHover" },
+              bg: "admin.surface",
+            }),
       )}
       title="No color"
       onclick={clearColor}
     >
-      <span class="text-admin-text-muted text-xs">✕</span>
+      <span class={css({ color: "admin.textMuted", fontSize: "xs" })}>✕</span>
     </button>
   </div>
 
   <!-- Custom Hex Input -->
-  <div class="flex items-start gap-2">
-    <div class="flex-1">
-      <div class="relative">
+  <div class={flex({ align: "flex-start", gap: "2" })}>
+    <div class={css({ flex: "1" })}>
+      <div class={css({ position: "relative" })}>
         <span
-          class="absolute left-3 top-1/2 -translate-y-1/2 text-admin-text-muted"
-          >#</span
+          class={css({
+            position: "absolute",
+            left: "3",
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "admin.textMuted",
+          })}>#</span
         >
         <input
           type="text"
@@ -127,24 +168,33 @@
           oninput={handleCustomInput}
           placeholder="3b82f6"
           maxlength="6"
-          class={cn(
-            "w-full rounded-md border bg-admin-bg-secondary px-3 py-2 pl-7 text-sm text-admin-text",
-            "placeholder:text-admin-text-muted focus:outline-none focus:ring-2",
+          class={cx(
+            adminInputBase,
+            css({ pl: "7" }),
             validationError
-              ? "border-red-500 focus:ring-red-500/20"
-              : "border-admin-border focus:border-admin-border-hover focus:ring-admin-accent/20",
+              ? adminInputError
+              : css({ _focus: { ringColor: "admin.accent/20" } }),
           )}
         />
       </div>
       {#if validationError}
-        <p class="mt-1 text-xs text-red-400">{validationError}</p>
+        <p class={css({ mt: "1", fontSize: "xs", color: "red.400" })}>
+          {validationError}
+        </p>
       {/if}
     </div>
 
     <!-- Color Preview -->
     {#if selectedColor && validateHexColor(selectedColor)}
       <div
-        class="size-10 shrink-0 rounded-md border-2 border-admin-border"
+        class={css({
+          w: "10",
+          h: "10",
+          flexShrink: "0",
+          rounded: "md",
+          borderWidth: "2px",
+          borderColor: "admin.border",
+        })}
         style="background-color: #{selectedColor}"
         title="#{selectedColor}"
       ></div>

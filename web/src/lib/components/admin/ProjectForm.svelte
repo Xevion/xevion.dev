@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { css } from "styled-system/css";
+  import { flex, grid } from "styled-system/patterns";
   import Button from "./Button.svelte";
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
@@ -101,9 +103,9 @@
   }
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-6">
+<form onsubmit={handleSubmit} class={css({ spaceY: "6" })}>
   <!-- Title & Slug -->
-  <div class="grid gap-6 md:grid-cols-2">
+  <div class={grid({ columns: { md: 2 }, gap: "6" })}>
     <Input
       label="Name"
       type="text"
@@ -154,7 +156,7 @@
   />
 
   <!-- Links -->
-  <div class="grid gap-6 md:grid-cols-2">
+  <div class={grid({ columns: { md: 2 }, gap: "6" })}>
     <Input
       label="GitHub Repository"
       type="text"
@@ -184,13 +186,21 @@
   <MediaManager projectId={project?.id ?? null} media={project?.media ?? []} />
 
   <!-- Actions -->
-  <div class="flex justify-between gap-3 pt-4 border-t border-admin-border">
+  <div
+    class={flex({
+      justify: "space-between",
+      gap: "3",
+      pt: "4",
+      borderTopWidth: "1px",
+      borderColor: "admin.border",
+    })}
+  >
     {#if ondelete}
       <Button variant="danger" onclick={ondelete}>Delete</Button>
     {:else}
       <div></div>
     {/if}
-    <div class="flex gap-3">
+    <div class={flex({ gap: "3" })}>
       <Button variant="secondary" href="/admin/projects">Cancel</Button>
       <Button type="submit" variant="primary" disabled={submitting || !name}>
         {submitting ? "Saving..." : submitLabel}

@@ -7,7 +7,6 @@ pub mod projects;
 pub mod settings;
 pub mod tags;
 
-// Re-export handlers for easier imports
 pub use assets::*;
 pub use auth::*;
 pub use health::*;
@@ -16,8 +15,6 @@ pub use media::*;
 pub use projects::*;
 pub use settings::*;
 pub use tags::*;
-
-// Request/Response types used by handlers
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

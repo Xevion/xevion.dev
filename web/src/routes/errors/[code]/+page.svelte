@@ -1,5 +1,7 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
+  import { css } from "styled-system/css";
+  import { center } from "styled-system/patterns";
 
   let { data } = $props();
 
@@ -13,12 +15,28 @@
 </svelte:head>
 
 <main class="page-main">
-  <div class="min-h-screen flex items-center justify-center">
-    <div class="mx-4 max-w-3xl text-center">
-      <h1 class="text-6xl sm:text-9xl font-hanken font-black text-zinc-200">
+  <div class={center({ minH: "100vh" })}>
+    <div class={css({ mx: "4", maxW: "3xl", textAlign: "center" })}>
+      <h1
+        class={css({
+          fontSize: "6xl",
+          fontFamily: "hanken",
+          fontWeight: "black",
+          color: "zinc.200",
+          sm: { fontSize: "9xl" },
+        })}
+      >
         {data.code}
       </h1>
-      <p class="text-2xl sm:text-3xl text-zinc-400 mb-8 capitalize">
+      <p
+        class={css({
+          fontSize: "2xl",
+          color: "zinc.400",
+          mb: "8",
+          textTransform: "capitalize",
+          sm: { fontSize: "3xl" },
+        })}
+      >
         {data.message}
       </p>
 
@@ -26,7 +44,17 @@
       {#if !data.transient}
         <a
           href={resolve("/")}
-          class="inline-block py-2 px-4 bg-zinc-900 text-zinc-50 no-underline rounded-sm transition-colors hover:bg-zinc-800"
+          class={css({
+            display: "inline-block",
+            py: "2",
+            px: "4",
+            bg: "zinc.900",
+            color: "zinc.50",
+            textDecoration: "none",
+            rounded: "sm",
+            transition: "colors",
+            _hover: { bg: "zinc.800" },
+          })}
         >
           Return home
         </a>

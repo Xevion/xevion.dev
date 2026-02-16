@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { center, flex } from "styled-system/patterns";
   import Button from "./Button.svelte";
 
   interface Props {
@@ -47,39 +48,66 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    class={center({
+      position: "fixed",
+      inset: "0",
+      zIndex: 50,
+      bg: "black/60",
+      backdropFilter: "blur(4px)",
+      p: "4",
+    })}
     onclick={handleBackdropClick}
     onkeydown={(e) => e.key === "Escape" && handleCancel()}
     role="presentation"
     tabindex="-1"
   >
     <div
-      class={cn(
-        "relative w-full max-w-md rounded-xl bg-admin-surface border border-admin-border p-8 shadow-xl shadow-black/20 dark:shadow-black/50",
+      class={cx(
+        css({
+          position: "relative",
+          w: "full",
+          maxW: "md",
+          rounded: "xl",
+          bg: "admin.surface",
+          borderWidth: "1px",
+          borderColor: "admin.border",
+          p: "8",
+          shadow: "xl",
+          _dark: { shadowColor: "black/50" },
+        }),
         className,
       )}
       role="dialog"
       aria-modal="true"
     >
       {#if title}
-        <h2 class="text-lg font-semibold text-admin-text mb-2">
+        <h2
+          class={css({
+            fontSize: "lg",
+            fontWeight: "semibold",
+            color: "admin.text",
+            mb: "2",
+          })}
+        >
           {title}
         </h2>
       {/if}
 
       {#if description}
-        <p class="text-sm text-admin-text-secondary mb-4">
+        <p
+          class={css({ fontSize: "sm", color: "admin.textSecondary", mb: "4" })}
+        >
           {description}
         </p>
       {/if}
 
       {#if children}
-        <div class="mb-4">
+        <div class={css({ mb: "4" })}>
           {@render children()}
         </div>
       {/if}
 
-      <div class="flex justify-end gap-3">
+      <div class={flex({ justify: "flex-end", gap: "3" })}>
         <Button variant="secondary" onclick={handleCancel}>
           {cancelText}
         </Button>

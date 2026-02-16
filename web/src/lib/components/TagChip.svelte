@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
   import Icon from "./Icon.svelte";
 
   interface Props {
@@ -12,15 +12,55 @@
 
   let { name, color, icon, href, class: className }: Props = $props();
 
-  const baseClasses =
-    "inline-flex items-center gap-1.25 rounded-r-sm rounded-l-xs bg-zinc-200/80 dark:bg-zinc-700/50 px-2 sm:px-1.5 py-1 sm:py-0.75 text-sm sm:text-xs text-zinc-700 dark:text-zinc-300 border-l-3 shadow-sm";
-  const linkClasses =
-    "hover:bg-zinc-300/80 dark:hover:bg-zinc-600/50 transition-colors";
+  const baseStyles = css({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "1.25",
+    roundedRight: "sm",
+    roundedLeft: "xs",
+    bg: "zinc.200/80",
+    px: "2",
+    py: "1",
+    fontSize: "sm",
+    color: "zinc.700",
+    borderLeftWidth: "3px",
+    shadow: "sm",
+    sm: {
+      px: "1.5",
+      py: "0.75",
+      fontSize: "xs",
+    },
+    _dark: {
+      bg: "zinc.700/50",
+      color: "zinc.300",
+    },
+  });
+
+  const linkStyles = css({
+    transition: "colors",
+    _hover: {
+      bg: "zinc.300/80",
+    },
+    _dark: {
+      _hover: {
+        bg: "zinc.600/50",
+      },
+    },
+  });
+
+  const iconSizeClass = css({
+    w: "4",
+    h: "4",
+    sm: {
+      w: "3.5",
+      h: "3.5",
+    },
+  });
 </script>
 
 {#snippet iconAndName()}
   {#if icon}
-    <Icon {icon} size="size-4.25 sm:size-3.75" />
+    <Icon {icon} sizeClass={iconSizeClass} />
   {/if}
   <span>{name}</span>
 {/snippet}
@@ -28,14 +68,14 @@
 {#if href}
   <a
     {href}
-    class={cn(baseClasses, linkClasses, className)}
+    class={cx(baseStyles, linkStyles, className)}
     style="border-left-color: #{color || '06b6d4'}"
   >
     {@render iconAndName()}
   </a>
 {:else}
   <span
-    class={cn(baseClasses, className)}
+    class={cx(baseStyles, className)}
     style="border-left-color: #{color || '06b6d4'}"
   >
     {@render iconAndName()}

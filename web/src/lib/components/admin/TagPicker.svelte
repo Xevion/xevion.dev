@@ -1,7 +1,14 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { flex, wrap } from "styled-system/patterns";
   import TagChip from "$lib/components/TagChip.svelte";
   import type { TagWithIcon } from "$lib/admin-types";
+  import {
+    labelClass,
+    helpTextClass,
+    fieldWrapperClass,
+    dropdownPanelClass,
+  } from "$lib/styles/admin";
 
   interface Props {
     label?: string;
@@ -61,35 +68,47 @@
   }
 </script>
 
-<div class={cn("space-y-1.5", className)}>
+<div class={cx(fieldWrapperClass, className)}>
   {#if label}
-    <label for={inputId} class="block text-sm font-medium text-admin-text">
+    <label for={inputId} class={labelClass}>
       {label}
     </label>
   {/if}
 
-  <div class="relative">
+  <div class={css({ position: "relative" })}>
     <!-- Selected tags display -->
     <div
-      class="min-h-[42px] w-full rounded-md border border-admin-border bg-admin-bg-secondary px-3 py-2"
+      class={css({
+        minH: "42px",
+        w: "full",
+        rounded: "md",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        bg: "admin.bgSecondary",
+        px: "3",
+        py: "2",
+      })}
     >
-      <div class="flex flex-wrap gap-1.5 items-center">
+      <div class={wrap({ gap: "1.5", align: "center" })}>
         {#each selectedTags as tag (tag.id)}
           <button
             type="button"
             onclick={() => removeTag(tag.id)}
             onmouseenter={() => (hoveredTagId = tag.id)}
             onmouseleave={() => (hoveredTagId = null)}
-            class="cursor-pointer"
+            class={css({ cursor: "pointer" })}
             aria-label="Remove {tag.name}"
           >
             <TagChip
               name={tag.name}
               color={hoveredTagId === tag.id ? "ef4444" : tag.color}
               icon={tag.icon}
-              class="transition-all duration-150 {hoveredTagId === tag.id
-                ? 'bg-red-100/80 dark:bg-red-900/40'
-                : ''}"
+              class={cx(
+                css({ transition: "all", transitionDuration: "150ms" }),
+                hoveredTagId === tag.id
+                  ? css({ bg: { base: "red.100/80", _dark: "red.900/40" } })
+                  : undefined,
+              )}
             />
           </button>
         {/each}
@@ -101,7 +120,15 @@
           type="text"
           bind:value={searchTerm}
           {placeholder}
-          class="flex-1 bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none min-w-[120px]"
+          class={css({
+            flex: "1",
+            bg: "transparent",
+            fontSize: "sm",
+            color: "admin.text",
+            _placeholder: { color: "admin.textMuted" },
+            _focus: { outline: "none" },
+            minW: "120px",
+          })}
           onfocus={handleInputFocus}
           onblur={handleInputBlur}
         />
@@ -110,13 +137,19 @@
 
     <!-- Dropdown -->
     {#if dropdownOpen && filteredTags.length > 0}
-      <div
-        class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-admin-border bg-admin-surface py-1 shadow-lg"
-      >
+      <div class={cx(dropdownPanelClass, css({ maxH: "60", py: "1" }))}>
         {#each filteredTags as tag (tag.id)}
           <button
             type="button"
-            class="w-full px-3 py-1.5 text-left hover:bg-admin-surface-hover transition-colors flex items-center"
+            class={flex({
+              align: "center",
+              w: "full",
+              px: "3",
+              py: "1.5",
+              textAlign: "left",
+              _hover: { bg: "admin.surfaceHover" },
+              transition: "colors",
+            })}
             onclick={() => addTag(tag.id)}
           >
             <TagChip name={tag.name} color={tag.color} icon={tag.icon} />
@@ -126,7 +159,7 @@
     {/if}
   </div>
 
-  <p class="text-xs text-admin-text-muted">
+  <p class={helpTextClass}>
     {selectedTagIds.length} tag{selectedTagIds.length === 1 ? "" : "s"} selected
   </p>
 </div>

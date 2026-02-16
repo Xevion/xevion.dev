@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use crate::state::AppState;
 
-/// Health check endpoint - returns 200 if both DB and Bun are healthy
 pub async fn health_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let healthy = state.health_checker.check().await;
 

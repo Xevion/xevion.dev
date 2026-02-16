@@ -7,6 +7,7 @@
   import { getAdminStats } from "$lib/api";
   import { telemetry } from "$lib/telemetry";
   import type { AdminStats } from "$lib/admin-types";
+  import { css } from "styled-system/css";
 
   let { children, data } = $props();
 
@@ -56,7 +57,15 @@
   {@render children()}
 {:else}
   <!-- Admin layout with sidebar -->
-  <div class="pointer-events-none fixed inset-0 -z-20 bg-admin-bg"></div>
+  <div
+    class={css({
+      pointerEvents: "none",
+      position: "fixed",
+      inset: "0",
+      zIndex: -20,
+      bg: "admin.bg",
+    })}
+  ></div>
   <Sidebar
     projectCount={stats?.totalProjects ?? 0}
     tagCount={stats?.totalTags ?? 0}
@@ -64,8 +73,8 @@
   />
 
   <!-- Main content area -->
-  <main class="lg:pl-64 min-h-screen text-admin-text">
-    <div class="px-4 py-8 sm:px-6 lg:px-8">
+  <main class={css({ lg: { pl: "64" }, minH: "100vh", color: "admin.text" })}>
+    <div class={css({ px: "4", py: "8", sm: { px: "6" }, lg: { px: "8" } })}>
       {@render children()}
     </div>
   </main>

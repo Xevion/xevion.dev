@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use crate::{auth, db, github, handlers::AddProjectTagRequest, state::AppState};
 
-/// List all projects - returns filtered data based on auth status
 pub async fn projects_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
@@ -11,7 +10,6 @@ pub async fn projects_handler(
     let is_admin = auth::check_session(&state, &jar).is_some();
 
     if is_admin {
-        // Admin view: return all projects with tags and media
         match db::get_all_projects_with_tags_admin(&state.pool).await {
             Ok(projects_with_tags) => {
                 let response: Vec<db::ApiAdminProject> = projects_with_tags

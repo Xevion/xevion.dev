@@ -5,6 +5,8 @@
   import IconCopy from "~icons/material-symbols/content-copy-rounded";
   import IconCheck from "~icons/material-symbols/check-rounded";
   import type { PageData } from "./$types";
+  import { css, cx } from "styled-system/css";
+  import { flex, center } from "styled-system/patterns";
 
   let { data }: { data: PageData } = $props();
 
@@ -67,17 +69,42 @@
   />
 </svelte:head>
 
-<main class="page-main overflow-x-hidden font-schibsted">
-  <div class="flex items-center flex-col pt-14 pb-20 px-4 sm:px-6">
-    <div class="max-w-2xl w-full">
+<main
+  class={cx("page-main", css({ overflowX: "hidden", fontFamily: "schibsted" }))}
+>
+  <div
+    class={flex({
+      direction: "column",
+      align: "center",
+      pt: "14",
+      pb: "20",
+      px: "4",
+      sm: { px: "6" },
+    })}
+  >
+    <div class={css({ maxW: "42rem", w: "full" })}>
       <!-- Header -->
-      <div class="mb-6">
+      <div class={css({ mb: "6" })}>
         <h1
-          class="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white mb-2"
+          class={css({
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "zinc.900",
+            mb: "2",
+            _dark: { color: "white" },
+            sm: { fontSize: "3xl" },
+          })}
         >
           PGP Public Key
         </h1>
-        <p class="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
+        <p
+          class={css({
+            fontSize: "sm",
+            color: "zinc.600",
+            _dark: { color: "zinc.400" },
+            sm: { fontSize: "base" },
+          })}
+        >
           Use this key to send me encrypted messages or verify my signed
           content.
         </p>
@@ -85,41 +112,109 @@
 
       <!-- Fingerprint -->
       <div
-        class="mb-6 p-3 sm:p-4 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700"
+        class={css({
+          mb: "6",
+          p: "3",
+          bg: "zinc.100",
+          rounded: "lg",
+          borderWidth: "1px",
+          borderColor: "zinc.200",
+          _dark: { bg: "zinc.800", borderColor: "zinc.700" },
+          sm: { p: "4" },
+        })}
       >
         <div
-          class="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2"
+          class={css({
+            fontSize: "xs",
+            fontWeight: "semibold",
+            color: "zinc.700",
+            mb: "2",
+            _dark: { color: "zinc.300" },
+            sm: { fontSize: "sm" },
+          })}
         >
           Key Fingerprint
         </div>
         <div
-          class="font-mono text-sm sm:text-base text-zinc-900 dark:text-zinc-100 break-all"
+          class={css({
+            fontFamily: "mono",
+            fontSize: "sm",
+            color: "zinc.900",
+            wordBreak: "break-all",
+            _dark: { color: "zinc.100" },
+            sm: { fontSize: "base" },
+          })}
         >
           {data.key.fingerprint}
         </div>
         <div
-          class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-1"
+          class={css({
+            mt: "3",
+            pt: "3",
+            borderTopWidth: "1px",
+            borderColor: "zinc.200",
+            spaceY: "1",
+            _dark: { borderColor: "zinc.700" },
+          })}
         >
-          <div class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-            <span class="font-medium">Key ID:</span>
-            <span class="font-mono ml-2">{data.key.keyId}</span>
+          <div
+            class={css({
+              fontSize: "xs",
+              color: "zinc.600",
+              _dark: { color: "zinc.400" },
+              sm: { fontSize: "sm" },
+            })}
+          >
+            <span class={css({ fontWeight: "medium" })}>Key ID:</span>
+            <span class={css({ fontFamily: "mono", ml: "2" })}
+              >{data.key.keyId}</span
+            >
           </div>
-          <div class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-            <span class="font-medium">Email:</span>
-            <span class="ml-2">{data.key.email}</span>
+          <div
+            class={css({
+              fontSize: "xs",
+              color: "zinc.600",
+              _dark: { color: "zinc.400" },
+              sm: { fontSize: "sm" },
+            })}
+          >
+            <span class={css({ fontWeight: "medium" })}>Email:</span>
+            <span class={css({ ml: "2" })}>{data.key.email}</span>
           </div>
         </div>
       </div>
 
       <!-- Key Content Card -->
       <div
-        class="mb-6 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden bg-white dark:bg-zinc-900"
+        class={css({
+          mb: "6",
+          borderWidth: "1px",
+          borderColor: "zinc.200",
+          rounded: "lg",
+          overflow: "hidden",
+          bg: "white",
+          _dark: { borderColor: "zinc.700", bg: "zinc.900" },
+        })}
       >
         <div
-          class="px-3 sm:px-4 py-2 sm:py-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700"
+          class={css({
+            px: "3",
+            py: "2",
+            bg: "zinc.50",
+            borderBottomWidth: "1px",
+            borderColor: "zinc.200",
+            _dark: { bg: "zinc.800", borderColor: "zinc.700" },
+            sm: { px: "4", py: "3" },
+          })}
         >
           <div
-            class="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300"
+            class={css({
+              fontSize: "xs",
+              fontWeight: "semibold",
+              color: "zinc.700",
+              _dark: { color: "zinc.300" },
+              sm: { fontSize: "sm" },
+            })}
           >
             Public Key
           </div>
@@ -132,68 +227,191 @@
           style="max-height: 400px"
         >
           <pre
-            class="p-3 sm:p-4 text-xs font-mono text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 overflow-x-auto">{data
-              .key.content}</pre>
+            class={css({
+              p: "3",
+              fontSize: "xs",
+              fontFamily: "mono",
+              color: "zinc.800",
+              bg: "zinc.50",
+              overflowX: "auto",
+              _dark: { color: "zinc.200", bg: "zinc.900/50" },
+              sm: { p: "4" },
+            })}>{data.key.content}</pre>
         </OverlayScrollbarsComponent>
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <div
+        class={flex({
+          direction: "column",
+          gap: "2",
+          sm: { flexDirection: "row", gap: "3" },
+        })}
+      >
         <button
           onclick={copyToClipboard}
-          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm cursor-pointer"
+          class={center({
+            gap: "2",
+            px: "3",
+            py: "2",
+            rounded: "sm",
+            bg: "zinc.900",
+            color: "white",
+            shadow: "sm",
+            transition: "colors",
+            cursor: "pointer",
+            _dark: { bg: "zinc.100", color: "zinc.900" },
+            _hover: { bg: "zinc.800", _dark: { bg: "zinc.200" } },
+            sm: { px: "4", py: "2.5" },
+          })}
         >
-          <IconCopy class="size-4 sm:size-5" />
-          <span class="text-sm sm:text-base font-medium"
-            >{copySuccess ? "Copied!" : "Copy to Clipboard"}</span
+          <IconCopy class={css({ w: "4", h: "4", sm: { w: "5", h: "5" } })} />
+          <span
+            class={css({
+              fontSize: "sm",
+              fontWeight: "medium",
+              sm: { fontSize: "base" },
+            })}>{copySuccess ? "Copied!" : "Copy to Clipboard"}</span
           >
         </button>
         <button
           onclick={downloadKey}
-          class="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+          class={center({
+            gap: "2",
+            px: "3",
+            py: "2",
+            rounded: "sm",
+            bg: "zinc.100",
+            color: "zinc.800",
+            transition: "colors",
+            cursor: "pointer",
+            _dark: { bg: "zinc.800", color: "zinc.100" },
+            _hover: { bg: "zinc.200", _dark: { bg: "zinc.700" } },
+            sm: { px: "4", py: "2.5" },
+          })}
         >
-          <IconDownload class="size-4 sm:size-5" />
-          <span class="text-sm sm:text-base font-medium">Download</span>
+          <IconDownload
+            class={css({ w: "4", h: "4", sm: { w: "5", h: "5" } })}
+          />
+          <span
+            class={css({
+              fontSize: "sm",
+              fontWeight: "medium",
+              sm: { fontSize: "base" },
+            })}>Download</span
+          >
         </button>
       </div>
 
       <!-- Additional Info -->
       <div
-        class="mt-8 p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700"
+        class={css({
+          mt: "8",
+          p: "3",
+          bg: "zinc.50",
+          rounded: "lg",
+          borderWidth: "1px",
+          borderColor: "zinc.200",
+          _dark: { bg: "zinc.800/50", borderColor: "zinc.700" },
+          sm: { p: "4" },
+        })}
       >
         <h2
-          class="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2"
+          class={css({
+            fontSize: "xs",
+            fontWeight: "semibold",
+            color: "zinc.700",
+            mb: "2",
+            _dark: { color: "zinc.300" },
+            sm: { fontSize: "sm" },
+          })}
         >
           How to use this key
         </h2>
         <div
-          class="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 space-y-2"
+          class={css({
+            fontSize: "xs",
+            color: "zinc.600",
+            spaceY: "2",
+            _dark: { color: "zinc.400" },
+            sm: { fontSize: "sm" },
+          })}
         >
           <p>
             Import this key into your GPG keyring to encrypt messages for me or
             verify my signatures:
           </p>
-          <div class="relative">
+          <div class={css({ position: "relative" })}>
             <pre
-              class="p-2 sm:p-3 pr-12 bg-white dark:bg-zinc-900 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-xs overflow-x-auto">curl https://xevion.dev/pgp | gpg --import</pre>
+              class={css({
+                p: "2",
+                pr: "12",
+                bg: "white",
+                rounded: "sm",
+                borderWidth: "1px",
+                borderColor: "zinc.200",
+                fontFamily: "mono",
+                fontSize: "xs",
+                overflowX: "auto",
+                _dark: { bg: "zinc.900", borderColor: "zinc.700" },
+                sm: { p: "3" },
+              })}>curl https://xevion.dev/pgp | gpg --import</pre>
             <button
               onclick={copyCommand}
               disabled={copyCommandSuccess}
-              class="absolute top-1/2 -translate-y-1/2 right-2 p-1 rounded border border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 transition-all {copyCommandSuccess
-                ? 'cursor-default'
-                : 'cursor-pointer'}"
+              class={cx(
+                css({
+                  position: "absolute",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  right: "2",
+                  p: "1",
+                  rounded: "sm",
+                  borderWidth: "1px",
+                  borderColor: "zinc.300",
+                  bg: "zinc.50",
+                  transition: "all",
+                  _dark: { borderColor: "zinc.600", bg: "zinc.800" },
+                  _hover: {
+                    bg: "zinc.100",
+                    borderColor: "zinc.400",
+                    _dark: { bg: "zinc.700", borderColor: "zinc.500" },
+                  },
+                }),
+                copyCommandSuccess
+                  ? css({ cursor: "default" })
+                  : css({ cursor: "pointer" }),
+              )}
               title={copyCommandSuccess ? "Copied!" : "Copy command"}
             >
               {#if copyCommandSuccess}
                 <IconCheck
-                  class="size-3.5 text-green-600 dark:text-green-500"
+                  class={css({
+                    w: "3.5",
+                    h: "3.5",
+                    color: "green.600",
+                    _dark: { color: "green.500" },
+                  })}
                 />
               {:else}
-                <IconCopy class="size-3.5 text-zinc-600 dark:text-zinc-400" />
+                <IconCopy
+                  class={css({
+                    w: "3.5",
+                    h: "3.5",
+                    color: "zinc.600",
+                    _dark: { color: "zinc.400" },
+                  })}
+                />
               {/if}
             </button>
           </div>
-          <p class="text-xs text-zinc-500 dark:text-zinc-500">
+          <p
+            class={css({
+              fontSize: "xs",
+              color: "zinc.500",
+              _dark: { color: "zinc.500" },
+            })}
+          >
             You can also find this key on public keyservers by searching for the
             fingerprint above.
           </p>

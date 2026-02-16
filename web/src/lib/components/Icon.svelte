@@ -1,11 +1,14 @@
 <script lang="ts">
+  import { css, cx } from "styled-system/css";
+
   interface Props {
     icon: string; // "collection:name" format, e.g., "lucide:home"
     class?: string;
-    size?: string; // Tailwind size class, e.g., "size-4"
+    size?: string; // CSS size values, e.g., "4" for w/h: "4"
+    sizeClass?: string; // Pre-built css() class for responsive sizes
   }
 
-  let { icon, class: className = "", size = "size-4" }: Props = $props();
+  let { icon, class: className = "", size = "4", sizeClass }: Props = $props();
 
   // Validate and parse icon identifier into collection and name
   const iconUrl = $derived.by(() => {
@@ -35,7 +38,11 @@
 -->
 {#if iconUrl}
   <span
-    class="inline-block {size} {className}"
+    class={cx(
+      sizeClass ?? css({ w: size, h: size }),
+      css({ display: "inline-block" }),
+      className,
+    )}
     style="
       background-color: currentColor;
       mask-image: url('{iconUrl}');

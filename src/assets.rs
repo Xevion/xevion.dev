@@ -50,22 +50,11 @@ pub fn try_serve_embedded_asset(path: &str) -> Option<Response> {
     })
 }
 
-/// Serve an embedded asset with content encoding negotiation
+/// Serve an embedded asset with content encoding negotiation.
 ///
 /// Attempts to serve pre-compressed variants (.br, .gz, .zst) based on
-/// the Accept-Encoding header. Falls back to uncompressed if no suitable
-/// compressed variant is found.
-///
-/// Pre-compressed assets are generated at build time by scripts/compress-assets.ts
-/// and embedded alongside the original files.
-///
-/// # Arguments
-/// * `path` - Request path (e.g., "/_app/immutable/chunks/foo.js")
-/// * `headers` - Request headers (for Accept-Encoding negotiation)
-///
-/// # Returns
-/// * `Some(Response)` - Response with appropriate Content-Encoding header
-/// * `None` - If neither compressed nor uncompressed asset exists
+/// Accept-Encoding. Falls back to uncompressed if no suitable variant is found.
+/// Pre-compressed assets are generated at build time by scripts/compress-assets.ts.
 pub fn try_serve_embedded_asset_with_encoding(path: &str, headers: &HeaderMap) -> Option<Response> {
     let asset_path = path.strip_prefix('/').unwrap_or(path);
 
@@ -120,7 +109,6 @@ pub fn try_serve_embedded_asset_with_encoding(path: &str, headers: &HeaderMap) -
         }
     }
 
-    // No compressed variant found, fall back to uncompressed
     try_serve_embedded_asset(path)
 }
 
@@ -134,30 +122,12 @@ fn serve_asset_by_path(path: &str) -> Response {
 }
 
 /// Get a static file from the embedded CLIENT_ASSETS.
-///
-/// Static files are served from web/static/ and embedded at compile time.
-///
-/// # Arguments
-/// * `path` - Path to the file (e.g., "publickey.asc")
-///
-/// # Returns
-/// * `Some(&[u8])` - File content if file exists
-/// * `None` - If file not found
 pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
     CLIENT_ASSETS.get_file(path).map(|f| f.contents())
 }
 
 /// Get prerendered error page HTML for a given status code.
-///
-/// Error pages are prerendered by SvelteKit and embedded at compile time.
-/// The list of available error codes is defined in web/src/lib/error-codes.ts.
-///
-/// # Arguments
-/// * `status_code` - HTTP status code (e.g., 404, 500)
-///
-/// # Returns
-/// * `Some(&[u8])` - HTML content if error page exists
-/// * `None` - If no prerendered page exists for this code
+/// Available codes defined in web/src/lib/error-codes.ts.
 pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
     let filename = format!("{}.html", status_code);
     ERROR_PAGES.get_file(&filename).map(|f| f.contents())
@@ -173,20 +143,7 @@ pub fn get_env_js() -> &'static [u8] {
 
 /// Serve prerendered content by path, if it exists.
 ///
-/// Prerendered content is built by SvelteKit at compile time and embedded.
-/// This serves any file from the prerendered directory with appropriate MIME types.
-///
-/// Path resolution order:
-/// 1. Exact file match (e.g., `/pgp/__data.json` → `pgp/__data.json`)
-/// 2. HTML file for extensionless paths (e.g., `/pgp` → `pgp.html`)
-/// 3. Index file for directory paths (e.g., `/about/` → `about/index.html`)
-///
-/// # Arguments
-/// * `path` - Request path (e.g., "/pgp", "/pgp/__data.json")
-///
-/// # Returns
-/// * `Some(Response)` - Response with appropriate content-type if file exists
-/// * `None` - If no prerendered content exists for this path
+/// Resolution: exact file → `{path}.html` → `{path}/index.html`
 pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
     let path = path.strip_prefix('/').unwrap_or(path);
 
@@ -197,13 +154,11 @@ pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
 
     let path = path.strip_suffix('/').unwrap_or(path);
 
-    // Try as HTML file: "pgp" -> "pgp.html"
     let html_path = format!("{}.html", path);
     if let Some(file) = PRERENDERED_PAGES.get_file(&html_path) {
         return Some(serve_prerendered_file(&html_path, file.contents()));
     }
 
-    // Try index pattern: "path" -> "path/index.html"
     let index_path = if path.is_empty() {
         "index.html".to_string()
     } else {

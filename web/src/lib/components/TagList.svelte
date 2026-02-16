@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { cx } from "styled-system/css";
+  import { flex } from "styled-system/patterns";
   import TagChip from "./TagChip.svelte";
   import OverflowPill from "./OverflowPill.svelte";
 
@@ -130,7 +132,14 @@
 
 <div
   bind:this={tagsContainer}
-  class="flex flex-row-reverse flex-wrap-reverse gap-1 {className}"
+  class={cx(
+    flex({
+      direction: "row-reverse",
+      wrap: "wrap-reverse",
+      gap: "1",
+    }),
+    className,
+  )}
   {style}
 >
   {#each visibleTags as tag (tag.name)}

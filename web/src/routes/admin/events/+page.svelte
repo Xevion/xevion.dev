@@ -3,6 +3,13 @@
   import EventLog from "$lib/components/admin/EventLog.svelte";
   import { getAdminEvents } from "$lib/api";
   import type { AdminEvent } from "$lib/admin-types";
+  import { css } from "styled-system/css";
+  import { grid } from "styled-system/patterns";
+  import {
+    pageTitleClass,
+    pageDescriptionClass,
+    adminCardClass,
+  } from "$lib/styles/admin";
 
   let events = $state<AdminEvent[]>([]);
   let loading = $state(true);
@@ -40,21 +47,28 @@
   <title>Events | Admin</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class={css({ spaceY: "6" })}>
   <!-- Header -->
   <div>
-    <h1 class="text-xl font-semibold text-admin-text">Event Log</h1>
-    <p class="mt-1 text-sm text-admin-text-muted">
+    <h1 class={pageTitleClass}>Event Log</h1>
+    <p class={pageDescriptionClass}>
       System activity, errors, and sync operations
     </p>
   </div>
 
   <!-- Filters -->
-  <div
-    class="rounded-xl border border-admin-border bg-admin-surface p-6 shadow-sm shadow-black/10 dark:shadow-black/20"
-  >
-    <h3 class="text-sm font-medium text-admin-text-secondary mb-4">Filters</h3>
-    <div class="grid gap-4 md:grid-cols-2">
+  <div class={adminCardClass}>
+    <h3
+      class={css({
+        fontSize: "sm",
+        fontWeight: "medium",
+        color: "admin.textSecondary",
+        mb: "4",
+      })}
+    >
+      Filters
+    </h3>
+    <div class={grid({ columns: { md: 2 }, gap: "4" })}>
       <Input
         label="Level"
         type="select"
@@ -72,21 +86,52 @@
 
   <!-- Events Log -->
   {#if loading}
-    <div class="text-center py-12 text-admin-text-muted">Loading events...</div>
+    <div
+      class={css({ textAlign: "center", py: "12", color: "admin.textMuted" })}
+    >
+      Loading events...
+    </div>
   {:else if events.length === 0}
-    <div class="text-center py-12">
-      <p class="text-admin-text-muted">No events found</p>
+    <div class={css({ textAlign: "center", py: "12" })}>
+      <p class={css({ color: "admin.textMuted" })}>No events found</p>
     </div>
   {:else}
     <div
-      class="rounded-xl border border-admin-border bg-admin-surface/50 overflow-hidden shadow-sm shadow-black/10 dark:shadow-black/20"
+      class={css({
+        rounded: "xl",
+        borderWidth: "1px",
+        borderColor: "admin.border",
+        bg: "admin.surface/50",
+        overflow: "hidden",
+        shadow: "sm",
+        shadowColor: "black/10",
+        _dark: { shadowColor: "black/20" },
+      })}
     >
       <div
-        class="px-6 py-3.5 bg-admin-surface-hover/30 border-b border-admin-border"
+        class={css({
+          px: "6",
+          py: "3.5",
+          bg: "admin.surfaceHover/30",
+          borderBottomWidth: "1px",
+          borderColor: "admin.border",
+        })}
       >
-        <h2 class="text-sm font-medium text-admin-text-secondary">
+        <h2
+          class={css({
+            fontSize: "sm",
+            fontWeight: "medium",
+            color: "admin.textSecondary",
+          })}
+        >
           Event Log
-          <span class="text-admin-text-muted font-normal ml-2">
+          <span
+            class={css({
+              color: "admin.textMuted",
+              fontWeight: "normal",
+              ml: "2",
+            })}
+          >
             ({events.length} event{events.length === 1 ? "" : "s"})
           </span>
         </h2>

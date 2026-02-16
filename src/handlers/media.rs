@@ -10,18 +10,13 @@ use uuid::Uuid;
 
 use crate::{auth, db, media_processing, r2::R2Client, state::AppState};
 
-/// Request type for reordering media
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReorderMediaRequest {
-    /// Media IDs in desired order
     pub media_ids: Vec<String>,
 }
 
-/// Upload media for a project (requires authentication)
-///
-/// Accepts multipart/form-data with a single file field.
-/// Images are processed into variants (thumb, medium, full) and uploaded to R2.
+/// Accepts multipart/form-data; processes images into variants and uploads to R2.
 pub async fn upload_media_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -61,7 +56,6 @@ pub async fn upload_media_handler(
 
     let project_id = project.id;
 
-    // Get R2 client
     let r2 = match R2Client::get().await {
         Some(r2) => r2,
         None => {
@@ -77,7 +71,6 @@ pub async fn upload_media_handler(
         }
     };
 
-    // Extract file from multipart
     let (filename, content_type, data) = match extract_file(&mut multipart).await {
         Ok(Some(file)) => file,
         Ok(None) => {
@@ -103,7 +96,6 @@ pub async fn upload_media_handler(
         }
     };
 
-    // Determine media type and process
     let is_video = media_processing::is_supported_video(&content_type);
     let is_image = media_processing::is_supported_image(&content_type);
 
@@ -118,12 +110,10 @@ pub async fn upload_media_handler(
             .into_response();
     }
 
-    // Generate unique asset ID
     let asset_id = Ulid::new();
     let r2_base_path = format!("projects/{project_id}/{asset_id}");
 
     if is_image {
-        // Process image
         let processed = match media_processing::process_image(&data, &filename) {
             Ok(p) => p,
             Err(err) => {

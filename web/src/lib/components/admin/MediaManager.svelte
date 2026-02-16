@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
+  import { css, cx } from "styled-system/css";
+  import { hstack, grid } from "styled-system/patterns";
   import { dndzone } from "svelte-dnd-action";
   import { flip } from "svelte/animate";
   import type { ProjectMedia } from "$lib/admin-types";
@@ -11,6 +12,12 @@
   import MediaItem from "./MediaItem.svelte";
   import Modal from "./Modal.svelte";
   import { getLogger } from "@logtape/logtape";
+  import {
+    labelClass,
+    helpTextClass,
+    fieldWrapperClass,
+    iconSm,
+  } from "$lib/styles/admin";
   import IconCloudUpload from "~icons/lucide/cloud-upload";
   import IconAlertCircle from "~icons/lucide/alert-circle";
   import IconLoader from "~icons/lucide/loader-2";
@@ -232,16 +239,32 @@
   }
 </script>
 
-<div class={cn("space-y-1.5", className)}>
-  <div class="block text-sm font-medium text-admin-text">Media</div>
+<div class={cx(fieldWrapperClass, className)}>
+  <div class={labelClass}>Media</div>
 
   {#if !projectId}
     <!-- Disabled state for new projects -->
     <div
-      class="rounded-lg border-2 border-dashed border-admin-border bg-admin-bg-secondary p-8 text-center"
+      class={css({
+        rounded: "lg",
+        borderWidth: "2px",
+        borderStyle: "dashed",
+        borderColor: "admin.border",
+        bg: "admin.bgSecondary",
+        p: "8",
+        textAlign: "center",
+      })}
     >
-      <IconCloudUpload class="size-8 text-admin-text-muted mb-2 mx-auto" />
-      <p class="text-sm text-admin-text-muted">
+      <IconCloudUpload
+        class={css({
+          w: "8",
+          h: "8",
+          color: "admin.textMuted",
+          mb: "2",
+          mx: "auto",
+        })}
+      />
+      <p class={css({ fontSize: "sm", color: "admin.textMuted" })}>
         Save the project first to enable media uploads
       </p>
     </div>
@@ -256,7 +279,11 @@
         }}
         onconsider={handleDndConsider}
         onfinalize={handleDndFinalize}
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3"
+        class={grid({
+          columns: { base: 2, sm: 3, md: 4 },
+          gap: "3",
+          mb: "3",
+        })}
       >
         {#each mediaItems as item (item.id)}
           <div animate:flip={{ duration: flipDurationMs }}>
@@ -270,11 +297,23 @@
     <div
       role="button"
       tabindex="0"
-      class={cn(
-        "rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors",
+      class={cx(
+        css({
+          rounded: "lg",
+          borderWidth: "2px",
+          borderStyle: "dashed",
+          p: "6",
+          textAlign: "center",
+          cursor: "pointer",
+          transition: "colors",
+        }),
         isDraggingFile
-          ? "border-admin-accent bg-admin-accent/10"
-          : "border-admin-border bg-admin-bg-secondary hover:border-admin-text-muted hover:bg-admin-surface",
+          ? css({ borderColor: "admin.accent", bg: "admin.accent/10" })
+          : css({
+              borderColor: "admin.border",
+              bg: "admin.bgSecondary",
+              _hover: { borderColor: "admin.textMuted", bg: "admin.surface" },
+            }),
       )}
       ondragenter={handleDragEnter}
       ondragleave={handleDragLeave}
@@ -284,17 +323,19 @@
       onkeydown={(e) => e.key === "Enter" && fileInputRef?.click()}
     >
       <IconCloudUpload
-        class={cn(
-          "size-6 mb-2 mx-auto",
-          isDraggingFile ? "text-admin-accent" : "text-admin-text-muted",
+        class={cx(
+          css({ w: "6", h: "6", mb: "2", mx: "auto" }),
+          isDraggingFile
+            ? css({ color: "admin.accent" })
+            : css({ color: "admin.textMuted" }),
         )}
       />
-      <p class="text-sm text-admin-text">
+      <p class={css({ fontSize: "sm", color: "admin.text" })}>
         {isDraggingFile
           ? "Drop files here"
           : "Drop files here or click to upload"}
       </p>
-      <p class="text-xs text-admin-text-muted mt-1">
+      <p class={css({ fontSize: "xs", color: "admin.textMuted", mt: "1" })}>
         JPEG, PNG, GIF, WebP, MP4, WebM
       </p>
     </div>
@@ -304,51 +345,101 @@
       type="file"
       accept={SUPPORTED_TYPES.join(",")}
       multiple
-      class="hidden"
+      class={css({ display: "none" })}
       onchange={handleFileInputChange}
     />
 
     <!-- Upload queue -->
     {#if uploadQueue.length > 0}
-      <div class="space-y-2 mt-3">
+      <div class={css({ spaceY: "2", mt: "3" })}>
         {#each uploadQueue as task (task.id)}
           <div
-            class="flex items-center gap-3 p-2 rounded-lg bg-admin-bg-secondary border border-admin-border"
+            class={hstack({
+              gap: "3",
+              p: "2",
+              rounded: "lg",
+              bg: "admin.bgSecondary",
+              borderWidth: "1px",
+              borderColor: "admin.border",
+            })}
           >
             {#if task.status === "error"}
-              <IconAlertCircle class="size-4 text-red-500 shrink-0" />
+              <IconAlertCircle
+                class={cx(iconSm, css({ color: "red.500", flexShrink: "0" }))}
+              />
             {:else}
               <IconLoader
-                class="size-4 text-admin-text-muted animate-spin shrink-0"
+                class={cx(
+                  iconSm,
+                  css({
+                    color: "admin.textMuted",
+                    animation: "spin",
+                    flexShrink: "0",
+                  }),
+                )}
               />
             {/if}
-            <div class="flex-1 min-w-0">
-              <p class="text-sm text-admin-text truncate">{task.file.name}</p>
+            <div class={css({ flex: "1", minW: "0" })}>
+              <p
+                class={css({
+                  fontSize: "sm",
+                  color: "admin.text",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                })}
+              >
+                {task.file.name}
+              </p>
               {#if task.status === "uploading"}
                 <div
-                  class="h-1.5 bg-admin-border rounded-full mt-1 overflow-hidden"
+                  class={css({
+                    h: "1.5",
+                    bg: "admin.border",
+                    rounded: "full",
+                    mt: "1",
+                    overflow: "hidden",
+                  })}
                 >
                   <div
-                    class="h-full bg-admin-accent transition-all duration-200"
+                    class={css({
+                      h: "full",
+                      bg: "admin.accent",
+                      transition: "all",
+                      transitionDuration: "200ms",
+                    })}
                     style="width: {task.progress}%"
                   ></div>
                 </div>
               {:else if task.status === "error"}
-                <p class="text-xs text-red-500 truncate">{task.error}</p>
+                <p
+                  class={css({
+                    fontSize: "xs",
+                    color: "red.500",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  })}
+                >
+                  {task.error}
+                </p>
               {/if}
             </div>
             {#if task.status === "error"}
               <button
                 type="button"
                 onclick={() => removeUploadTask(task.id)}
-                class="text-admin-text-muted hover:text-admin-text p-1"
+                class={css({
+                  color: "admin.textMuted",
+                  _hover: { color: "admin.text" },
+                  p: "1",
+                })}
                 aria-label="Dismiss error"
               >
-                <IconX class="size-4" />
+                <IconX class={iconSm} />
               </button>
             {:else}
-              <span class="text-xs text-admin-text-muted">{task.progress}%</span
-              >
+              <span class={helpTextClass}>{task.progress}%</span>
             {/if}
           </div>
         {/each}
@@ -358,23 +449,33 @@
     <!-- Error message -->
     {#if errorMessage}
       <div
-        class="flex items-center gap-2 p-3 mt-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm"
+        class={hstack({
+          gap: "2",
+          p: "3",
+          mt: "2",
+          rounded: "lg",
+          bg: "red.500/10",
+          borderWidth: "1px",
+          borderColor: "red.500/30",
+          color: "red.500",
+          fontSize: "sm",
+        })}
       >
-        <IconAlertCircle class="size-4 shrink-0" />
+        <IconAlertCircle class={cx(iconSm, css({ flexShrink: "0" }))} />
         <span>{errorMessage}</span>
         <button
           type="button"
           onclick={clearError}
-          class="ml-auto hover:text-red-400"
+          class={css({ ml: "auto", _hover: { color: "red.400" } })}
           aria-label="Dismiss error"
         >
-          <IconX class="size-4" />
+          <IconX class={iconSm} />
         </button>
       </div>
     {/if}
   {/if}
 
-  <p class="text-xs text-admin-text-muted">
+  <p class={helpTextClass}>
     {#if projectId}
       Drag to reorder. First image is shown as the project thumbnail.
     {:else}
