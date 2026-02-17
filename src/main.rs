@@ -109,23 +109,30 @@ async fn main() {
             // No subcommand - run the server
             init_tracing();
 
-            // Validate required server args
-            if args.listen.is_empty() {
-                eprintln!("Error: --listen is required when running the server");
-                eprintln!("Example: xevion --listen :8080 --downstream http://localhost:5173");
-                std::process::exit(1);
-            }
+            // Resolve ports: PORT defaults to 10237, FRONTEND_PORT defaults to PORT+1
+            let default_port: u16 = std::env::var("PORT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10237);
 
-            let downstream = match args.downstream {
-                Some(d) => d,
-                None => {
-                    eprintln!("Error: --downstream is required when running the server");
-                    eprintln!("Example: xevion --listen :8080 --downstream http://localhost:5173");
-                    std::process::exit(1);
-                }
+            let listen = if args.listen.is_empty() {
+                vec![config::ListenAddr::Tcp(std::net::SocketAddr::from((
+                    [127, 0, 0, 1],
+                    default_port,
+                )))]
+            } else {
+                args.listen
             };
 
-            if let Err(e) = cli::serve::run(args.listen, downstream, args.trust_request_id).await {
+            let downstream = args.downstream.unwrap_or_else(|| {
+                let frontend_port: u16 = std::env::var("FRONTEND_PORT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or_else(|| default_port + 1);
+                format!("http://localhost:{frontend_port}")
+            });
+
+            if let Err(e) = cli::serve::run(listen, downstream, args.trust_request_id).await {
                 eprintln!("Server error: {}", e);
                 std::process::exit(1);
             }

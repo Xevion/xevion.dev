@@ -42,7 +42,7 @@ pub enum Command {
 #[derive(Parser, Debug)]
 pub struct ApiArgs {
     /// API base URL
-    #[arg(long, env = "API_BASE_URL", default_value = "http://localhost:8080")]
+    #[arg(long, env = "API_BASE_URL", default_value = "http://localhost:10237")]
     pub api_url: String,
 
     /// Session file path

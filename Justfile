@@ -142,13 +142,24 @@ _serve-internal profile:
     script -q -c "just _serve-json {{profile}} | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
 
 _serve-json profile:
-    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" "target/{{profile}}/xevion --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PORT="${PORT:-10237}"
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none \
+      "SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" \
+      "target/{{profile}}/xevion --listen localhost:$PORT --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock"
 
 dev:
     script -q -c "just dev-json | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
 
 dev-json:
-    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none "bun run --silent --cwd web dev --port 5173" "cargo watch --quiet --exec 'run --bin xevion --quiet -- --listen localhost:8080 --listen /tmp/xevion-api.sock --downstream http://localhost:5173'"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PORT="${PORT:-10237}"
+    FRONTEND_PORT="${FRONTEND_PORT:-$((PORT + 1))}"
+    LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none \
+      "bun run --silent --cwd web dev --port $FRONTEND_PORT" \
+      "cargo watch --quiet --exec 'run --bin xevion --quiet -- --listen localhost:$PORT --listen /tmp/xevion-api.sock --downstream http://localhost:$FRONTEND_PORT'"
 
 docker-image:
     docker build -t xevion-dev .
