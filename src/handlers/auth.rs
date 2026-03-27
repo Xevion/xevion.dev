@@ -1,7 +1,10 @@
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;
 
-use crate::{auth, state::AppState};
+use crate::{
+    auth,
+    state::{AppError, AppResult, AppState},
+};
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,71 +31,22 @@ pub async fn api_login_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<LoginRequest>,
-) -> Result<(axum_extra::extract::CookieJar, Json<LoginResponse>), impl IntoResponse> {
-    let user = match auth::get_admin_user(&state.pool, &payload.username).await {
-        Ok(Some(user)) => user,
-        Ok(None) => {
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                Json(serde_json::json!({
-                    "error": "Invalid credentials",
-                    "message": "Username or password incorrect"
-                })),
-            ));
-        }
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to fetch admin user");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to authenticate"
-                })),
-            ));
-        }
-    };
+) -> AppResult<impl IntoResponse> {
+    let user = auth::get_admin_user(&state.pool, &payload.username)
+        .await?
+        .ok_or(AppError::InvalidCredentials)?;
 
-    let password_valid = match auth::verify_password(&payload.password, &user.password_hash) {
-        Ok(valid) => valid,
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to verify password");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to authenticate"
-                })),
-            ));
-        }
-    };
+    let password_valid = auth::verify_password(&payload.password, &user.password_hash)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     if !password_valid {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({
-                "error": "Invalid credentials",
-                "message": "Username or password incorrect"
-            })),
-        ));
+        return Err(AppError::InvalidCredentials);
     }
 
-    let session = match state
+    let session = state
         .session_manager
         .create_session(user.id, user.username.clone())
-        .await
-    {
-        Ok(session) => session,
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to create session");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to create session"
-                })),
-            ));
-        }
-    };
+        .await?;
 
     let cookie =
         axum_extra::extract::cookie::Cookie::build(("admin_session", session.id.to_string()))
@@ -102,12 +56,10 @@ pub async fn api_login_handler(
             .max_age(time::Duration::days(7))
             .build();
 
-    let jar = jar.add(cookie);
-
     tracing::info!(username = %user.username, "User logged in");
 
     Ok((
-        jar,
+        jar.add(cookie),
         Json(LoginResponse {
             success: true,
             username: user.username,
@@ -139,29 +91,11 @@ pub async fn api_logout_handler(
 pub async fn api_session_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
-) -> impl IntoResponse {
-    let session_cookie = jar.get("admin_session");
+) -> AppResult<Json<SessionResponse>> {
+    let session = auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
 
-    let session_id = session_cookie.and_then(|cookie| ulid::Ulid::from_string(cookie.value()).ok());
-
-    let session = session_id.and_then(|id| state.session_manager.validate_session(id));
-
-    match session {
-        Some(session) => (
-            StatusCode::OK,
-            Json(SessionResponse {
-                authenticated: true,
-                username: session.username,
-            }),
-        )
-            .into_response(),
-        None => (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({
-                "error": "Unauthorized",
-                "message": "No valid session"
-            })),
-        )
-            .into_response(),
-    }
+    Ok(Json(SessionResponse {
+        authenticated: true,
+        username: session.username,
+    }))
 }

@@ -1,51 +1,26 @@
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{Json, extract::State, response::IntoResponse};
 use std::sync::Arc;
 
-use crate::{auth, db, state::AppState};
+use crate::{
+    auth, db,
+    state::{AppError, AppResult, AppState},
+};
 
-pub async fn get_settings_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    match db::get_site_settings(&state.pool).await {
-        Ok(settings) => Json(settings).into_response(),
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to fetch site settings");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to fetch settings"
-                })),
-            )
-                .into_response()
-        }
-    }
+pub async fn get_settings_handler(
+    State(state): State<Arc<AppState>>,
+) -> AppResult<impl IntoResponse> {
+    let settings = db::get_site_settings(&state.pool).await?;
+    Ok(Json(settings))
 }
 
 pub async fn update_settings_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
     Json(payload): Json<db::UpdateSiteSettingsRequest>,
-) -> impl IntoResponse {
-    if auth::check_session(&state, &jar).is_none() {
-        return auth::require_auth_response().into_response();
-    }
+) -> AppResult<impl IntoResponse> {
+    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
 
-    match db::update_site_settings(&state.pool, &payload).await {
-        Ok(settings) => {
-            // TODO: Invalidate ISR cache for homepage and affected routes when ISR is implemented
-            // TODO: Add event log entry for settings update when events table is implemented
-            tracing::info!("Site settings updated");
-            Json(settings).into_response()
-        }
-        Err(err) => {
-            tracing::error!(error = %err, "Failed to update site settings");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Internal server error",
-                    "message": "Failed to update settings"
-                })),
-            )
-                .into_response()
-        }
-    }
+    let settings = db::update_site_settings(&state.pool, &payload).await?;
+    tracing::info!("Site settings updated");
+    Ok(Json(settings))
 }

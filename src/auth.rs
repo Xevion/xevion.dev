@@ -251,16 +251,3 @@ pub fn check_session(
     let session_id = ulid::Ulid::from_string(session_cookie.value()).ok()?;
     state.session_manager.validate_session(session_id)
 }
-
-/// Return a 401 Unauthorized response for API endpoints
-pub fn require_auth_response() -> impl axum::response::IntoResponse {
-    use axum::{Json, http::StatusCode};
-
-    (
-        StatusCode::UNAUTHORIZED,
-        Json(serde_json::json!({
-            "error": "Unauthorized",
-            "message": "Authentication required"
-        })),
-    )
-}
