@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, query, query_as};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
@@ -25,15 +26,18 @@ pub struct DbProject {
     pub created_at: OffsetDateTime,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ApiProjectLink {
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub title: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiProject {
     pub id: String,
     pub slug: String,
@@ -42,8 +46,9 @@ pub struct ApiProject {
     pub links: Vec<ApiProjectLink>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiAdminProject {
     #[serde(flatten)]
     pub project: ApiProject,
@@ -52,11 +57,13 @@ pub struct ApiAdminProject {
     pub status: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub github_repo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub demo_url: Option<String>,
-    pub created_at: String,    // ISO 8601
-    pub last_activity: String, // ISO 8601
+    pub created_at: String,
+    pub last_activity: String,
 }
 
 impl DbProject {
@@ -111,10 +118,12 @@ impl DbProject {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct AdminStats {
     pub total_projects: i32,
+    #[ts(type = "Record<string, number>")]
     pub projects_by_status: serde_json::Value,
     pub total_tags: i32,
 }

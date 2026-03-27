@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::slugify;
@@ -13,28 +14,33 @@ pub struct DbTag {
     pub color: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiTag {
     pub id: String,
     pub slug: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub icon: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub color: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiTagWithCount {
     #[serde(flatten)]
     pub tag: ApiTag,
     pub project_count: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiRelatedTag {
     #[serde(flatten)]
     pub tag: ApiTag,

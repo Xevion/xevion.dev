@@ -11,6 +11,7 @@ pub use tags::*;
 use sqlx::{PgPool, postgres::PgPoolOptions, query};
 use std::time::Duration;
 use tokio::time::sleep;
+use ts_rs::TS;
 
 /// Database connection pool creation with retry logic
 ///
@@ -82,9 +83,12 @@ pub fn slugify(text: &str) -> String {
         .join("-")
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, serde::Serialize, serde::Deserialize, TS,
+)]
 #[sqlx(type_name = "project_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum ProjectStatus {
     Active,
     Maintained,

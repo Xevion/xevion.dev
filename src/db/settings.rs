@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 // Site settings models
@@ -24,8 +25,9 @@ pub struct DbSocialLink {
 }
 
 // API response types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiSiteIdentity {
     pub display_name: String,
     pub occupation: String,
@@ -33,8 +35,9 @@ pub struct ApiSiteIdentity {
     pub site_title: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiSocialLink {
     pub id: String,
     pub platform: String,
@@ -45,8 +48,9 @@ pub struct ApiSocialLink {
     pub display_order: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiSiteSettings {
     pub identity: ApiSiteIdentity,
     pub social_links: Vec<ApiSocialLink>,

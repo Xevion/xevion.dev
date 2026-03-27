@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 /// Media type enum matching PostgreSQL enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize, TS)]
 #[sqlx(type_name = "media_type", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum MediaType {
     Image,
     Video,
@@ -44,7 +46,8 @@ pub struct VideoOriginal {
 }
 
 /// API response for media variant with full URL
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ApiMediaVariant {
     pub url: String,
     pub width: i32,
@@ -52,62 +55,79 @@ pub struct ApiMediaVariant {
 }
 
 /// API response for video original
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ApiVideoOriginal {
     pub url: String,
     pub mime: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub duration: Option<f64>,
 }
 
 /// API response for media variants
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiMediaVariants {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub thumb: Option<ApiMediaVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub medium: Option<ApiMediaVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub full: Option<ApiMediaVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub original: Option<ApiMediaVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub poster: Option<ApiMediaVariant>,
     // For video original (different structure)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub video: Option<ApiVideoOriginal>,
 }
 
 /// Optional metadata stored with media
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct MediaMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub focal_point: Option<FocalPoint>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub alt_text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub duration: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct FocalPoint {
     pub x: f64,
     pub y: f64,
 }
 
 /// API response type for project media
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct ApiProjectMedia {
     pub id: String,
     pub display_order: i32,
     pub media_type: MediaType,
     pub variants: ApiMediaVariants,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub blurhash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub metadata: Option<MediaMetadata>,
 }
 
