@@ -36,4 +36,9 @@ export class ApiError extends Error {
       error instanceof ApiError && error.status >= 500 && error.status < 600
     );
   }
+
+  static network(cause: unknown): ApiError {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    return new ApiError(0, "Network Error", message);
+  }
 }

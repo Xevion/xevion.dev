@@ -7,12 +7,12 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
   const parentData = await parent();
   const settings = parentData.settings;
 
-  const projects = await apiFetch<ApiAdminProject[]>("/api/projects", {
+  const result = await apiFetch<ApiAdminProject[]>("/api/projects", {
     fetch,
   });
 
   return {
-    projects,
+    projects: result.unwrapOr([]),
     socialLinks: settings.socialLinks,
   };
 };

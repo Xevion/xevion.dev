@@ -152,10 +152,10 @@ async function getTemplateData(spec: OGImageSpec): Promise<{
         subtitle: "created, maintained, or contributed to by me...",
         type: "default",
       };
-    case "project":
-      try {
-        const projects = await apiFetch<ApiAdminProject[]>("/api/projects");
-        const project = projects.find((p) => p.id === spec.id);
+    case "project": {
+      const result = await apiFetch<ApiAdminProject[]>("/api/projects");
+      if (result.isOk) {
+        const project = result.value.find((p) => p.id === spec.id);
         if (project) {
           return {
             title: project.name,
@@ -163,13 +163,17 @@ async function getTemplateData(spec: OGImageSpec): Promise<{
             type: "project",
           };
         }
-      } catch (error) {
-        logger.error("Failed to fetch project", { id: spec.id, error });
+      } else {
+        logger.error("Failed to fetch project", {
+          id: spec.id,
+          error: result.error.message,
+        });
       }
       return {
         title: "Project",
         subtitle: "View on xevion.dev",
         type: "project",
       };
+    }
   }
 }

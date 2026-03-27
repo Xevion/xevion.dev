@@ -24,7 +24,8 @@ export const load: LayoutServerLoad = async ({ url, fetch }) => {
     settings = DEFAULT_SETTINGS;
   } else {
     // At runtime, fetch from API
-    settings = await apiFetch<ApiSiteSettings>("/api/settings", { fetch });
+    const result = await apiFetch<ApiSiteSettings>("/api/settings", { fetch });
+    settings = result.unwrapOr(DEFAULT_SETTINGS);
   }
 
   return {

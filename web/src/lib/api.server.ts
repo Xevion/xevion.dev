@@ -2,6 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { env } from "$env/dynamic/private";
 import { requestContext } from "$lib/server/context";
 import { ApiError } from "$lib/errors";
+import { Result, ok, err } from "true-myth/result";
 
 const logger = getLogger(["ssr", "lib", "api"]);
 
@@ -13,10 +14,6 @@ interface BunFetchOptions extends RequestInit {
   unix?: string;
 }
 
-/**
- * Create a socket-aware fetch function
- * Automatically handles Unix socket vs TCP based on UPSTREAM_URL
- */
 function createSmartFetch(upstreamUrl: string) {
   const isUnixSocket =
     upstreamUrl.startsWith("/") || upstreamUrl.startsWith("./");
@@ -25,12 +22,10 @@ function createSmartFetch(upstreamUrl: string) {
   return async function smartFetch<T>(
     path: string,
     options?: FetchOptions,
-  ): Promise<T> {
+  ): Promise<Result<T, ApiError>> {
     const url = `${baseUrl}${path}`;
     const method = options?.method ?? "GET";
 
-    // Unix sockets require Bun's native fetch
-    // SvelteKit's fetch doesn't support the 'unix' option
     const fetchFn = isUnixSocket ? fetch : (options?.fetch ?? fetch);
 
     const fetchOptions: BunFetchOptions = {
@@ -38,10 +33,8 @@ function createSmartFetch(upstreamUrl: string) {
       signal: options?.signal ?? AbortSignal.timeout(30_000),
     };
 
-    // Remove custom fetch property from options (not part of standard RequestInit)
     delete (fetchOptions as Record<string, unknown>).fetch;
 
-    // Forward request ID to Rust API
     const ctx = requestContext.getStore();
     if (ctx?.requestId) {
       fetchOptions.headers = {
@@ -50,17 +43,11 @@ function createSmartFetch(upstreamUrl: string) {
       };
     }
 
-    // Add Unix socket path if needed
     if (isUnixSocket) {
       fetchOptions.unix = upstreamUrl;
     }
 
-    logger.debug("API request", {
-      method,
-      url,
-      path,
-      isUnixSocket,
-    });
+    logger.debug("API request", { method, url, path, isUnixSocket });
 
     try {
       const response = await fetchFn(url, fetchOptions);
@@ -72,35 +59,34 @@ function createSmartFetch(upstreamUrl: string) {
           status: response.status,
           statusText: response.statusText,
         });
-        throw new ApiError(response.status, response.statusText);
+        return err(new ApiError(response.status, response.statusText));
       }
 
       const data = await response.json();
       logger.debug("API response", { method, url, status: response.status });
-      return data;
+      return ok(data);
     } catch (error) {
       logger.error("API request exception", {
         method,
         url,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw error;
+      return err(ApiError.network(error));
     }
   };
 }
 
-// Lazy-initialized fetch function (only throws if UPSTREAM_URL is missing when actually used)
 let cachedFetch: ReturnType<typeof createSmartFetch> | null = null;
 
 export async function apiFetch<T>(
   path: string,
   options?: FetchOptions,
-): Promise<T> {
+): Promise<Result<T, ApiError>> {
   if (!cachedFetch) {
     if (!env.UPSTREAM_URL) {
       const error = "UPSTREAM_URL environment variable not set";
       logger.error(error);
-      throw new Error(error);
+      return err(new ApiError(500, "Configuration Error", error));
     }
     cachedFetch = createSmartFetch(env.UPSTREAM_URL);
   }

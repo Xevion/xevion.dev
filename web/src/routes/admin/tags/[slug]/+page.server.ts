@@ -16,25 +16,20 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
   const { slug } = params;
 
   // Fetch tag with projects
-  let tagData: TagWithProjectsResponse;
-  try {
-    tagData = await apiFetch<TagWithProjectsResponse>(`/api/tags/${slug}`, {
-      fetch,
-    });
-  } catch {
-    throw error(404, "Tag not found");
-  }
+  const tagResult = await apiFetch<TagWithProjectsResponse>(
+    `/api/tags/${slug}`,
+    { fetch },
+  );
+  const tagData = tagResult.unwrapOrElse((apiErr) => {
+    throw error(apiErr.status || 404, apiErr.statusText || "Tag not found");
+  });
 
   // Fetch related tags
-  let relatedTags: RelatedTagResponse[] = [];
-  try {
-    relatedTags = await apiFetch<RelatedTagResponse[]>(
-      `/api/tags/${slug}/related`,
-      { fetch },
-    );
-  } catch {
-    // Non-fatal - just show empty related tags
-  }
+  const relatedResult = await apiFetch<RelatedTagResponse[]>(
+    `/api/tags/${slug}/related`,
+    { fetch },
+  );
+  const relatedTags = relatedResult.unwrapOr([]);
 
   return {
     tag: tagData.tag,
