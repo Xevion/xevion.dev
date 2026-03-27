@@ -2,10 +2,11 @@ use axum::{Json, extract::State, response::IntoResponse};
 use std::sync::Arc;
 
 use crate::{
-    auth, db,
-    state::{AppError, AppResult, AppState},
+    db,
+    state::{AdminSession, AppResult, AppState},
 };
 
+#[tracing::instrument(skip_all)]
 pub async fn get_settings_handler(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
@@ -13,13 +14,12 @@ pub async fn get_settings_handler(
     Ok(Json(settings))
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn update_settings_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     Json(payload): Json<db::UpdateSiteSettingsRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let settings = db::update_site_settings(&state.pool, &payload).await?;
     tracing::info!("Site settings updated");
     Ok(Json(settings))

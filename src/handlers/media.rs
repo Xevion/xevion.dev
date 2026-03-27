@@ -9,9 +9,9 @@ use ulid::Ulid;
 use uuid::Uuid;
 
 use crate::{
-    auth, db, media_processing,
+    db, media_processing,
     r2::R2Client,
-    state::{AppError, AppResult, AppState, OptionNotFoundExt},
+    state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt},
 };
 
 #[derive(Debug, serde::Deserialize)]
@@ -21,14 +21,13 @@ pub struct ReorderMediaRequest {
 }
 
 /// Accepts multipart/form-data; processes images into variants and uploads to R2.
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn upload_media_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     mut multipart: Multipart,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -235,6 +234,7 @@ async fn upload_image_variants(
 }
 
 /// Get all media for a project
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn get_project_media_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -249,13 +249,12 @@ pub async fn get_project_media_handler(
 }
 
 /// Delete a media item (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str, media_id))]
 pub async fn delete_media_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path((ref_str, media_id)): axum::extract::Path<(String, String)>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -311,14 +310,13 @@ pub async fn delete_media_handler(
 }
 
 /// Reorder media items for a project (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn reorder_media_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     Json(payload): Json<ReorderMediaRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;

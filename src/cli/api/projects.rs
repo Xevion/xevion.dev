@@ -4,9 +4,8 @@ use uuid::Uuid;
 use crate::cli::client::{ApiClient, ApiError, check_response};
 use crate::cli::output;
 use crate::cli::{ProjectsCommand, TagOp, parse_create_tags, parse_update_tags};
-use crate::db::{
-    ApiAdminProject, ApiTag, CreateProjectRequest, ProjectStatus, UpdateProjectRequest,
-};
+use crate::db::{ApiAdminProject, ApiTag, ProjectStatus};
+use crate::handlers::{CreateProjectRequest, UpdateProjectRequest};
 
 /// Run a projects subcommand
 pub async fn run(

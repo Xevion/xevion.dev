@@ -3,10 +3,11 @@ use std::sync::Arc;
 
 use crate::{
     auth, db, github,
-    handlers::AddProjectTagRequest,
-    state::{AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
+    handlers::{AddProjectTagRequest, CreateProjectRequest, UpdateProjectRequest},
+    state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
 };
 
+#[tracing::instrument(skip_all)]
 pub async fn projects_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
@@ -27,6 +28,7 @@ pub async fn projects_handler(
 }
 
 /// Get a single project by ref (UUID or slug)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn get_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -45,13 +47,12 @@ pub async fn get_project_handler(
 }
 
 /// Create a new project (requires authentication)
+#[tracing::instrument(skip_all)]
 pub async fn create_project_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
-    Json(payload): Json<db::CreateProjectRequest>,
+    _session: AdminSession,
+    Json(payload): Json<CreateProjectRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     if payload.name.trim().is_empty() {
         return Err(AppError::Validation("Project name cannot be empty".into()));
     }
@@ -107,14 +108,13 @@ pub async fn create_project_handler(
 }
 
 /// Update an existing project (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn update_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
-    Json(payload): Json<db::UpdateProjectRequest>,
+    _session: AdminSession,
+    Json(payload): Json<UpdateProjectRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let existing_project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -188,13 +188,12 @@ pub async fn update_project_handler(
 }
 
 /// Delete a project (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn delete_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let (project, tags, media) = db::get_project_by_ref_with_tags(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -214,16 +213,17 @@ pub async fn delete_project_handler(
 }
 
 /// Get admin stats (requires authentication)
+#[tracing::instrument(skip_all)]
 pub async fn get_admin_stats_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
     let stats = db::get_admin_stats(&state.pool).await?;
     Ok(Json(stats))
 }
 
 /// Get tags for a project
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn get_project_tags_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -238,14 +238,13 @@ pub async fn get_project_tags_handler(
 }
 
 /// Add a tag to a project (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn add_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     Json(payload): Json<AddProjectTagRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -266,13 +265,12 @@ pub async fn add_project_tag_handler(
 }
 
 /// Remove a tag from a project (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str, tag_ref))]
 pub async fn remove_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path((ref_str, tag_ref)): axum::extract::Path<(String, String)>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;

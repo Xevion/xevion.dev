@@ -2,12 +2,13 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;
 
 use crate::{
-    auth, db,
+    db,
     handlers::{CreateTagRequest, UpdateTagRequest},
-    state::{AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
+    state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
     utils,
 };
 
+#[tracing::instrument(skip_all)]
 pub async fn list_tags_handler(State(state): State<Arc<AppState>>) -> AppResult<impl IntoResponse> {
     let tags_with_counts = db::get_all_tags_with_counts(&state.pool).await?;
     let api_tags: Vec<db::ApiTagWithCount> = tags_with_counts
@@ -21,13 +22,12 @@ pub async fn list_tags_handler(State(state): State<Arc<AppState>>) -> AppResult<
 }
 
 /// Create a new tag (requires authentication)
+#[tracing::instrument(skip_all)]
 pub async fn create_tag_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     Json(payload): Json<CreateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     if payload.name.trim().is_empty() {
         return Err(AppError::Validation("Tag name cannot be empty".into()));
     }
@@ -54,6 +54,7 @@ pub async fn create_tag_handler(
 }
 
 /// Get a tag by ref (UUID or slug) with associated projects
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn get_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -70,14 +71,13 @@ pub async fn get_tag_handler(
 }
 
 /// Update a tag (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn update_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
     Json(payload): Json<UpdateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     if payload.name.trim().is_empty() {
         return Err(AppError::Validation("Tag name cannot be empty".into()));
     }
@@ -109,13 +109,12 @@ pub async fn update_tag_handler(
 }
 
 /// Delete a tag (requires authentication)
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn delete_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     let tag = db::get_tag_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
@@ -128,6 +127,7 @@ pub async fn delete_tag_handler(
 }
 
 /// Get related tags by cooccurrence
+#[tracing::instrument(skip_all, fields(ref_str))]
 pub async fn get_related_tags_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
@@ -148,12 +148,11 @@ pub async fn get_related_tags_handler(
 }
 
 /// Recalculate tag cooccurrence matrix (requires authentication)
+#[tracing::instrument(skip_all)]
 pub async fn recalculate_cooccurrence_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
+    _session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
     db::recalculate_tag_cooccurrence(&state.pool).await?;
     Ok(Json(serde_json::json!({
         "message": "Tag cooccurrence recalculated successfully"

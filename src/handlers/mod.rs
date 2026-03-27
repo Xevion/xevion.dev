@@ -39,3 +39,29 @@ pub struct UpdateTagRequest {
 pub struct AddProjectTagRequest {
     pub tag_id: String,
 }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProjectRequest {
+    pub name: String,
+    pub slug: Option<String>,
+    pub short_description: String,
+    pub description: String,
+    pub status: crate::db::ProjectStatus,
+    pub github_repo: Option<String>,
+    pub demo_url: Option<String>,
+    pub tag_ids: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateProjectRequest {
+    pub name: String,
+    pub slug: Option<String>,
+    pub short_description: String,
+    pub description: String,
+    pub status: crate::db::ProjectStatus,
+    pub github_repo: Option<String>,
+    pub demo_url: Option<String>,
+    pub tag_ids: Vec<String>,
+}

@@ -111,32 +111,6 @@ impl DbProject {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProjectRequest {
-    pub name: String,
-    pub slug: Option<String>,
-    pub short_description: String,
-    pub description: String,
-    pub status: ProjectStatus,
-    pub github_repo: Option<String>,
-    pub demo_url: Option<String>,
-    pub tag_ids: Vec<String>, // UUID strings
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateProjectRequest {
-    pub name: String,
-    pub slug: Option<String>,
-    pub short_description: String,
-    pub description: String,
-    pub status: ProjectStatus,
-    pub github_repo: Option<String>,
-    pub demo_url: Option<String>,
-    pub tag_ids: Vec<String>, // UUID strings
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminStats {

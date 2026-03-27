@@ -139,3 +139,21 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
         })
     }
 }
+
+/// Auth extractor — validates the admin session from cookies.
+/// Use in handler signatures to require authentication.
+#[derive(Debug)]
+pub struct AdminSession(pub crate::auth::Session);
+
+impl axum::extract::FromRequestParts<Arc<AppState>> for AdminSession {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &Arc<AppState>,
+    ) -> Result<Self, Self::Rejection> {
+        let jar = axum_extra::extract::CookieJar::from_headers(&parts.headers);
+        let session = crate::auth::check_session(state, &jar).ok_or(AppError::Unauthorized)?;
+        Ok(AdminSession(session))
+    }
+}

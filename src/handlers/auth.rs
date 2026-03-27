@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     auth,
-    state::{AppError, AppResult, AppState},
+    state::{AdminSession, AppError, AppResult, AppState},
 };
 
 #[derive(serde::Deserialize)]
@@ -27,6 +27,7 @@ pub struct SessionResponse {
     pub username: String,
 }
 
+#[tracing::instrument(skip_all)]
 pub async fn api_login_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
@@ -68,6 +69,7 @@ pub async fn api_login_handler(
 }
 
 /// Logout handler - deletes the session
+#[tracing::instrument(skip_all)]
 pub async fn api_logout_handler(
     State(state): State<Arc<AppState>>,
     jar: axum_extra::extract::CookieJar,
@@ -88,14 +90,10 @@ pub async fn api_logout_handler(
 }
 
 /// Session check handler - returns current session status
-pub async fn api_session_handler(
-    State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
-) -> AppResult<Json<SessionResponse>> {
-    let session = auth::check_session(&state, &jar).ok_or(AppError::Unauthorized)?;
-
-    Ok(Json(SessionResponse {
+#[tracing::instrument(skip_all)]
+pub async fn api_session_handler(session: AdminSession) -> Json<SessionResponse> {
+    Json(SessionResponse {
         authenticated: true,
-        username: session.username,
-    }))
+        username: session.0.username,
+    })
 }
