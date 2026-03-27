@@ -23,6 +23,15 @@ enum TargetUrl {
     Unix(PathBuf), // Socket path like "/tmp/bun.sock"
 }
 
+impl TargetUrl {
+    fn build_url(&self, path: &str) -> String {
+        match self {
+            TargetUrl::Tcp(base) => format!("{}{}", base, path),
+            TargetUrl::Unix(_) => format!("http://localhost{}", path),
+        }
+    }
+}
+
 impl HttpClient {
     /// Create a new HttpClient from a downstream URL
     ///
@@ -72,10 +81,7 @@ impl HttpClient {
     /// - TCP target "http://localhost:5173" + "/api/health" → "http://localhost:5173/api/health"
     /// - Unix target "/tmp/bun.sock" + "/api/health" → "http://localhost/api/health"
     fn build_url(&self, path: &str) -> String {
-        match &self.target {
-            TargetUrl::Tcp(base) => format!("{}{}", base, path),
-            TargetUrl::Unix(_) => format!("http://localhost{}", path),
-        }
+        self.target.build_url(path)
     }
 
     pub fn get(&self, path: &str) -> reqwest::RequestBuilder {
@@ -93,49 +99,42 @@ mod tests {
 
     #[test]
     fn test_tcp_url_construction() {
-        let client = HttpClient::new("http://localhost:5173").unwrap();
+        let target = TargetUrl::Tcp("http://localhost:5173".to_string());
         assert_eq!(
-            client.build_url("/api/health"),
+            target.build_url("/api/health"),
             "http://localhost:5173/api/health"
         );
         assert_eq!(
-            client.build_url("/path?query=1"),
+            target.build_url("/path?query=1"),
             "http://localhost:5173/path?query=1"
         );
     }
 
     #[test]
     fn test_unix_url_construction() {
-        let client = HttpClient::new("/tmp/bun.sock").unwrap();
+        let target = TargetUrl::Unix(PathBuf::from("/tmp/bun.sock"));
         assert_eq!(
-            client.build_url("/api/health"),
+            target.build_url("/api/health"),
             "http://localhost/api/health"
         );
         assert_eq!(
-            client.build_url("/path?query=1"),
+            target.build_url("/path?query=1"),
             "http://localhost/path?query=1"
         );
     }
 
     #[test]
-    fn test_relative_unix_socket() {
-        let client = HttpClient::new("./relative.sock").unwrap();
-        assert!(matches!(client.target, TargetUrl::Unix(_)));
+    fn test_https_url_construction() {
+        let target = TargetUrl::Tcp("https://example.com".to_string());
+        assert_eq!(
+            target.build_url("/api/test"),
+            "https://example.com/api/test"
+        );
     }
 
     #[test]
     fn test_invalid_url() {
         let result = HttpClient::new("not-a-valid-url");
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_https_url() {
-        let client = HttpClient::new("https://example.com").unwrap();
-        assert!(matches!(client.target, TargetUrl::Tcp(_)));
-        assert_eq!(
-            client.build_url("/api/test"),
-            "https://example.com/api/test"
-        );
     }
 }

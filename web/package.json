@@ -13,7 +13,8 @@
     "clean": "rm -rf .svelte-kit build node_modules",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "codegen": "panda codegen"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
