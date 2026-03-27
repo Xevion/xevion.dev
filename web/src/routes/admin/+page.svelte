@@ -3,7 +3,10 @@
   import Button from "$lib/components/admin/Button.svelte";
   import EventLog from "$lib/components/admin/EventLog.svelte";
   import { getAdminEvents } from "$lib/api";
+  import { getLogger } from "@logtape/logtape";
   import type { AdminEvent } from "$lib/admin-types";
+
+  const logger = getLogger(["admin", "dashboard"]);
   import IconPlus from "~icons/lucide/plus";
   import { css, cx } from "styled-system/css";
   import { wrap, hstack } from "styled-system/patterns";
@@ -21,7 +24,7 @@
       const eventsData = await getAdminEvents();
       recentEvents = eventsData;
     } catch (error) {
-      console.error("Failed to load dashboard:", error);
+      logger.error("Failed to load dashboard", { error });
     } finally {
       loading = false;
     }

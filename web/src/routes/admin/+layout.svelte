@@ -6,7 +6,10 @@
   import { authStore } from "$lib/stores/auth.svelte";
   import { getAdminStats } from "$lib/api";
   import { telemetry } from "$lib/telemetry";
+  import { getLogger } from "@logtape/logtape";
   import type { AdminStats } from "$lib/bindings";
+
+  const logger = getLogger(["admin", "layout"]);
   import { css } from "styled-system/css";
 
   let { children, data } = $props();
@@ -23,7 +26,7 @@
     try {
       stats = await getAdminStats();
     } catch (error) {
-      console.error("Failed to load stats:", error);
+      logger.error("Failed to load stats", { error });
     }
   }
 

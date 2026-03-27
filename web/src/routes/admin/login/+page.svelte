@@ -5,7 +5,10 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { authStore } from "$lib/stores/auth.svelte";
+  import { getLogger } from "@logtape/logtape";
   import { css, cx } from "styled-system/css";
+
+  const logger = getLogger(["admin", "login"]);
   import { center } from "styled-system/patterns";
 
   let username = $state("");
@@ -29,7 +32,7 @@
       }
     } catch (err) {
       error = "An error occurred during login";
-      console.error("Login error:", err);
+      logger.error("Login failed", { error: err });
     } finally {
       loading = false;
     }

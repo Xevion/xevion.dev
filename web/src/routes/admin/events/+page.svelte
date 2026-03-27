@@ -2,7 +2,10 @@
   import Input from "$lib/components/admin/Input.svelte";
   import EventLog from "$lib/components/admin/EventLog.svelte";
   import { getAdminEvents } from "$lib/api";
+  import { getLogger } from "@logtape/logtape";
   import type { AdminEvent } from "$lib/admin-types";
+
+  const logger = getLogger(["admin", "events"]);
   import { css } from "styled-system/css";
   import { grid } from "styled-system/patterns";
   import {
@@ -29,7 +32,7 @@
       // TODO: Pass filters when backend implementation is complete
       events = await getAdminEvents();
     } catch (error) {
-      console.error("Failed to load events:", error);
+      logger.error("Failed to load events", { error });
     } finally {
       loading = false;
     }

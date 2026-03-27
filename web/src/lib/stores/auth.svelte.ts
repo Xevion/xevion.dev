@@ -1,4 +1,7 @@
+import { getLogger } from "@logtape/logtape";
 import { telemetry } from "$lib/telemetry";
+
+const logger = getLogger(["admin", "auth"]);
 
 class AuthStore {
   private static STORAGE_KEY = "admin_session_active";
@@ -37,7 +40,7 @@ class AuthStore {
 
       return false;
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error("Login failed", { error });
       return false;
     }
   }
@@ -49,7 +52,7 @@ class AuthStore {
         credentials: "include",
       });
     } catch (error) {
-      console.error("Logout error:", error);
+      logger.error("Logout failed", { error });
     } finally {
       this.isAuthenticated = false;
       this.username = null;
@@ -71,7 +74,7 @@ class AuthStore {
         return true;
       }
     } catch (error) {
-      console.error("Session check error:", error);
+      logger.error("Session check failed", { error });
     }
 
     this.isAuthenticated = false;

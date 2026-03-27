@@ -3,12 +3,15 @@
   import { hstack, center, wrap, grid } from "styled-system/patterns";
   import { SvelteMap } from "svelte/reactivity";
   import type { IconCollection } from "$lib/types/icons";
+  import { getLogger } from "@logtape/logtape";
   import {
     labelClass,
     helpTextClass,
     adminInputBase,
     dropdownPanelClass,
   } from "$lib/styles/admin";
+
+  const logger = getLogger(["admin", "components", "IconPicker"]);
 
   interface Props {
     selectedIcon: string;
@@ -107,7 +110,7 @@
         collections = data.collections;
       }
     } catch (error) {
-      console.error("Failed to load collections:", error);
+      logger.error("Failed to load collections", { error });
     }
   }
 
@@ -133,7 +136,7 @@
         setTimeout(() => observeIconElements(), 100);
       }
     } catch (error) {
-      console.error("Failed to search icons:", error);
+      logger.error("Failed to search icons", { error });
     } finally {
       isLoading = false;
     }
@@ -169,7 +172,7 @@
         }
       }
     } catch (error) {
-      console.error("Failed to load icon SVG:", error);
+      logger.error("Failed to load icon SVG", { error, identifier });
       if (identifier === selectedIcon) {
         selectedIconSvg = null;
       }

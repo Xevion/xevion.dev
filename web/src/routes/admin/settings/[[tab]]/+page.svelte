@@ -4,7 +4,10 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
+  import { getLogger } from "@logtape/logtape";
   import type { ApiSiteSettings } from "$lib/bindings";
+
+  const logger = getLogger(["admin", "settings"]);
   import { css } from "styled-system/css";
   import { flex, hstack, grid } from "styled-system/patterns";
   import {
@@ -43,7 +46,7 @@
       settings = data;
       formData = structuredClone(data);
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      logger.error("Failed to load settings", { error });
     } finally {
       loading = false;
     }
@@ -63,7 +66,7 @@
       formData = structuredClone(updated);
       alert("Settings saved successfully!");
     } catch (error) {
-      console.error("Failed to save settings:", error);
+      logger.error("Failed to save settings", { error });
       alert("Failed to save settings");
     } finally {
       saving = false;

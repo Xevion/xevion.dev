@@ -1,4 +1,4 @@
-use nu_ansi_term::Color;
+use nu_ansi_term::{Color, Style};
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::fmt;
@@ -12,6 +12,8 @@ use tracing_subscriber::registry::LookupSpan;
 
 const TIMESTAMP_FORMAT: &[FormatItem<'static>] =
     format_description!("[hour]:[minute]:[second].[subsecond digits:3]");
+
+const VALUE_TRUNCATE_LEN: usize = 120;
 
 /// Transform tracing target from `api::*` to `rust::*` for combined log differentiation
 fn transform_target(target: &str) -> String {
@@ -81,7 +83,35 @@ where
             write!(writer, "{}: ", target)?;
         }
 
-        ctx.format_fields(writer.by_ref(), event)?;
+        let ansi = writer.has_ansi_escapes();
+        let mut visitor = PrettyFieldVisitor::new();
+        event.record(&mut visitor);
+
+        if let Some(ref msg) = visitor.message {
+            write!(writer, "{msg}")?;
+        }
+
+        if !visitor.fields.is_empty() {
+            if visitor.message.is_some() {
+                writer.write_char(' ')?;
+            }
+            for (i, (key, value)) in visitor.fields.iter().enumerate() {
+                if i > 0 {
+                    writer.write_char(' ')?;
+                }
+                if ansi {
+                    write!(
+                        writer,
+                        "{}{}{}",
+                        Color::Cyan.paint(key),
+                        Color::DarkGray.paint("="),
+                        Style::new().italic().paint(truncate_value(value)),
+                    )?;
+                } else {
+                    write!(writer, "{key}={}", truncate_value(value))?;
+                }
+            }
+        }
 
         writeln!(writer)
     }
@@ -247,5 +277,68 @@ fn write_bold(writer: &mut Writer<'_>, s: impl fmt::Display) -> fmt::Result {
         write!(writer, "{}", Color::White.bold().paint(s.to_string()))
     } else {
         write!(writer, "{s}")
+    }
+}
+
+fn truncate_value(s: &str) -> String {
+    if s.len() <= VALUE_TRUNCATE_LEN {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..VALUE_TRUNCATE_LEN])
+    }
+}
+
+struct PrettyFieldVisitor {
+    message: Option<String>,
+    fields: Vec<(String, String)>,
+}
+
+impl PrettyFieldVisitor {
+    fn new() -> Self {
+        Self {
+            message: None,
+            fields: Vec::new(),
+        }
+    }
+}
+
+impl Visit for PrettyFieldVisitor {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        let key = field.name();
+        if key == "message" {
+            self.message = Some(format!("{value:?}"));
+        } else {
+            self.fields.push((key.to_string(), format!("{value:?}")));
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        let key = field.name();
+        if key == "message" {
+            self.message = Some(value.to_string());
+        } else {
+            self.fields.push((key.to_string(), value.to_string()));
+        }
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if field.name() != "message" {
+            self.fields
+                .push((field.name().to_string(), value.to_string()));
+        }
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if field.name() != "message" {
+            self.fields
+                .push((field.name().to_string(), value.to_string()));
+        }
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if field.name() != "message" {
+            self.fields
+                .push((field.name().to_string(), value.to_string()));
+        }
     }
 }
