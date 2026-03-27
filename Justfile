@@ -1,79 +1,23 @@
 set dotenv-load
 
+alias c := check
+alias d := dev
+alias f := format
+
 default:
 	just --list
 
+# Validate all code (parallel checks via tempo)
+check *flags:
+	tempo check {{flags}}
+
+# Auto-format all code
+format *flags:
+	tempo fmt {{flags}}
+
 # Generate TypeScript bindings from Rust API types
 bindings:
-	SQLX_OFFLINE=true cargo test export_bindings_ 2>/dev/null; true
-
-[script("bun")]
-check:
-    const checks = [
-      { name: "prettier", cmd: ["bun", "run", "--cwd", "web", "format:check"] },
-      { name: "eslint", cmd: ["bun", "run", "--cwd", "web", "lint"] },
-      { name: "svelte-check", cmd: ["bun", "run", "--cwd", "web", "check", "--fail-on-warnings"] },
-      { name: "clippy", cmd: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
-      { name: "sqlx-prepare", cmd: ["cargo", "sqlx", "prepare", "--check"] },
-      { name: "rustfmt", cmd: ["cargo", "fmt", "--check"] },
-    ];
-
-    const isTTY = process.stderr.isTTY;
-    const start = Date.now();
-    const remaining = new Set(checks.map(c => c.name));
-    const results = [];
-
-    // Spawn all checks in parallel
-    const promises = checks.map(async (check) => {
-      const proc = Bun.spawn(check.cmd, {
-        env: { ...process.env, FORCE_COLOR: "1" },
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-
-      const [stdout, stderr] = await Promise.all([
-        new Response(proc.stdout).text(),
-        new Response(proc.stderr).text(),
-      ]);
-
-      await proc.exited;
-      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-
-      return { ...check, stdout, stderr, exitCode: proc.exitCode, elapsed };
-    });
-
-    // Progress updater (only for interactive terminals)
-    const interval = isTTY ? setInterval(() => {
-      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-      const tasks = Array.from(remaining).join(", ");
-      process.stderr.write(`\r\x1b[K${elapsed}s [${tasks}]`);
-    }, 100) : null;
-
-    // Stream outputs as they complete
-    let anyFailed = false;
-    for (const promise of promises) {
-      const result = await promise;
-      remaining.delete(result.name);
-
-      if (result.exitCode !== 0) {
-        anyFailed = true;
-        if (isTTY) process.stderr.write(`\r\x1b[K`);
-        process.stdout.write(`❌ ${result.name} (${result.elapsed}s)\n`);
-        if (result.stdout) process.stdout.write(result.stdout);
-        if (result.stderr) process.stderr.write(result.stderr);
-      } else {
-        if (isTTY) process.stderr.write(`\r\x1b[K`);
-        process.stdout.write(`✅ ${result.name} (${result.elapsed}s)\n`);
-      }
-    }
-
-    if (interval) clearInterval(interval);
-    if (isTTY) process.stderr.write(`\r\x1b[K`);
-    process.exit(anyFailed ? 1 : 0);
-
-format:
-    bun run --cwd web format --list-different
-    cargo fmt --all
+	tempo run rust:bindings
 
 # Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build), -i (install)
 [script("bun")]

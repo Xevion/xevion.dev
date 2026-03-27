@@ -1,4 +1,5 @@
 .env*
+!.env.example
 /*.txt
 web/node_modules/
 target/
