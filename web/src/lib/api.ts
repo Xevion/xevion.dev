@@ -1,15 +1,17 @@
 import type {
-  AdminProject,
-  AdminTag,
-  AdminTagWithCount,
-  AdminEvent,
+  ApiAdminProject,
+  ApiTag,
+  ApiTagWithCount,
   AdminStats,
+  ApiSiteSettings,
+  ApiProjectMedia,
+} from "$lib/bindings";
+import type {
+  AdminEvent,
   CreateProjectData,
   UpdateProjectData,
   CreateTagData,
   UpdateTagData,
-  SiteSettings,
-  ProjectMedia,
 } from "./admin-types";
 import { ApiError } from "./errors";
 
@@ -26,15 +28,15 @@ async function clientApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export async function getAdminProjects(): Promise<AdminProject[]> {
-  return clientApiFetch<AdminProject[]>("/api/projects");
+export async function getAdminProjects(): Promise<ApiAdminProject[]> {
+  return clientApiFetch<ApiAdminProject[]>("/api/projects");
 }
 
 export async function getAdminProject(
   id: string,
-): Promise<AdminProject | null> {
+): Promise<ApiAdminProject | null> {
   try {
-    return await clientApiFetch<AdminProject>(`/api/projects/${id}`);
+    return await clientApiFetch<ApiAdminProject>(`/api/projects/${id}`);
   } catch (error) {
     if (ApiError.isNotFound(error)) {
       return null;
@@ -45,8 +47,8 @@ export async function getAdminProject(
 
 export async function createAdminProject(
   data: CreateProjectData,
-): Promise<AdminProject> {
-  return clientApiFetch<AdminProject>("/api/projects", {
+): Promise<ApiAdminProject> {
+  return clientApiFetch<ApiAdminProject>("/api/projects", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -55,34 +57,34 @@ export async function createAdminProject(
 
 export async function updateAdminProject(
   data: UpdateProjectData,
-): Promise<AdminProject> {
-  return clientApiFetch<AdminProject>(`/api/projects/${data.id}`, {
+): Promise<ApiAdminProject> {
+  return clientApiFetch<ApiAdminProject>(`/api/projects/${data.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteAdminProject(id: string): Promise<AdminProject> {
-  return clientApiFetch<AdminProject>(`/api/projects/${id}`, {
+export async function deleteAdminProject(id: string): Promise<ApiAdminProject> {
+  return clientApiFetch<ApiAdminProject>(`/api/projects/${id}`, {
     method: "DELETE",
   });
 }
 
-export async function getAdminTags(): Promise<AdminTagWithCount[]> {
-  return clientApiFetch<AdminTagWithCount[]>("/api/tags");
+export async function getAdminTags(): Promise<ApiTagWithCount[]> {
+  return clientApiFetch<ApiTagWithCount[]>("/api/tags");
 }
 
-export async function createAdminTag(data: CreateTagData): Promise<AdminTag> {
-  return clientApiFetch<AdminTag>("/api/tags", {
+export async function createAdminTag(data: CreateTagData): Promise<ApiTag> {
+  return clientApiFetch<ApiTag>("/api/tags", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
 }
 
-export async function updateAdminTag(data: UpdateTagData): Promise<AdminTag> {
-  return clientApiFetch<AdminTag>(`/api/tags/${data.id}`, {
+export async function updateAdminTag(data: UpdateTagData): Promise<ApiTag> {
+  return clientApiFetch<ApiTag>(`/api/tags/${data.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -96,8 +98,8 @@ export async function deleteAdminTag(id: string): Promise<void> {
 }
 
 export interface TagWithProjects {
-  tag: AdminTag;
-  projects: AdminProject[];
+  tag: ApiTag;
+  projects: ApiAdminProject[];
 }
 
 export async function getAdminTagBySlug(
@@ -113,7 +115,7 @@ export async function getAdminTagBySlug(
   }
 }
 
-export interface RelatedTag extends AdminTag {
+export interface RelatedTag extends ApiTag {
   cooccurrenceCount: number;
 }
 
@@ -125,7 +127,7 @@ export async function uploadProjectMedia(
   projectId: string,
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<ProjectMedia> {
+): Promise<ApiProjectMedia> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
@@ -141,7 +143,7 @@ export async function uploadProjectMedia(
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const data = JSON.parse(xhr.responseText);
-          resolve(data as ProjectMedia);
+          resolve(data as ApiProjectMedia);
         } catch {
           reject(new Error("Invalid response from server"));
         }
@@ -161,8 +163,8 @@ export async function uploadProjectMedia(
 export async function deleteProjectMedia(
   projectId: string,
   mediaId: string,
-): Promise<ProjectMedia> {
-  return clientApiFetch<ProjectMedia>(
+): Promise<ApiProjectMedia> {
+  return clientApiFetch<ApiProjectMedia>(
     `/api/projects/${projectId}/media/${mediaId}`,
     { method: "DELETE" },
   );
@@ -171,8 +173,8 @@ export async function deleteProjectMedia(
 export async function reorderProjectMedia(
   projectId: string,
   mediaIds: string[],
-): Promise<ProjectMedia[]> {
-  return clientApiFetch<ProjectMedia[]>(
+): Promise<ApiProjectMedia[]> {
+  return clientApiFetch<ApiProjectMedia[]>(
     `/api/projects/${projectId}/media/reorder`,
     {
       method: "PUT",
@@ -191,14 +193,14 @@ export async function getAdminStats(): Promise<AdminStats> {
   return clientApiFetch<AdminStats>("/api/stats");
 }
 
-export async function getSettings(): Promise<SiteSettings> {
-  return clientApiFetch<SiteSettings>("/api/settings");
+export async function getSettings(): Promise<ApiSiteSettings> {
+  return clientApiFetch<ApiSiteSettings>("/api/settings");
 }
 
 export async function updateSettings(
-  settings: SiteSettings,
-): Promise<SiteSettings> {
-  return clientApiFetch<SiteSettings>("/api/settings", {
+  settings: ApiSiteSettings,
+): Promise<ApiSiteSettings> {
+  return clientApiFetch<ApiSiteSettings>("/api/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),

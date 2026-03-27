@@ -4,7 +4,7 @@
   import TagChip from "$lib/components/TagChip.svelte";
   import { goto } from "$app/navigation";
   import type { PageData } from "./$types";
-  import type { ProjectStatus } from "$lib/admin-types";
+  import type { ProjectStatus } from "$lib/bindings";
   import IconPlus from "~icons/lucide/plus";
   import { css, cx } from "styled-system/css";
   import { hstack, wrap } from "styled-system/patterns";

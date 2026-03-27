@@ -3,7 +3,7 @@
   import { hstack, grid } from "styled-system/patterns";
   import { dndzone } from "svelte-dnd-action";
   import { flip } from "svelte/animate";
-  import type { ProjectMedia } from "$lib/admin-types";
+  import type { ApiProjectMedia } from "$lib/bindings";
   import {
     uploadProjectMedia,
     deleteProjectMedia,
@@ -27,8 +27,8 @@
 
   interface Props {
     projectId: string | null;
-    media?: ProjectMedia[];
-    onchange?: (media: ProjectMedia[]) => void;
+    media?: ApiProjectMedia[];
+    onchange?: (media: ApiProjectMedia[]) => void;
     class?: string;
   }
 
@@ -36,7 +36,7 @@
 
   // Local media state (for reordering) - needs to be mutable for drag-drop
   // eslint-disable-next-line svelte/prefer-writable-derived -- intentional: svelte-dnd-action requires mutable array
-  let mediaItems = $state<ProjectMedia[]>([]);
+  let mediaItems = $state<ApiProjectMedia[]>([]);
 
   // Sync from props when they change
   $effect(() => {
@@ -60,7 +60,7 @@
 
   // Delete confirmation
   let deleteModalOpen = $state(false);
-  let deletingMedia = $state<ProjectMedia | null>(null);
+  let deletingMedia = $state<ApiProjectMedia | null>(null);
 
   const flipDurationMs = 150;
   const SUPPORTED_IMAGE_TYPES = [
@@ -74,11 +74,13 @@
   const SUPPORTED_TYPES = [...SUPPORTED_IMAGE_TYPES, ...SUPPORTED_VIDEO_TYPES];
 
   // Drag and drop reorder handlers
-  function handleDndConsider(e: CustomEvent<{ items: ProjectMedia[] }>) {
+  function handleDndConsider(e: CustomEvent<{ items: ApiProjectMedia[] }>) {
     mediaItems = e.detail.items;
   }
 
-  async function handleDndFinalize(e: CustomEvent<{ items: ProjectMedia[] }>) {
+  async function handleDndFinalize(
+    e: CustomEvent<{ items: ApiProjectMedia[] }>,
+  ) {
     mediaItems = e.detail.items;
     onchange?.(mediaItems);
 
@@ -203,7 +205,7 @@
   }
 
   // Delete handlers
-  function handleDeleteClick(media: ProjectMedia) {
+  function handleDeleteClick(media: ApiProjectMedia) {
     deletingMedia = media;
     deleteModalOpen = true;
   }

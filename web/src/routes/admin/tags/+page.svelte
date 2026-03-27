@@ -6,7 +6,8 @@
   import IconPicker from "$lib/components/admin/IconPicker.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
   import { createAdminTag, deleteAdminTag } from "$lib/api";
-  import type { CreateTagData, AdminTagWithCount } from "$lib/admin-types";
+  import type { ApiTagWithCount } from "$lib/bindings";
+  import type { CreateTagData } from "$lib/admin-types";
   import type { PageData } from "./$types";
   import IconPlus from "~icons/lucide/plus";
   import IconX from "~icons/lucide/x";
@@ -64,7 +65,7 @@
 
   // Delete state
   let deleteModalOpen = $state(false);
-  let deleteTarget = $state<AdminTagWithCount | null>(null);
+  let deleteTarget = $state<ApiTagWithCount | null>(null);
   let deleteConfirmReady = $state(false);
   let deleteTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -96,7 +97,7 @@
     }
   }
 
-  function handleTagClick(tag: AdminTagWithCount, event: MouseEvent) {
+  function handleTagClick(tag: ApiTagWithCount, event: MouseEvent) {
     if (deleteMode) {
       event.preventDefault();
       event.stopPropagation();
@@ -105,14 +106,14 @@
     // Otherwise, let the link navigate normally
   }
 
-  function handleTagKeyDown(tag: AdminTagWithCount, event: KeyboardEvent) {
+  function handleTagKeyDown(tag: ApiTagWithCount, event: KeyboardEvent) {
     if (deleteMode && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();
       initiateDelete(tag);
     }
   }
 
-  function initiateDelete(tag: AdminTagWithCount) {
+  function initiateDelete(tag: ApiTagWithCount) {
     deleteTarget = tag;
     deleteConfirmReady = false;
 

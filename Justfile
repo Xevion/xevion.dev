@@ -3,6 +3,10 @@ set dotenv-load
 default:
 	just --list
 
+# Generate TypeScript bindings from Rust API types
+bindings:
+	SQLX_OFFLINE=true cargo test export_bindings_ 2>/dev/null; true
+
 [script("bun")]
 check:
     const checks = [

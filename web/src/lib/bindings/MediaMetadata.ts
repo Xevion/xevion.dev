@@ -4,4 +4,8 @@ import type { FocalPoint } from "./FocalPoint";
 /**
  * Optional metadata stored with media
  */
-export type MediaMetadata = { focalPoint?: FocalPoint, altText?: string, duration?: number, };
+export type MediaMetadata = {
+  focalPoint?: FocalPoint;
+  altText?: string;
+  duration?: number;
+};

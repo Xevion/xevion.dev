@@ -1,14 +1,14 @@
 import type { PageServerLoad } from "./$types";
 import { apiFetch } from "$lib/api.server";
 import { error } from "@sveltejs/kit";
-import type { AdminTag, AdminProject } from "$lib/admin-types";
+import type { ApiTag, ApiAdminProject } from "$lib/bindings";
 
 interface TagWithProjectsResponse {
-  tag: AdminTag;
-  projects: AdminProject[];
+  tag: ApiTag;
+  projects: ApiAdminProject[];
 }
 
-interface RelatedTagResponse extends AdminTag {
+interface RelatedTagResponse extends ApiTag {
   cooccurrenceCount: number;
 }
 

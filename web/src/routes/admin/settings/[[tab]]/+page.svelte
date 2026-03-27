@@ -4,7 +4,7 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
-  import type { SiteSettings } from "$lib/admin-types";
+  import type { ApiSiteSettings } from "$lib/bindings";
   import { css } from "styled-system/css";
   import { flex, hstack, grid } from "styled-system/patterns";
   import {
@@ -17,7 +17,7 @@
 
   type Tab = "identity" | "social";
 
-  let settings = $state<SiteSettings | null>(null);
+  let settings = $state<ApiSiteSettings | null>(null);
   let loading = $state(true);
   let saving = $state(false);
 
@@ -29,7 +29,7 @@
   });
 
   // Form state - will be populated when settings load
-  let formData = $state<SiteSettings | null>(null);
+  let formData = $state<ApiSiteSettings | null>(null);
 
   // Deep equality check for change detection
   const hasChanges = $derived.by(() => {

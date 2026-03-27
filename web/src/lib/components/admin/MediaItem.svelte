@@ -2,7 +2,7 @@
   import { css, cx } from "styled-system/css";
   import { center, hstack } from "styled-system/patterns";
   import { decode } from "blurhash";
-  import type { ProjectMedia } from "$lib/admin-types";
+  import type { ApiProjectMedia } from "$lib/bindings";
   import VideoThumbnail from "./VideoThumbnail.svelte";
   import IconX from "~icons/lucide/x";
   import IconPlay from "~icons/lucide/play";
@@ -10,7 +10,7 @@
   import IconImage from "~icons/lucide/image";
 
   interface Props {
-    media: ProjectMedia;
+    media: ApiProjectMedia;
     ondelete: () => void;
     class?: string;
   }

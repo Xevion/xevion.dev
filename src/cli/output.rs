@@ -225,14 +225,21 @@ pub fn print_settings(settings: &ApiSiteSettings) {
 }
 
 /// Format project status with color
-fn format_status(status: &str) -> String {
-    match status {
-        "active" => Color::Green.paint(status).to_string(),
-        "maintained" => Color::Blue.paint(status).to_string(),
-        "archived" => Color::Yellow.paint(status).to_string(),
-        "hidden" => Color::Red.paint(status).to_string(),
-        _ => status.to_string(),
-    }
+fn format_status(status: &crate::db::ProjectStatus) -> String {
+    use crate::db::ProjectStatus;
+    let label = match status {
+        ProjectStatus::Active => "active",
+        ProjectStatus::Maintained => "maintained",
+        ProjectStatus::Archived => "archived",
+        ProjectStatus::Hidden => "hidden",
+    };
+    let color = match status {
+        ProjectStatus::Active => Color::Green,
+        ProjectStatus::Maintained => Color::Blue,
+        ProjectStatus::Archived => Color::Yellow,
+        ProjectStatus::Hidden => Color::Red,
+    };
+    color.paint(label).to_string()
 }
 
 /// Print session info

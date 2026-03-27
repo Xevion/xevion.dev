@@ -1,7 +1,8 @@
 <script lang="ts">
   import { cx } from "styled-system/css";
   import { badge } from "styled-system/recipes";
-  import type { ProjectStatus, EventLevel } from "$lib/admin-types";
+  import type { ProjectStatus } from "$lib/bindings";
+  import type { EventLevel } from "$lib/admin-types";
 
   interface Props {
     variant?: ProjectStatus | EventLevel | "default";

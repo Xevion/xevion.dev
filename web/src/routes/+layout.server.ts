@@ -1,12 +1,12 @@
 import type { LayoutServerLoad } from "./$types";
 import { getOGImageUrl } from "$lib/og-types";
 import { apiFetch } from "$lib/api.server";
-import type { SiteSettings } from "$lib/admin-types";
+import type { ApiSiteSettings } from "$lib/bindings";
 import { building } from "$app/environment";
 
 export const trailingSlash = "never";
 
-const DEFAULT_SETTINGS: SiteSettings = {
+const DEFAULT_SETTINGS: ApiSiteSettings = {
   identity: {
     siteTitle: "xevion.dev",
     displayName: "Ryan Walters",
@@ -17,14 +17,14 @@ const DEFAULT_SETTINGS: SiteSettings = {
 };
 
 export const load: LayoutServerLoad = async ({ url, fetch }) => {
-  let settings: SiteSettings;
+  let settings: ApiSiteSettings;
 
   if (building) {
     // During prerendering, use default settings (API isn't available)
     settings = DEFAULT_SETTINGS;
   } else {
     // At runtime, fetch from API
-    settings = await apiFetch<SiteSettings>("/api/settings", { fetch });
+    settings = await apiFetch<ApiSiteSettings>("/api/settings", { fetch });
   }
 
   return {

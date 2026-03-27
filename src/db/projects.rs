@@ -54,7 +54,7 @@ pub struct ApiAdminProject {
     pub project: ApiProject,
     pub tags: Vec<ApiTag>,
     pub media: Vec<ApiProjectMedia>,
-    pub status: String,
+    pub status: ProjectStatus,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -108,7 +108,7 @@ impl DbProject {
             project: self.to_api_project(),
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
             media: media.into_iter().map(|m| m.to_api_media()).collect(),
-            status: format!("{:?}", self.status).to_lowercase(),
+            status: self.status,
             description: self.description.clone(),
             github_repo: self.github_repo.clone(),
             demo_url: self.demo_url.clone(),

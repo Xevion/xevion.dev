@@ -5,18 +5,14 @@
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
   import MediaManager from "./MediaManager.svelte";
-  import type {
-    AdminProject,
-    CreateProjectData,
-    ProjectStatus,
-    TagWithIcon,
-  } from "$lib/admin-types";
+  import type { ApiAdminProject, ProjectStatus } from "$lib/bindings";
+  import type { CreateProjectData, TagWithIcon } from "$lib/admin-types";
   import { getLogger } from "@logtape/logtape";
 
   const logger = getLogger(["admin", "components", "ProjectForm"]);
 
   interface Props {
-    project?: AdminProject | null;
+    project?: ApiAdminProject | null;
     availableTags: TagWithIcon[];
     onsubmit: (data: CreateProjectData) => Promise<void>;
     ondelete?: () => void;

@@ -3,10 +3,10 @@
   import { flex } from "styled-system/patterns";
   import { telemetry } from "$lib/telemetry";
   import TagList from "./TagList.svelte";
-  import type { AdminProject } from "$lib/admin-types";
+  import type { ApiAdminProject } from "$lib/bindings";
 
   interface Props {
-    project: AdminProject;
+    project: ApiAdminProject;
     class?: string;
   }
 

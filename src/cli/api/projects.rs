@@ -191,7 +191,7 @@ async fn update(
     let status = if let Some(s) = status {
         parse_status(&s)?
     } else {
-        parse_status(&current.status)?
+        current.status
     };
 
     let request = UpdateProjectRequest {
