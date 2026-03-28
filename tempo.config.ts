@@ -5,6 +5,12 @@ const rustPreset = presets.rust({ bin: "xevion" });
 
 export default defineConfig({
   subsystems: {
+    ci: {
+      aliases: ["actions", "gha"],
+      commands: {
+        zizmor: "zizmor .github/workflows/",
+      },
+    },
     frontend: {
       aliases: ["front", "web", "fe"],
       cwd: "web",

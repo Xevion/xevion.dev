@@ -12,3 +12,4 @@ just = "1.46"
 
 # Project tooling
 "npm:@xevion/tempo" = "latest"
+zizmor = "latest"
