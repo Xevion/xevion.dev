@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     db,
+    events::{self, EventLevel, EventType},
     state::{AdminSession, AppResult, AppState},
 };
 
@@ -22,5 +23,15 @@ pub async fn update_settings_handler(
 ) -> AppResult<impl IntoResponse> {
     let settings = db::update_site_settings(&state.pool, &payload).await?;
     tracing::info!("Site settings updated");
+    events::log_event(
+        &state.event_sender,
+        EventType::SettingsUpdated,
+        EventLevel::Info,
+        Some("settings"),
+        None,
+        Some(&_session.0.username),
+        "Site settings updated".to_string(),
+        None,
+    );
     Ok(Json(settings))
 }

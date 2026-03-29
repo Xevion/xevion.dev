@@ -34,18 +34,6 @@ export interface UpdateTagData extends CreateTagData {
   id: string;
 }
 
-// Stubbed types (no backend implementation yet)
-export type EventLevel = "info" | "warning" | "error";
-
-export interface AdminEvent {
-  id: string;
-  timestamp: string;
-  level: EventLevel;
-  target: string;
-  message: string;
-  metadata?: Record<string, unknown>;
-}
-
 // Vestigial — auth is cookie-based, not token-based
 export interface AuthSession {
   token: string;

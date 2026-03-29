@@ -3,7 +3,7 @@
   import EventLog from "$lib/components/admin/EventLog.svelte";
   import { getAdminEvents } from "$lib/api";
   import { getLogger } from "@logtape/logtape";
-  import type { AdminEvent } from "$lib/admin-types";
+  import type { ApiEvent, EventLevel } from "$lib/bindings";
 
   const logger = getLogger(["admin", "events"]);
   import { css } from "styled-system/css";
@@ -14,10 +14,15 @@
     adminCardClass,
   } from "$lib/styles/admin";
 
-  let events = $state<AdminEvent[]>([]);
+  const PAGE_SIZE = 100;
+
+  let events = $state<ApiEvent[]>([]);
   let loading = $state(true);
+  let loadingMore = $state(false);
+  let hasMore = $state(true);
   let filterLevel = $state<string>("");
-  let filterTarget = $state("");
+  let filterEntityType = $state<string>("");
+  let filterEventType = $state<string>("");
 
   const levelOptions = [
     { value: "", label: "All Levels" },
@@ -26,23 +31,68 @@
     { value: "error", label: "Error" },
   ];
 
-  async function loadEvents() {
-    loading = true;
+  const entityTypeOptions = [
+    { value: "", label: "All Entities" },
+    { value: "project", label: "Project" },
+    { value: "tag", label: "Tag" },
+    { value: "settings", label: "Settings" },
+    { value: "system", label: "System" },
+  ];
+
+  const eventTypeOptions = [
+    { value: "", label: "All Types" },
+    { value: "project.created", label: "Project Created" },
+    { value: "project.updated", label: "Project Updated" },
+    { value: "project.deleted", label: "Project Deleted" },
+    { value: "project.tag_added", label: "Tag Added to Project" },
+    { value: "project.tag_removed", label: "Tag Removed from Project" },
+    { value: "tag.created", label: "Tag Created" },
+    { value: "tag.updated", label: "Tag Updated" },
+    { value: "tag.deleted", label: "Tag Deleted" },
+    { value: "settings.updated", label: "Settings Updated" },
+    { value: "github.sync_completed", label: "GitHub Sync" },
+    { value: "github.sync_failed", label: "GitHub Sync Failed" },
+    { value: "github.rate_limited", label: "GitHub Rate Limited" },
+    { value: "og.generated", label: "OG Image Generated" },
+    { value: "og.failed", label: "OG Image Failed" },
+    { value: "cache.invalidated", label: "Cache Invalidated" },
+  ];
+
+  async function loadEvents(reset = true) {
+    if (reset) {
+      loading = true;
+      events = [];
+    } else {
+      loadingMore = true;
+    }
     try {
-      // TODO: Pass filters when backend implementation is complete
-      events = await getAdminEvents();
+      const result = await getAdminEvents({
+        limit: PAGE_SIZE,
+        offset: reset ? 0 : events.length,
+        level: (filterLevel || undefined) as EventLevel | undefined,
+        entityType: filterEntityType || undefined,
+        eventType: filterEventType || undefined,
+      });
+      if (reset) {
+        events = result;
+      } else {
+        events = [...events, ...result];
+      }
+      hasMore = result.length === PAGE_SIZE;
     } catch (error) {
       logger.error("Failed to load events", { error });
     } finally {
       loading = false;
+      loadingMore = false;
     }
   }
 
-  // Load events on mount and when filters change
+  // Reload when filters change
   $effect(() => {
     void filterLevel;
-    void filterTarget;
-    loadEvents();
+    void filterEntityType;
+    void filterEventType;
+    loadEvents(true);
   });
 </script>
 
@@ -55,7 +105,7 @@
   <div>
     <h1 class={pageTitleClass}>Event Log</h1>
     <p class={pageDescriptionClass}>
-      System activity, errors, and sync operations
+      System activity, content changes, and background operations
     </p>
   </div>
 
@@ -71,7 +121,7 @@
     >
       Filters
     </h3>
-    <div class={grid({ columns: { md: 2 }, gap: "4" })}>
+    <div class={grid({ columns: { md: 3 }, gap: "4" })}>
       <Input
         label="Level"
         type="select"
@@ -79,10 +129,16 @@
         options={levelOptions}
       />
       <Input
-        label="Target"
-        type="text"
-        bind:value={filterTarget}
-        placeholder="e.g., project, tag, github"
+        label="Entity Type"
+        type="select"
+        bind:value={filterEntityType}
+        options={entityTypeOptions}
+      />
+      <Input
+        label="Event Type"
+        type="select"
+        bind:value={filterEventType}
+        options={eventTypeOptions}
       />
     </div>
   </div>
@@ -135,11 +191,38 @@
               ml: "2",
             })}
           >
-            ({events.length} event{events.length === 1 ? "" : "s"})
+            ({events.length} event{events.length === 1 ? "" : "s"}{hasMore
+              ? "+"
+              : ""})
           </span>
         </h2>
       </div>
       <EventLog {events} maxHeight="600px" showMetadata={true} />
+      {#if hasMore}
+        <div
+          class={css({
+            px: "6",
+            py: "3",
+            borderTopWidth: "1px",
+            borderColor: "admin.border",
+            textAlign: "center",
+          })}
+        >
+          <button
+            class={css({
+              fontSize: "sm",
+              color: "admin.accent",
+              _hover: { color: "admin.accentHover" },
+              cursor: "pointer",
+              transition: "colors",
+            })}
+            disabled={loadingMore}
+            onclick={() => loadEvents(false)}
+          >
+            {loadingMore ? "Loading..." : "Load more"}
+          </button>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>

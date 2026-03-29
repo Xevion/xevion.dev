@@ -62,6 +62,16 @@ pub async fn generate_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Resu
         .map_err(|e| format!("Failed to upload to R2: {e}"))?;
 
     tracing::info!(r2_key, "OG image generated and uploaded");
+    crate::events::log_event(
+        &state.event_sender,
+        crate::events::EventType::OgImageGenerated,
+        crate::events::EventLevel::Info,
+        Some("system"),
+        None,
+        None,
+        format!("OG image generated: {r2_key}"),
+        None,
+    );
     Ok(())
 }
 
@@ -99,6 +109,16 @@ pub async fn regenerate_common_images(state: Arc<AppState>) {
             Ok(()) => ready.push(spec.r2_key()),
             Err(e) => {
                 tracing::error!(r2_key = spec.r2_key(), error = %e, "OG image failed");
+                crate::events::log_event(
+                    &state.event_sender,
+                    crate::events::EventType::OgImageFailed,
+                    crate::events::EventLevel::Error,
+                    Some("system"),
+                    None,
+                    None,
+                    format!("OG image failed: {}: {e}", spec.r2_key()),
+                    None,
+                );
             }
         }
     }

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    auth::SessionManager, cache::IsrCache, health::HealthChecker, http::HttpClient,
-    icon_cache::IconCache, tarpit::TarpitState,
+    auth::SessionManager, cache::IsrCache, events::EventSender, health::HealthChecker,
+    http::HttpClient, icon_cache::IconCache, tarpit::TarpitState,
 };
 
 /// Application state shared across all handlers
@@ -15,6 +15,7 @@ pub struct AppState {
     pub session_manager: Arc<SessionManager>,
     pub isr_cache: Arc<IsrCache>,
     pub icon_cache: Arc<IconCache>,
+    pub event_sender: EventSender,
 }
 
 /// Errors that can occur during proxying to Bun

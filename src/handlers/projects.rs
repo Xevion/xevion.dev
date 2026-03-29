@@ -2,7 +2,9 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;
 
 use crate::{
-    auth, db, github,
+    auth, db,
+    events::{self, EventLevel, EventType},
+    github,
     handlers::{AddProjectTagRequest, CreateProjectRequest, UpdateProjectRequest},
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
 };
@@ -91,6 +93,16 @@ pub async fn create_project_handler(
         .or_not_found()?;
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project created");
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectCreated,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&_session.0.username),
+        format!("Project created: {}", project.name),
+        None,
+    );
 
     if let Some(ref repo) = project.github_repo
         && let Some(scheduler) = github::get_scheduler()
@@ -159,6 +171,16 @@ pub async fn update_project_handler(
         .or_not_found()?;
 
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project updated");
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectUpdated,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&_session.0.username),
+        format!("Project updated: {}", project.name),
+        None,
+    );
 
     if let Some(scheduler) = github::get_scheduler() {
         let old_repo = existing_project.github_repo.as_ref();
@@ -200,6 +222,16 @@ pub async fn delete_project_handler(
 
     db::delete_project(&state.pool, project.id).await?;
     tracing::info!(project_id = %project.id, project_name = %project.name, "Project deleted");
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectDeleted,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&_session.0.username),
+        format!("Project deleted: {}", project.name),
+        None,
+    );
 
     if project.github_repo.is_some()
         && let Some(scheduler) = github::get_scheduler()
@@ -256,6 +288,17 @@ pub async fn add_project_tag_handler(
         .await
         .not_found_on_fk()?;
 
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectTagAdded,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&_session.0.username),
+        format!("Tag added to project: {}", project.name),
+        None,
+    );
+
     state.isr_cache.invalidate("/").await;
 
     Ok((
@@ -280,6 +323,17 @@ pub async fn remove_project_tag_handler(
         .or_not_found()?;
 
     db::remove_tag_from_project(&state.pool, project.id, tag.id).await?;
+
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectTagRemoved,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&_session.0.username),
+        format!("Tag removed from project: {}", project.name),
+        None,
+    );
 
     state.isr_cache.invalidate("/").await;
 

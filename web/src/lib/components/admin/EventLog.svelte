@@ -1,12 +1,12 @@
 <script lang="ts">
   import { css, cx } from "styled-system/css";
   import { hstack } from "styled-system/patterns";
-  import type { AdminEvent } from "$lib/admin-types";
+  import type { ApiEvent } from "$lib/bindings";
   import { OverlayScrollbarsComponent } from "overlayscrollbars-svelte";
   import "overlayscrollbars/overlayscrollbars.css";
 
   interface Props {
-    events: AdminEvent[];
+    events: ApiEvent[];
     maxHeight?: string;
     showMetadata?: boolean;
   }
@@ -38,6 +38,12 @@
     warning: css({ color: "amber.500/70" }),
     error: css({ color: "rose.500/70" }),
   };
+
+  const levelLabels = {
+    info: "INFO",
+    warning: "WARN",
+    error: "ERR",
+  };
 </script>
 
 <OverlayScrollbarsComponent
@@ -55,11 +61,6 @@
     })}
   >
     {#each events as event (event.id)}
-      {@const levelLabels = {
-        info: "INFO",
-        warning: "WARN",
-        error: "ERR",
-      }}
       <div
         class={css({
           _hover: { bg: "admin.surfaceHover/50" },
@@ -90,6 +91,17 @@
               </span>
               <span
                 class={css({
+                  color: "admin.textMuted",
+                  fontFamily: "mono",
+                  fontSize: "11px",
+                  flexShrink: "0",
+                  w: "40",
+                })}
+              >
+                {event.eventType}
+              </span>
+              <span
+                class={css({
                   color: "admin.text",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -97,11 +109,6 @@
                 })}
               >
                 {event.message}
-              </span>
-              <span class={css({ color: "admin.textMuted", flexShrink: "0" })}>
-                target=<span class={css({ color: "admin.textSecondary" })}
-                  >{event.target}</span
-                >
               </span>
             </div>
             <div class={hstack({ gap: "3", flexShrink: "0" })}>
@@ -115,8 +122,18 @@
                   })}
                   onclick={() => toggleMetadata(event.id)}
                 >
-                  {expandedEventId === event.id ? "hide" : "show"}
+                  {expandedEventId === event.id ? "hide" : "meta"}
                 </button>
+              {/if}
+              {#if event.actor}
+                <span
+                  class={css({
+                    color: "admin.textMuted",
+                    fontSize: "11px",
+                  })}
+                >
+                  {event.actor}
+                </span>
               {/if}
               <span
                 class={css({
@@ -125,7 +142,7 @@
                   fontVariantNumeric: "tabular-nums",
                 })}
               >
-                {formatTimestamp(event.timestamp)}
+                {formatTimestamp(event.createdAt)}
               </span>
             </div>
           </div>
@@ -142,15 +159,6 @@
                 fontSize: "11px",
               })}
             >
-              <p
-                class={css({
-                  color: "admin.textMuted",
-                  mb: "2",
-                  fontWeight: "medium",
-                })}
-              >
-                Metadata:
-              </p>
               <pre
                 class={css({
                   color: "admin.textSecondary",

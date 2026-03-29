@@ -1,6 +1,7 @@
 // Auto-generated barrel file — do not edit manually
 export type { AdminStats } from "./AdminStats";
 export type { ApiAdminProject } from "./ApiAdminProject";
+export type { ApiEvent } from "./ApiEvent";
 export type { ApiMediaVariant } from "./ApiMediaVariant";
 export type { ApiMediaVariants } from "./ApiMediaVariants";
 export type { ApiProject } from "./ApiProject";
@@ -12,6 +13,8 @@ export type { ApiSiteSettings } from "./ApiSiteSettings";
 export type { ApiSocialLink } from "./ApiSocialLink";
 export type { ApiTag } from "./ApiTag";
 export type { ApiTagWithCount } from "./ApiTagWithCount";
+export type { EventLevel } from "./EventLevel";
+export type { EventType } from "./EventType";
 export type { ApiVideoOriginal } from "./ApiVideoOriginal";
 export type { FocalPoint } from "./FocalPoint";
 export type { MediaMetadata } from "./MediaMetadata";

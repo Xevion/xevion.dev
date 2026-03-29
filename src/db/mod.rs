@@ -1,3 +1,4 @@
+pub mod events;
 pub mod media;
 pub mod projects;
 pub mod settings;

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     db,
+    events::{self, EventLevel, EventType},
     handlers::{CreateTagRequest, UpdateTagRequest},
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
     utils,
@@ -48,6 +49,17 @@ pub async fn create_tag_handler(
     )
     .await
     .conflict_on_unique("A tag with this name or slug already exists")?;
+
+    events::log_event(
+        &state.event_sender,
+        EventType::TagCreated,
+        EventLevel::Info,
+        Some("tag"),
+        Some(tag.id),
+        Some(&_session.0.username),
+        format!("Tag created: {}", tag.name),
+        None,
+    );
 
     state.isr_cache.invalidate("/").await;
     Ok((StatusCode::CREATED, Json(tag.to_api_tag())))
@@ -104,6 +116,17 @@ pub async fn update_tag_handler(
     .await
     .conflict_on_unique("A tag with this name or slug already exists")?;
 
+    events::log_event(
+        &state.event_sender,
+        EventType::TagUpdated,
+        EventLevel::Info,
+        Some("tag"),
+        Some(updated_tag.id),
+        Some(&_session.0.username),
+        format!("Tag updated: {}", updated_tag.name),
+        None,
+    );
+
     state.isr_cache.invalidate("/").await;
     Ok(Json(updated_tag.to_api_tag()))
 }
@@ -121,6 +144,16 @@ pub async fn delete_tag_handler(
 
     db::delete_tag(&state.pool, tag.id).await?;
     tracing::info!(tag_id = %tag.id, tag_name = %tag.name, "Tag deleted");
+    events::log_event(
+        &state.event_sender,
+        EventType::TagDeleted,
+        EventLevel::Info,
+        Some("tag"),
+        Some(tag.id),
+        Some(&_session.0.username),
+        format!("Tag deleted: {}", tag.name),
+        None,
+    );
 
     state.isr_cache.invalidate("/").await;
     Ok(Json(tag.to_api_tag()))

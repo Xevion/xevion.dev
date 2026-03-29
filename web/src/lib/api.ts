@@ -1,13 +1,14 @@
 import type {
   ApiAdminProject,
+  ApiEvent,
   ApiTag,
   ApiTagWithCount,
   AdminStats,
   ApiSiteSettings,
   ApiProjectMedia,
+  EventLevel,
 } from "$lib/bindings";
 import type {
-  AdminEvent,
   CreateProjectData,
   UpdateProjectData,
   CreateTagData,
@@ -184,9 +185,21 @@ export async function reorderProjectMedia(
   );
 }
 
-// TODO: Implement when events table is added to backend
-export async function getAdminEvents(): Promise<AdminEvent[]> {
-  return [];
+export async function getAdminEvents(params?: {
+  limit?: number;
+  offset?: number;
+  level?: EventLevel;
+  entityType?: string;
+  eventType?: string;
+}): Promise<ApiEvent[]> {
+  const search = new URLSearchParams();
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
+  if (params?.level) search.set("level", params.level);
+  if (params?.entityType) search.set("entityType", params.entityType);
+  if (params?.eventType) search.set("eventType", params.eventType);
+  const qs = search.toString();
+  return clientApiFetch<ApiEvent[]>(`/api/events${qs ? `?${qs}` : ""}`);
 }
 
 export async function getAdminStats(): Promise<AdminStats> {

@@ -143,6 +143,13 @@ pub async fn run(
     let icon_cache = Arc::new(IconCache::new());
     tracing::debug!("Icon cache initialized");
 
+    // Create event logging channel and spawn background writer
+    let (event_sender, event_receiver) = crate::events::create_channel();
+    tokio::spawn(crate::events::run_event_writer(
+        event_receiver,
+        pool.clone(),
+    ));
+
     let state = Arc::new(AppState {
         client,
         health_checker,
@@ -151,6 +158,7 @@ pub async fn run(
         session_manager: session_manager.clone(),
         isr_cache,
         icon_cache,
+        event_sender,
     });
 
     // Regenerate common OGP images on startup
@@ -165,10 +173,11 @@ pub async fn run(
     // Uses per-project dynamic intervals based on activity recency
     tokio::spawn({
         let pool = pool.clone();
+        let event_sender = state.event_sender.clone();
         async move {
             // Brief delay to let server finish initializing
             tokio::time::sleep(Duration::from_secs(2)).await;
-            github::run_scheduler(pool).await;
+            github::run_scheduler(pool, event_sender).await;
         }
     });
 

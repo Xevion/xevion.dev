@@ -68,6 +68,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/tags/recalculate-cooccurrence",
             post(handlers::recalculate_cooccurrence_handler),
         )
+        .route("/events", get(handlers::list_events_handler))
         .route("/stats", get(handlers::get_admin_stats_handler))
         .route(
             "/settings",

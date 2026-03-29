@@ -4,7 +4,7 @@
   import EventLog from "$lib/components/admin/EventLog.svelte";
   import { getAdminEvents } from "$lib/api";
   import { getLogger } from "@logtape/logtape";
-  import type { AdminEvent } from "$lib/admin-types";
+  import type { ApiEvent } from "$lib/bindings";
 
   const logger = getLogger(["admin", "dashboard"]);
   import IconPlus from "~icons/lucide/plus";
@@ -16,7 +16,7 @@
     iconSm,
   } from "$lib/styles/admin";
 
-  let recentEvents = $state<AdminEvent[]>([]);
+  let recentEvents = $state<ApiEvent[]>([]);
   let loading = $state(true);
 
   async function loadDashboard() {

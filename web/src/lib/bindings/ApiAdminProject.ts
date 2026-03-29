@@ -4,18 +4,4 @@ import type { ApiProjectMedia } from "./ApiProjectMedia";
 import type { ApiTag } from "./ApiTag";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ApiAdminProject = {
-  tags: Array<ApiTag>;
-  media: Array<ApiProjectMedia>;
-  status: ProjectStatus;
-  description: string;
-  githubRepo?: string;
-  demoUrl?: string;
-  createdAt: string;
-  lastActivity: string;
-  id: string;
-  slug: string;
-  name: string;
-  shortDescription: string;
-  links: Array<ApiProjectLink>;
-};
+export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };

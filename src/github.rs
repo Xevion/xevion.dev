@@ -678,7 +678,7 @@ pub async fn sync_single_project(
 ///
 /// This is the main entry point for the background sync task.
 /// It checks for due projects every 30 seconds and syncs them individually.
-pub async fn run_scheduler(pool: PgPool) {
+pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSender) {
     let client = match GitHubClient::get().await {
         Some(c) => c,
         None => return, // GitHub sync disabled
@@ -731,6 +731,16 @@ pub async fn run_scheduler(pool: PgPool) {
 
                     // Check if activity changed
                     if new_activity != project.last_activity {
+                        crate::events::log_event(
+                            &event_sender,
+                            crate::events::EventType::GithubSyncCompleted,
+                            crate::events::EventLevel::Info,
+                            Some("project"),
+                            Some(project.project_id),
+                            None,
+                            format!("GitHub sync: new activity on {}", project.github_repo),
+                            None,
+                        );
                         scheduler.reschedule(project, new_activity);
                     } else {
                         scheduler.reschedule_skipped(project);
@@ -742,6 +752,16 @@ pub async fn run_scheduler(pool: PgPool) {
                     tracing::warn!(
                         processed,
                         "GitHub rate limit hit, backing off all projects 5 minutes"
+                    );
+                    crate::events::log_event(
+                        &event_sender,
+                        crate::events::EventType::GithubRateLimited,
+                        crate::events::EventLevel::Warning,
+                        Some("system"),
+                        None,
+                        None,
+                        "GitHub API rate limit hit, backing off 5 minutes".to_string(),
+                        None,
                     );
                     // Re-add the current project too
                     scheduler.reschedule_with_error(project);
@@ -760,6 +780,16 @@ pub async fn run_scheduler(pool: PgPool) {
                         repo = %project.github_repo,
                         error = %e,
                         "GitHub sync error, scheduling retry with backoff"
+                    );
+                    crate::events::log_event(
+                        &event_sender,
+                        crate::events::EventType::GithubSyncFailed,
+                        crate::events::EventLevel::Error,
+                        Some("project"),
+                        Some(project.project_id),
+                        None,
+                        format!("GitHub sync failed for {}: {}", project.github_repo, e),
+                        None,
                     );
                     scheduler.reschedule_with_error(project);
                 }
