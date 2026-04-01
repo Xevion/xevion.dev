@@ -181,7 +181,7 @@ jobs:
       - name: Rust security audit
         run: cargo audit
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.30.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: .
