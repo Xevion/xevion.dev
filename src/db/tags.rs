@@ -193,11 +193,14 @@ pub async fn update_tag(
 
 // Project-Tag association queries
 
-pub async fn add_tag_to_project(
-    pool: &PgPool,
+pub async fn add_tag_to_project<'e, E>(
+    executor: E,
     project_id: Uuid,
     tag_id: Uuid,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+{
     sqlx::query!(
         r#"
         INSERT INTO project_tags (project_id, tag_id)
@@ -207,22 +210,25 @@ pub async fn add_tag_to_project(
         project_id,
         tag_id
     )
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
-pub async fn remove_tag_from_project(
-    pool: &PgPool,
+pub async fn remove_tag_from_project<'e, E>(
+    executor: E,
     project_id: Uuid,
     tag_id: Uuid,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), sqlx::Error>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+{
     sqlx::query!(
         "DELETE FROM project_tags WHERE project_id = $1 AND tag_id = $2",
         project_id,
         tag_id
     )
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
@@ -345,16 +351,21 @@ pub async fn set_project_tags(
         .copied()
         .collect();
 
-    // Add new tags
+    if to_add.is_empty() && to_remove.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = pool.begin().await?;
+
     for tag_id in to_add {
-        add_tag_to_project(pool, project_id, tag_id).await?;
+        add_tag_to_project(&mut *tx, project_id, tag_id).await?;
     }
 
-    // Remove old tags
     for tag_id in to_remove {
-        remove_tag_from_project(pool, project_id, tag_id).await?;
+        remove_tag_from_project(&mut *tx, project_id, tag_id).await?;
     }
 
+    tx.commit().await?;
     Ok(())
 }
 

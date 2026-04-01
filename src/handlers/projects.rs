@@ -25,7 +25,7 @@ pub async fn projects_handler(
     let response: Vec<db::ApiAdminProject> = projects_with_tags
         .into_iter()
         .map(|(project, tags, media)| project.to_api_admin_project(tags, media))
-        .collect();
+        .collect::<AppResult<Vec<_>>>()?;
     Ok(Json(response))
 }
 
@@ -45,7 +45,7 @@ pub async fn get_project_handler(
         return Err(AppError::NotFound);
     }
 
-    Ok(Json(project.to_api_admin_project(tags, media)))
+    Ok(Json(project.to_api_admin_project(tags, media)?))
 }
 
 /// Create a new project (requires authentication)
@@ -115,7 +115,7 @@ pub async fn create_project_handler(
 
     Ok((
         StatusCode::CREATED,
-        Json(project.to_api_admin_project(tags, media)),
+        Json(project.to_api_admin_project(tags, media)?),
     ))
 }
 
@@ -206,7 +206,7 @@ pub async fn update_project_handler(
 
     state.isr_cache.invalidate("/").await;
 
-    Ok(Json(project.to_api_admin_project(tags, media)))
+    Ok(Json(project.to_api_admin_project(tags, media)?))
 }
 
 /// Delete a project (requires authentication)
@@ -241,7 +241,7 @@ pub async fn delete_project_handler(
 
     state.isr_cache.invalidate("/").await;
 
-    Ok(Json(project.to_api_admin_project(tags, media)))
+    Ok(Json(project.to_api_admin_project(tags, media)?))
 }
 
 /// Get admin stats (requires authentication)

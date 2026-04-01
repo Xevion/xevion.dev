@@ -5,6 +5,8 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use crate::state::{AppError, AppResult};
+
 use super::{
     ProjectStatus,
     media::{self, ApiProjectMedia, DbProjectMedia, get_media_for_project},
@@ -97,14 +99,14 @@ impl DbProject {
         &self,
         tags: Vec<DbTag>,
         media: Vec<DbProjectMedia>,
-    ) -> ApiAdminProject {
+    ) -> AppResult<ApiAdminProject> {
         let last_activity = self
             .last_github_activity
             .unwrap_or(self.created_at)
             .format(&Rfc3339)
-            .unwrap();
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        ApiAdminProject {
+        Ok(ApiAdminProject {
             project: self.to_api_project(),
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
             media: media.into_iter().map(|m| m.to_api_media()).collect(),
@@ -112,9 +114,12 @@ impl DbProject {
             description: self.description.clone(),
             github_repo: self.github_repo.clone(),
             demo_url: self.demo_url.clone(),
-            created_at: self.created_at.format(&Rfc3339).unwrap(),
+            created_at: self
+                .created_at
+                .format(&Rfc3339)
+                .map_err(|e| AppError::Internal(e.to_string()))?,
             last_activity,
-        }
+        })
     }
 }
 

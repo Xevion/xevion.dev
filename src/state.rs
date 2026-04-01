@@ -49,6 +49,14 @@ pub enum AppError {
     #[error("{0}")]
     Validation(String),
 
+    #[error("Forbidden")]
+    #[allow(dead_code)]
+    Forbidden,
+
+    #[error("{0}")]
+    #[allow(dead_code)]
+    BadRequest(String),
+
     #[error("{0}")]
     Conflict(String),
 
@@ -72,6 +80,8 @@ impl axum::response::IntoResponse for AppError {
             Self::NotFound => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
             Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "INVALID_CREDENTIALS"),
+            Self::Forbidden => (StatusCode::FORBIDDEN, "FORBIDDEN"),
+            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
             Self::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
             Self::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE"),

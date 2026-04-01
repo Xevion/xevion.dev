@@ -3,6 +3,7 @@ set dotenv-load
 alias c := check
 alias d := dev
 alias f := format
+alias t := test
 
 default:
 	just --list
@@ -34,6 +35,15 @@ dev-json:
 # Manage local PostgreSQL container (default: start)
 db *flags:
 	tempo run db {{flags}}
+
+# Run all tests
+test:
+	cargo nextest run
+
+# Run database migrations (starts DB container first)
+migrate:
+	just db
+	sqlx migrate run
 
 # Start DB + run migrations + seed test data
 seed:
