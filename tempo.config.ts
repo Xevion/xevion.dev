@@ -40,6 +40,31 @@ export default defineConfig({
           requires: ["sqlx"],
           hint: "Run `cargo sqlx prepare` to update offline query data",
         },
+        machete: {
+          cmd: "cargo machete",
+          requires: ["cargo-machete"],
+          hint: "Install with `cargo install cargo-machete`",
+        },
+      },
+    },
+    security: {
+      aliases: ["sec", "audit"],
+      commands: {
+        // RUSTSEC-2023-0071: rsa timing sidechannel, no fix available (transitive via sqlx)
+        audit: {
+          cmd: "cargo audit --ignore RUSTSEC-2023-0071",
+          requires: ["cargo-audit"],
+          hint: "Install with `cargo install cargo-audit`",
+        },
+      },
+    },
+    bindings: {
+      aliases: ["bind", "ts-rs"],
+      commands: {
+        verify: {
+          cmd: 'bash -c \'SQLX_OFFLINE=true cargo test export_bindings_ && git diff --exit-code web/src/lib/bindings/\'',
+          hint: "Run `just bindings` to regenerate, then commit the changes",
+        },
       },
     },
   },
@@ -50,6 +75,16 @@ export default defineConfig({
           "web/node_modules not found -- run `bun install --cwd web` first",
         );
       }
+    },
+    {
+      label: "svelte-kit sync",
+      sources: { dir: "web/src", pattern: "**/*.{svelte,ts}" },
+      artifacts: {
+        dir: "web/.svelte-kit",
+        pattern: "tsconfig.json",
+      },
+      regenerate: "bun run --cwd web svelte-kit sync",
+      reason: "panda codegen and svelte-check depend on .svelte-kit/tsconfig.json",
     },
     {
       label: "panda codegen",
