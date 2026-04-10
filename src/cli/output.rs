@@ -28,7 +28,7 @@ pub fn print_project(project: &ApiAdminProject) {
     println!(
         "  {} {}",
         dim.paint("Status:"),
-        format_status(&project.status)
+        format_status(project.status)
     );
     println!(
         "  {} {}",
@@ -101,7 +101,7 @@ pub fn print_projects_table(projects: &[ApiAdminProject]) {
             "{:name_width$}  {:slug_width$}  {:10}  {}",
             project.project.name,
             dim.paint(&project.project.slug),
-            format_status(&project.status),
+            format_status(project.status),
             tags_str,
         );
     }
@@ -167,9 +167,7 @@ pub fn print_tags_table(tags: &[ApiTagWithCount]) {
         let color = tag
             .tag
             .color
-            .as_ref()
-            .map(|c| format!("#{}", c))
-            .unwrap_or_else(|| "-".to_string());
+            .as_ref().map_or_else(|| "-".to_string(), |c| format!("#{c}"));
 
         println!(
             "{:name_width$}  {:slug_width$}  {:8}  {:20}  {}",
@@ -225,7 +223,7 @@ pub fn print_settings(settings: &ApiSiteSettings) {
 }
 
 /// Format project status with color
-fn format_status(status: &crate::db::ProjectStatus) -> String {
+fn format_status(status: crate::db::ProjectStatus) -> String {
     use crate::db::ProjectStatus;
     let label = match status {
         ProjectStatus::Active => "active",

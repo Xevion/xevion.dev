@@ -93,7 +93,7 @@ impl ResponseMode {
         }
     }
 
-    fn content_type(&self) -> &'static str {
+    const fn content_type(self) -> &'static str {
         match self {
             Self::RandomBytes => "application/octet-stream",
             Self::FakeHtml => "text/html; charset=utf-8",
@@ -102,6 +102,9 @@ impl ResponseMode {
     }
 }
 
+// Path is already lowercased at the start of the function, so the extension
+// comparisons below are intentionally case-sensitive.
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn is_malicious_path(path: &str) -> bool {
     let path_lower = path.to_lowercase();
 
@@ -318,14 +321,12 @@ pub async fn tarpit_handler(
     let client_ip = extract_client_ip(headers, peer.map(|ConnectInfo(addr)| addr));
 
     // Try to acquire global semaphore
-    let _global_permit = if let Ok(Ok(permit)) = tokio::time::timeout(
+    let Ok(Ok(global_permit)) = tokio::time::timeout(
         Duration::from_millis(100),
         state.global_semaphore.clone().acquire_owned(),
     )
     .await
-    {
-        permit
-    } else {
+    else {
         tracing::debug!(
             client_ip = %client_ip,
             reason = "global_limit",
@@ -342,14 +343,12 @@ pub async fn tarpit_handler(
         .clone();
 
     // Try to acquire per-IP semaphore
-    let _ip_permit = if let Ok(Ok(permit)) = tokio::time::timeout(
+    let Ok(Ok(ip_permit)) = tokio::time::timeout(
         Duration::from_millis(100),
         ip_semaphore.clone().acquire_owned(),
     )
     .await
-    {
-        permit
-    } else {
+    else {
         tracing::debug!(
             client_ip = %client_ip,
             reason = "ip_limit",
@@ -384,8 +383,8 @@ pub async fn tarpit_handler(
             client_ip,
             0usize,
             false,
-            _global_permit,
-            _ip_permit,
+            global_permit,
+            ip_permit,
         ),
         |(mut stream, start, client_ip, bytes_sent, logged, global_permit, ip_permit)| async move {
             use futures::StreamExt;

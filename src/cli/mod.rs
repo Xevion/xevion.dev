@@ -273,7 +273,7 @@ pub enum TagOp {
 /// Parse tags for create command (+ prefix optional)
 pub fn parse_create_tags(s: &str) -> Vec<String> {
     s.split(',')
-        .map(|t| t.trim())
+        .map(str::trim)
         .filter(|t| !t.is_empty())
         .map(|t| t.strip_prefix('+').unwrap_or(t).to_string())
         .collect()
@@ -282,7 +282,7 @@ pub fn parse_create_tags(s: &str) -> Vec<String> {
 /// Parse tags for update command (+ or - prefix required)
 pub fn parse_update_tags(s: &str) -> Result<Vec<TagOp>, String> {
     s.split(',')
-        .map(|t| t.trim())
+        .map(str::trim)
         .filter(|t| !t.is_empty())
         .map(|t| {
             if let Some(tag) = t.strip_prefix('+') {
@@ -299,8 +299,7 @@ pub fn parse_update_tags(s: &str) -> Result<Vec<TagOp>, String> {
                 }
             } else {
                 Err(format!(
-                    "Tag '{}' requires prefix: use +{} to add, -{} to remove",
-                    t, t, t
+                    "Tag '{t}' requires prefix: use +{t} to add, -{t} to remove"
                 ))
             }
         })

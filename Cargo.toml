@@ -51,3 +51,30 @@ debug = "line-tables-only"
 
 [profile.release]
 strip = true
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
+# Casts from u128 (Duration::as_millis) → u64, usize → i32 (display_order),
+# and similar bounded numeric conversions are pervasive in HTTP/timing/db code.
+# Allowing crate-wide avoids per-site noise; individual call sites are bounded by
+# their inputs (durations < u64 nanoseconds, display orders < i32::MAX, etc.).
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+
+# The CLI runs on a single-threaded runtime; futures don't need to be Send.
+future_not_send = "allow"
+
+# Stylistic: `if let Some(x) = opt { ... } else { ... }` is often clearer than
+# `opt.map_or_else(...)`, especially with multi-line else branches.
+option_if_let_else = "allow"
+
+# Per-function lines are already bounded by common-sense refactoring; this lint
+# is noisy for server setup and request handlers without adding value.
+too_many_lines = "allow"
+
+# Hurts locality for small helper types/functions tightly scoped to one call site.
+items_after_statements = "allow"

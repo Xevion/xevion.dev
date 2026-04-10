@@ -18,7 +18,7 @@ pub async fn get_settings_handler(
 #[tracing::instrument(skip_all)]
 pub async fn update_settings_handler(
     State(state): State<Arc<AppState>>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<db::UpdateSiteSettingsRequest>,
 ) -> AppResult<impl IntoResponse> {
     let settings = db::update_site_settings(&state.pool, &payload).await?;
@@ -29,7 +29,7 @@ pub async fn update_settings_handler(
         EventLevel::Info,
         Some("settings"),
         None,
-        Some(&_session.0.username),
+        Some(&session.0.username),
         "Site settings updated".to_string(),
         None,
     );

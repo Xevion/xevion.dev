@@ -28,18 +28,18 @@ impl FromStr for ListenAddr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.starts_with('/') || s.starts_with("./") {
-            return Ok(ListenAddr::Unix(PathBuf::from(s)));
+            return Ok(Self::Unix(PathBuf::from(s)));
         }
 
         if let Some(port_str) = s.strip_prefix(':') {
             let port: u16 = port_str
                 .parse()
                 .map_err(|_| format!("Invalid port number: {port_str}"))?;
-            return Ok(ListenAddr::Tcp(SocketAddr::from(([127, 0, 0, 1], port))));
+            return Ok(Self::Tcp(SocketAddr::from(([127, 0, 0, 1], port))));
         }
 
         match s.parse::<SocketAddr>() {
-            Ok(addr) => Ok(ListenAddr::Tcp(addr)),
+            Ok(addr) => Ok(Self::Tcp(addr)),
             Err(_) => match s.to_socket_addrs() {
                 Ok(mut addrs) => addrs
                     .next()
@@ -56,8 +56,8 @@ impl FromStr for ListenAddr {
 impl std::fmt::Display for ListenAddr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ListenAddr::Tcp(addr) => write!(f, "{addr}"),
-            ListenAddr::Unix(path) => write!(f, "{}", path.display()),
+            Self::Tcp(addr) => write!(f, "{addr}"),
+            Self::Unix(path) => write!(f, "{}", path.display()),
         }
     }
 }
@@ -74,7 +74,7 @@ mod tests {
                 assert_eq!(socket.port(), 8080);
                 assert_eq!(socket.ip().to_string(), "127.0.0.1");
             }
-            _ => panic!("Expected TCP address"),
+            ListenAddr::Unix(_) => panic!("Expected TCP address"),
         }
     }
 
@@ -86,7 +86,7 @@ mod tests {
                 assert_eq!(socket.port(), 8080);
                 assert_eq!(socket.ip().to_string(), "0.0.0.0");
             }
-            _ => panic!("Expected TCP address"),
+            ListenAddr::Unix(_) => panic!("Expected TCP address"),
         }
     }
 
@@ -98,7 +98,7 @@ mod tests {
                 assert_eq!(socket.port(), 8080);
                 assert_eq!(socket.ip().to_string(), "::");
             }
-            _ => panic!("Expected TCP address"),
+            ListenAddr::Unix(_) => panic!("Expected TCP address"),
         }
     }
 
@@ -109,7 +109,7 @@ mod tests {
             ListenAddr::Unix(path) => {
                 assert_eq!(path, PathBuf::from("/tmp/api.sock"));
             }
-            _ => panic!("Expected Unix socket"),
+            ListenAddr::Tcp(_) => panic!("Expected Unix socket"),
         }
     }
 
@@ -120,7 +120,7 @@ mod tests {
             ListenAddr::Unix(path) => {
                 assert_eq!(path, PathBuf::from("./api.sock"));
             }
-            _ => panic!("Expected Unix socket"),
+            ListenAddr::Tcp(_) => panic!("Expected Unix socket"),
         }
     }
 }

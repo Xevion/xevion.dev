@@ -121,21 +121,21 @@ fn serve_asset_by_path(path: &str) -> Response {
     }
 }
 
-/// Get a static file from the embedded CLIENT_ASSETS.
+/// Get a static file from the embedded `CLIENT_ASSETS`.
 pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
-    CLIENT_ASSETS.get_file(path).map(|f| f.contents())
+    CLIENT_ASSETS.get_file(path).map(include_dir::File::contents)
 }
 
 /// Get prerendered error page HTML for a given status code.
 /// Available codes defined in web/src/lib/error-codes.ts.
 pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
-    let filename = format!("{}.html", status_code);
-    ERROR_PAGES.get_file(&filename).map(|f| f.contents())
+    let filename = format!("{status_code}.html");
+    ERROR_PAGES.get_file(&filename).map(include_dir::File::contents)
 }
 
-/// Get the embedded SvelteKit env.js file for dynamic public environment variables.
+/// Get the embedded `SvelteKit` env.js file for dynamic public environment variables.
 ///
-/// SvelteKit generates this file when using `$env/dynamic/public` imports.
+/// `SvelteKit` generates this file when using `$env/dynamic/public` imports.
 /// It must be served at `/_app/env.js` for prerendered pages to hydrate correctly.
 pub fn get_env_js() -> &'static [u8] {
     ENV_JS
@@ -154,7 +154,7 @@ pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
 
     let path = path.strip_suffix('/').unwrap_or(path);
 
-    let html_path = format!("{}.html", path);
+    let html_path = format!("{path}.html");
     if let Some(file) = PRERENDERED_PAGES.get_file(&html_path) {
         return Some(serve_prerendered_file(&html_path, file.contents()));
     }
@@ -162,7 +162,7 @@ pub fn try_serve_prerendered_page(path: &str) -> Option<Response> {
     let index_path = if path.is_empty() {
         "index.html".to_string()
     } else {
-        format!("{}/index.html", path)
+        format!("{path}/index.html")
     };
     if let Some(file) = PRERENDERED_PAGES.get_file(&index_path) {
         return Some(serve_prerendered_file(&index_path, file.contents()));

@@ -3,8 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use time::OffsetDateTime;
 
-/// Session data stored in the session file
+/// Session data stored in the session file.
+///
+/// Field names are part of the on-disk `.xevion-session` format; don't rename
+/// them without a migration (hence the `struct_field_names` allow).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct Session {
     pub api_url: String,
     pub session_token: String,
@@ -40,13 +44,13 @@ pub enum ApiError {
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApiError::Request(e) => write!(f, "Request failed: {}", e),
-            ApiError::Http { status, body } => {
-                write!(f, "HTTP {}: {}", status, body)
+            Self::Request(e) => write!(f, "Request failed: {e}"),
+            Self::Http { status, body } => {
+                write!(f, "HTTP {status}: {body}")
             }
-            ApiError::Parse(msg) => write!(f, "Parse error: {}", msg),
-            ApiError::Session(msg) => write!(f, "Session error: {}", msg),
-            ApiError::Unauthorized => write!(f, "Not authenticated. Run 'xevion api login' first."),
+            Self::Parse(msg) => write!(f, "Parse error: {msg}"),
+            Self::Session(msg) => write!(f, "Session error: {msg}"),
+            Self::Unauthorized => write!(f, "Not authenticated. Run 'xevion api login' first."),
         }
     }
 }
@@ -55,7 +59,7 @@ impl std::error::Error for ApiError {}
 
 impl From<reqwest::Error> for ApiError {
     fn from(e: reqwest::Error) -> Self {
-        ApiError::Request(e)
+        Self::Request(e)
     }
 }
 
@@ -91,10 +95,10 @@ impl ApiClient {
     /// Save session to file
     pub fn save_session(&mut self, session: Session) -> Result<(), ApiError> {
         let content = serde_json::to_string_pretty(&session)
-            .map_err(|e| ApiError::Session(format!("Failed to serialize session: {}", e)))?;
+            .map_err(|e| ApiError::Session(format!("Failed to serialize session: {e}")))?;
 
         std::fs::write(&self.session_path, content)
-            .map_err(|e| ApiError::Session(format!("Failed to write session file: {}", e)))?;
+            .map_err(|e| ApiError::Session(format!("Failed to write session file: {e}")))?;
 
         self.session = Some(session);
         Ok(())
@@ -105,19 +109,19 @@ impl ApiClient {
         let path = Path::new(&self.session_path);
         if path.exists() {
             std::fs::remove_file(path)
-                .map_err(|e| ApiError::Session(format!("Failed to remove session file: {}", e)))?;
+                .map_err(|e| ApiError::Session(format!("Failed to remove session file: {e}")))?;
         }
         self.session = None;
         Ok(())
     }
 
     /// Get current session if valid
-    pub fn session(&self) -> Option<&Session> {
+    pub const fn session(&self) -> Option<&Session> {
         self.session.as_ref()
     }
 
     /// Check if we have a valid session
-    pub fn is_authenticated(&self) -> bool {
+    pub const fn is_authenticated(&self) -> bool {
         self.session.is_some()
     }
 

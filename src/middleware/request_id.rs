@@ -91,10 +91,10 @@ where
                     let status = response.status();
                     match status.as_u16() {
                         200..=399 => {
-                            tracing::debug!(status = status.as_u16(), duration_ms, "Response")
+                            tracing::debug!(status = status.as_u16(), duration_ms, "Response");
                         }
                         400..=499 => {
-                            tracing::info!(status = status.as_u16(), duration_ms, "Response")
+                            tracing::info!(status = status.as_u16(), duration_ms, "Response");
                         }
                         _ => tracing::warn!(status = status.as_u16(), duration_ms, "Response"),
                     }

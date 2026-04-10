@@ -26,17 +26,17 @@ enum TargetUrl {
 impl TargetUrl {
     fn build_url(&self, path: &str) -> String {
         match self {
-            TargetUrl::Tcp(base) => format!("{}{}", base, path),
-            TargetUrl::Unix(_) => format!("http://localhost{}", path),
+            Self::Tcp(base) => format!("{base}{path}"),
+            Self::Unix(_) => format!("http://localhost{path}"),
         }
     }
 }
 
 impl HttpClient {
-    /// Create a new HttpClient from a downstream URL
+    /// Create a new `HttpClient` from a downstream URL
     ///
     /// Accepts:
-    /// - TCP: "http://localhost:5173", "https://example.com"
+    /// - TCP: "<http://localhost:5173>", "<https://example.com>"
     /// - Unix: "/tmp/bun.sock", "./relative.sock"
     pub fn new(downstream: &str) -> Result<Self, ClientError> {
         let target = if downstream.starts_with('/') || downstream.starts_with("./") {
@@ -78,8 +78,8 @@ impl HttpClient {
     /// Build a full URL from a path
     ///
     /// Examples:
-    /// - TCP target "http://localhost:5173" + "/api/health" → "http://localhost:5173/api/health"
-    /// - Unix target "/tmp/bun.sock" + "/api/health" → "http://localhost/api/health"
+    /// - TCP target "<http://localhost:5173>" + "/api/health" → "<http://localhost:5173/api/health>"
+    /// - Unix target "/tmp/bun.sock" + "/api/health" → "<http://localhost/api/health>"
     fn build_url(&self, path: &str) -> String {
         self.target.build_url(path)
     }

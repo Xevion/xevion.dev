@@ -56,7 +56,7 @@ async fn list(client: ApiClient, json: bool) -> Result<(), Box<dyn std::error::E
 
 /// Get a tag by slug
 async fn get(client: ApiClient, slug: &str, json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let response = client.get(&format!("/api/tags/{}", slug)).await?;
+    let response = client.get(&format!("/api/tags/{slug}")).await?;
     let response = check_response(response).await?;
     let tag_response: GetTagResponse = response.json().await?;
 
@@ -137,7 +137,7 @@ async fn update(
     }
 
     // First fetch the current tag
-    let response = client.get(&format!("/api/tags/{}", slug)).await?;
+    let response = client.get(&format!("/api/tags/{slug}")).await?;
     let response = check_response(response).await?;
     let current: GetTagResponse = response.json().await?;
 
@@ -158,7 +158,7 @@ async fn update(
     };
 
     let response = client
-        .put_auth(&format!("/api/tags/{}", slug), &request)
+        .put_auth(&format!("/api/tags/{slug}"), &request)
         .await?;
     let response = check_response(response).await?;
     let tag: ApiTag = response.json().await?;
@@ -180,7 +180,7 @@ async fn delete(
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let response = client
-        .delete_auth(&format!("/api/tags/{}", reference))
+        .delete_auth(&format!("/api/tags/{reference}"))
         .await?;
     let response = check_response(response).await?;
     let deleted: ApiTag = response.json().await?;

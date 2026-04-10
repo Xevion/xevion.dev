@@ -5,7 +5,11 @@ use axum::{
 
 use crate::assets;
 
-/// Check if a path represents a static asset
+/// Check if a path represents a static asset.
+///
+/// URL paths from the frontend build are always lowercase, so case-sensitive
+/// suffix matching is correct and avoids the allocation of `to_lowercase()`.
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn is_static_asset(path: &str) -> bool {
     path.starts_with("/node_modules/")
         || path.starts_with("/@") // Vite internals like /@vite/client, /@fs/, /@id/
@@ -118,7 +122,7 @@ pub fn serve_error_page(status: StatusCode) -> Response {
             (status, headers, fallback_html).into_response()
         } else {
             // Last resort: plaintext (should never happen if 500.html exists)
-            (status, format!("Error {}", status_code)).into_response()
+            (status, format!("Error {status_code}")).into_response()
         }
     }
 }

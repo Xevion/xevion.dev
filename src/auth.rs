@@ -48,12 +48,12 @@ impl SessionManager {
         let now = OffsetDateTime::now_utc();
 
         let sessions: Vec<(String, i32, String, OffsetDateTime)> = sqlx::query_as(
-            r#"
+            r"
             SELECT s.id, s.user_id, u.username, s.expires_at
             FROM sessions s
             JOIN admin_users u ON s.user_id = u.id
             WHERE s.expires_at > $1
-            "#,
+            ",
         )
         .bind(now)
         .fetch_all(&self.pool)
@@ -89,10 +89,10 @@ impl SessionManager {
         let expires_at = created_at + Duration::days(SESSION_DURATION_DAYS);
 
         sqlx::query(
-            r#"
+            r"
             INSERT INTO sessions (id, user_id, created_at, expires_at, last_active_at)
             VALUES ($1, $2, $3, $4, $5)
-            "#,
+            ",
         )
         .bind(id.to_string())
         .bind(user_id)
@@ -187,11 +187,11 @@ pub async fn get_admin_user(
     username: &str,
 ) -> Result<Option<AdminUser>, sqlx::Error> {
     let user: Option<(i32, String, String)> = sqlx::query_as(
-        r#"
+        r"
         SELECT id, username, password_hash
         FROM admin_users
         WHERE username = $1
-        "#,
+        ",
     )
     .bind(username)
     .fetch_optional(pool)
@@ -210,14 +210,14 @@ pub async fn create_admin_user(
     password: &str,
 ) -> Result<i32, Box<dyn std::error::Error>> {
     let password_hash =
-        hash_password(password).map_err(|e| format!("Failed to hash password: {}", e))?;
+        hash_password(password).map_err(|e| format!("Failed to hash password: {e}"))?;
 
     let (id,): (i32,) = sqlx::query_as(
-        r#"
+        r"
         INSERT INTO admin_users (username, password_hash)
         VALUES ($1, $2)
         RETURNING id
-        "#,
+        ",
     )
     .bind(username)
     .bind(password_hash)
@@ -242,7 +242,7 @@ pub async fn ensure_admin_user(pool: &PgPool) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-/// Check if the request has a valid admin session (from AppState)
+/// Check if the request has a valid admin session (from `AppState`)
 pub fn check_session(
     state: &crate::state::AppState,
     jar: &axum_extra::extract::CookieJar,

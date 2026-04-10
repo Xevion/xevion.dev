@@ -13,7 +13,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
 
     // Seed site identity
     sqlx::query(
-        r#"
+        r"
         INSERT INTO site_identity (id, display_name, occupation, bio, site_title)
         VALUES (1, $1, $2, $3, $4)
         ON CONFLICT (id) DO UPDATE SET
@@ -21,7 +21,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
             occupation = EXCLUDED.occupation,
             bio = EXCLUDED.bio,
             site_title = EXCLUDED.site_title
-        "#,
+        ",
     )
     .bind("Ryan Walters")
     .bind("Full-Stack Software Engineer")
@@ -60,10 +60,10 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
 
     for (platform, label, value, icon, order) in &social_links {
         sqlx::query(
-            r#"
+            r"
             INSERT INTO social_links (platform, label, value, icon, visible, display_order)
             VALUES ($1, $2, $3, $4, true, $5)
-            "#,
+            ",
         )
         .bind(platform)
         .bind(label)
@@ -165,10 +165,10 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
 
     for (slug, name, short_desc, desc, status, repo, demo) in projects {
         sqlx::query(
-            r#"
+            r"
             INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)
             VALUES ($1, $2, $3, $4, $5::project_status, $6, $7)
-            "#,
+            ",
         )
         .bind(slug)
         .bind(name)
@@ -181,7 +181,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     }
 
-    println!("  Seeded {} projects", project_count);
+    println!("  Seeded {project_count} projects");
 
     // Seed tags matching production data
     let tags = vec![
@@ -279,7 +279,7 @@ pub async fn run(pool: &PgPool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("  Created {} project-tag associations", association_count);
+    println!("  Created {association_count} project-tag associations");
 
     // Recalculate tag cooccurrence
     sqlx::query!("DELETE FROM tag_cooccurrence")

@@ -261,7 +261,7 @@ async fn resolve_project(
     // Try as UUID first
     if Uuid::parse_str(reference).is_ok() {
         let response = client
-            .get_auth(&format!("/api/projects/{}", reference))
+            .get_auth(&format!("/api/projects/{reference}"))
             .await?;
         let response = check_response(response).await?;
         return Ok(response.json().await?);
@@ -275,7 +275,7 @@ async fn resolve_project(
     projects
         .into_iter()
         .find(|p| p.project.slug == reference)
-        .ok_or_else(|| ApiError::Parse(format!("Project not found: {}", reference)).into())
+        .ok_or_else(|| ApiError::Parse(format!("Project not found: {reference}")).into())
 }
 
 /// Resolve tag slugs to IDs
@@ -310,13 +310,13 @@ async fn resolve_tag_id(
         tag: ApiTag,
     }
 
-    let response = client.get(&format!("/api/tags/{}", slug_or_id)).await?;
+    let response = client.get(&format!("/api/tags/{slug_or_id}")).await?;
     let response = check_response(response).await?;
     let tag_response: TagResponse = response.json().await?;
     Ok(tag_response.tag.id)
 }
 
-/// Parse status string to ProjectStatus
+/// Parse status string to `ProjectStatus`
 fn parse_status(s: &str) -> Result<ProjectStatus, Box<dyn std::error::Error>> {
     match s.to_lowercase().as_str() {
         "active" => Ok(ProjectStatus::Active),
@@ -324,8 +324,7 @@ fn parse_status(s: &str) -> Result<ProjectStatus, Box<dyn std::error::Error>> {
         "archived" => Ok(ProjectStatus::Archived),
         "hidden" => Ok(ProjectStatus::Hidden),
         _ => Err(format!(
-            "Invalid status '{}'. Valid values: active, maintained, archived, hidden",
-            s
+            "Invalid status '{s}'. Valid values: active, maintained, archived, hidden"
         )
         .into()),
     }

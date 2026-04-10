@@ -95,14 +95,14 @@ async fn main() {
                 .expect("Failed to run migrations");
 
             if let Err(e) = cli::seed::run(&pool).await {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
                 std::process::exit(1);
             }
         }
         Some(Command::Api(api_args)) => {
             // API client commands - no tracing needed
             if let Err(e) = cli::api::run(*api_args).await {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
                 std::process::exit(1);
             }
         }
@@ -134,7 +134,7 @@ async fn main() {
             });
 
             if let Err(e) = cli::serve::run(listen, downstream, args.trust_request_id).await {
-                eprintln!("Server error: {}", e);
+                eprintln!("Server error: {e}");
                 std::process::exit(1);
             }
         }

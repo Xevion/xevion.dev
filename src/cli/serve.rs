@@ -188,7 +188,7 @@ pub async fn run(
     ) -> axum::Router<Arc<AppState>> {
         // Build compression predicate: skip small responses and already-compressed types
         // NOTE: MIN_SIZE must match COMPRESSION_MIN_SIZE in encoding.rs and compress-assets.ts
-        let compression_predicate = SizeAbove::new(COMPRESSION_MIN_SIZE as u16)
+        let compression_predicate = SizeAbove::new(COMPRESSION_MIN_SIZE)
             .and(NotForContentType::IMAGES)
             .and(NotForContentType::new("video/"))
             .and(NotForContentType::new("audio/"))

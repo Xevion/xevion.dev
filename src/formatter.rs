@@ -49,7 +49,7 @@ where
         write_dimmed(&mut writer, formatted_time)?;
         writer.write_char(' ')?;
 
-        write_colored_level(&mut writer, meta.level())?;
+        write_colored_level(&mut writer, *meta.level())?;
         writer.write_char(' ')?;
 
         if let Some(scope) = ctx.event_scope() {
@@ -60,13 +60,15 @@ where
 
                 write_dimmed(&mut writer, ":")?;
 
-                let ext = span.extensions();
-                if let Some(fields) = &ext.get::<FormattedFields<N>>()
-                    && !fields.fields.is_empty()
                 {
-                    write_bold(&mut writer, "{")?;
-                    writer.write_str(fields.fields.as_str())?;
-                    write_bold(&mut writer, "}")?;
+                    let ext = span.extensions();
+                    if let Some(fields) = &ext.get::<FormattedFields<N>>()
+                        && !fields.fields.is_empty()
+                    {
+                        write_bold(&mut writer, "{")?;
+                        writer.write_str(fields.fields.as_str())?;
+                        write_bold(&mut writer, "}")?;
+                    }
                 }
                 write_dimmed(&mut writer, ":")?;
             }
@@ -80,7 +82,7 @@ where
         if writer.has_ansi_escapes() {
             write!(writer, "{}: ", Color::DarkGray.paint(&target))?;
         } else {
-            write!(writer, "{}: ", target)?;
+            write!(writer, "{target}: ")?;
         }
 
         let ansi = writer.has_ansi_escapes();
@@ -243,9 +245,9 @@ where
     }
 }
 
-fn write_colored_level(writer: &mut Writer<'_>, level: &Level) -> fmt::Result {
+fn write_colored_level(writer: &mut Writer<'_>, level: Level) -> fmt::Result {
     if writer.has_ansi_escapes() {
-        let colored = match *level {
+        let colored = match level {
             Level::TRACE => Color::Purple.paint("TRACE"),
             Level::DEBUG => Color::Blue.paint("DEBUG"),
             Level::INFO => Color::Green.paint(" INFO"),
@@ -254,7 +256,7 @@ fn write_colored_level(writer: &mut Writer<'_>, level: &Level) -> fmt::Result {
         };
         write!(writer, "{colored}")
     } else {
-        match *level {
+        match level {
             Level::TRACE => write!(writer, "{:>5}", "TRACE"),
             Level::DEBUG => write!(writer, "{:>5}", "DEBUG"),
             Level::INFO => write!(writer, "{:>5}", " INFO"),
@@ -294,7 +296,7 @@ struct PrettyFieldVisitor {
 }
 
 impl PrettyFieldVisitor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             message: None,
             fields: Vec::new(),

@@ -74,7 +74,7 @@ impl DbProject {
 
         if let Some(ref repo) = self.github_repo {
             links.push(ApiProjectLink {
-                url: format!("https://github.com/{}", repo),
+                url: format!("https://github.com/{repo}"),
                 title: Some("GitHub".to_string()),
             });
         }
@@ -355,7 +355,7 @@ pub async fn create_project(
     github_repo: Option<&str>,
     demo_url: Option<&str>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
     query_as!(
         DbProject,
@@ -390,7 +390,7 @@ pub async fn update_project(
     github_repo: Option<&str>,
     demo_url: Option<&str>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
     query_as!(
         DbProject,
@@ -464,7 +464,7 @@ pub async fn get_admin_stats(pool: &PgPool) -> Result<AdminStats, sqlx::Error> {
     })
 }
 
-/// Get all projects that have a github_repo set (for GitHub sync).
+/// Get all projects that have a `github_repo` set (for GitHub sync).
 ///
 /// Orders by most recent activity first (NULLS LAST) so that projects with
 /// the shortest check intervals are processed first by the scheduler.
@@ -492,7 +492,7 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
     .await
 }
 
-/// Update the last_github_activity timestamp for a project
+/// Update the `last_github_activity` timestamp for a project
 pub async fn update_last_github_activity(
     pool: &PgPool,
     id: Uuid,

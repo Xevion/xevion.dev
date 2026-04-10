@@ -45,11 +45,11 @@ impl CachedResponse {
 
     /// Get body for a specific encoding, compressing on-demand if needed
     ///
-    /// Returns (body_bytes, actual_encoding). The actual encoding may differ from
+    /// Returns (`body_bytes`, `actual_encoding`). The actual encoding may differ from
     /// requested if the body is too small or compression doesn't help.
     pub fn get_body(&self, encoding: ContentEncoding) -> (axum::body::Bytes, ContentEncoding) {
         // Identity encoding or small body - return uncompressed
-        if encoding == ContentEncoding::Identity || self.body.len() < COMPRESSION_MIN_SIZE {
+        if encoding == ContentEncoding::Identity || self.body.len() < COMPRESSION_MIN_SIZE as usize {
             return (self.body.clone(), ContentEncoding::Identity);
         }
 
@@ -82,12 +82,12 @@ impl CachedResponse {
         (self.body.clone(), ContentEncoding::Identity)
     }
 
-    /// Check if this response is still fresh (within fresh_duration)
+    /// Check if this response is still fresh (within `fresh_duration`)
     pub fn is_fresh(&self, fresh_duration: Duration) -> bool {
         self.cached_at.elapsed() < fresh_duration
     }
 
-    /// Check if this response is stale but still usable (within stale_duration)
+    /// Check if this response is stale but still usable (within `stale_duration`)
     pub fn is_stale_but_usable(&self, fresh_duration: Duration, stale_duration: Duration) -> bool {
         let age = self.cached_at.elapsed();
         age >= fresh_duration && age < stale_duration

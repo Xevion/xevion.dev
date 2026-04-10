@@ -16,6 +16,7 @@ use crate::{
 };
 
 /// ISR handler - serves pages through Bun SSR with caching and session validation
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let method = req.method().clone();
     let uri = req.uri();
@@ -337,7 +338,7 @@ pub async fn proxy_to_bun(
 ) -> Result<(StatusCode, HeaderMap, axum::body::Bytes), ProxyError> {
     // Build request with forwarded headers
     let mut request_builder = state.client.get(path);
-    for (name, value) in forward_headers.iter() {
+    for (name, value) in &forward_headers {
         request_builder = request_builder.header(name, value);
     }
 
@@ -400,7 +401,7 @@ pub async fn perform_health_check(
 
     let db_healthy = if let Some(pool) = pool {
         match db::health_check(&pool).await {
-            Ok(_) => true,
+            Ok(()) => true,
             Err(err) => {
                 tracing::error!(error = %err, "Database health check failed");
                 false

@@ -136,8 +136,8 @@ fn resize_to_webp(img: &DynamicImage, target_width: u32) -> Result<ImageVariant,
 
     // Only resize if larger than target
     let (resized, width, height) = if orig_width > target_width {
-        let ratio = target_width as f64 / orig_width as f64;
-        let target_height = (orig_height as f64 * ratio).round() as u32;
+        let ratio = f64::from(target_width) / f64::from(orig_width);
+        let target_height = (f64::from(orig_height) * ratio).round() as u32;
         let resized = img.resize(target_width, target_height, FilterType::Lanczos3);
         (resized, target_width, target_height)
     } else {
@@ -157,7 +157,7 @@ fn resize_to_webp(img: &DynamicImage, target_width: u32) -> Result<ImageVariant,
     })
 }
 
-/// Generate a BlurHash string from an image
+/// Generate a `BlurHash` string from an image
 fn generate_blurhash(
     img: &DynamicImage,
     x_components: u32,

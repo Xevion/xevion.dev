@@ -27,7 +27,7 @@ pub enum ProxyError {
 impl std::fmt::Display for ProxyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProxyError::Network(e) => write!(f, "Network error: {e}"),
+            Self::Network(e) => write!(f, "Network error: {e}"),
         }
     }
 }
@@ -48,14 +48,6 @@ pub enum AppError {
 
     #[error("{0}")]
     Validation(String),
-
-    #[error("Forbidden")]
-    #[allow(dead_code)]
-    Forbidden,
-
-    #[error("{0}")]
-    #[allow(dead_code)]
-    BadRequest(String),
 
     #[error("{0}")]
     Conflict(String),
@@ -80,8 +72,6 @@ impl axum::response::IntoResponse for AppError {
             Self::NotFound => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
             Self::InvalidCredentials => (StatusCode::UNAUTHORIZED, "INVALID_CREDENTIALS"),
-            Self::Forbidden => (StatusCode::FORBIDDEN, "FORBIDDEN"),
-            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
             Self::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
             Self::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE"),
@@ -165,6 +155,6 @@ impl axum::extract::FromRequestParts<Arc<AppState>> for AdminSession {
     ) -> Result<Self, Self::Rejection> {
         let jar = axum_extra::extract::CookieJar::from_headers(&parts.headers);
         let session = crate::auth::check_session(state, &jar).ok_or(AppError::Unauthorized)?;
-        Ok(AdminSession(session))
+        Ok(Self(session))
     }
 }

@@ -52,7 +52,7 @@ pub async fn get_project_handler(
 #[tracing::instrument(skip_all)]
 pub async fn create_project_handler(
     State(state): State<Arc<AppState>>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<CreateProjectRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
@@ -99,7 +99,7 @@ pub async fn create_project_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Project created: {}", project.name),
         None,
     );
@@ -124,7 +124,7 @@ pub async fn create_project_handler(
 pub async fn update_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<UpdateProjectRequest>,
 ) -> AppResult<impl IntoResponse> {
     let existing_project = db::get_project_by_ref(&state.pool, &ref_str)
@@ -177,7 +177,7 @@ pub async fn update_project_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Project updated: {}", project.name),
         None,
     );
@@ -214,7 +214,7 @@ pub async fn update_project_handler(
 pub async fn delete_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    _session: AdminSession,
+    session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
     let (project, tags, media) = db::get_project_by_ref_with_tags(&state.pool, &ref_str)
         .await?
@@ -228,7 +228,7 @@ pub async fn delete_project_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Project deleted: {}", project.name),
         None,
     );
@@ -248,10 +248,10 @@ pub async fn delete_project_handler(
 #[tracing::instrument(skip_all)]
 pub async fn get_admin_stats_handler(
     State(state): State<Arc<AppState>>,
-    _session: AdminSession,
+    _: AdminSession,
 ) -> AppResult<impl IntoResponse> {
-    let stats = db::get_admin_stats(&state.pool).await?;
-    Ok(Json(stats))
+    let admin_stats = db::get_admin_stats(&state.pool).await?;
+    Ok(Json(admin_stats))
 }
 
 /// Get tags for a project
@@ -274,7 +274,7 @@ pub async fn get_project_tags_handler(
 pub async fn add_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<AddProjectTagRequest>,
 ) -> AppResult<impl IntoResponse> {
     let project = db::get_project_by_ref(&state.pool, &ref_str)
@@ -294,7 +294,7 @@ pub async fn add_project_tag_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Tag added to project: {}", project.name),
         None,
     );
@@ -312,7 +312,7 @@ pub async fn add_project_tag_handler(
 pub async fn remove_project_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path((ref_str, tag_ref)): axum::extract::Path<(String, String)>,
-    _session: AdminSession,
+    session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
@@ -330,7 +330,7 @@ pub async fn remove_project_tag_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Tag removed from project: {}", project.name),
         None,
     );

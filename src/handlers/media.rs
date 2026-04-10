@@ -47,8 +47,7 @@ pub async fn upload_media_handler(
 
     if !is_video && !is_image {
         return Err(AppError::Validation(format!(
-            "Content type '{}' is not supported. Supported: JPEG, PNG, GIF, WebP, AVIF, MP4, WebM",
-            content_type
+            "Content type '{content_type}' is not supported. Supported: JPEG, PNG, GIF, WebP, AVIF, MP4, WebM"
         )));
     }
 
@@ -114,7 +113,6 @@ pub async fn upload_media_handler(
         Ok((StatusCode::CREATED, Json(media.to_api_media())))
     } else {
         let original_ext = match content_type.as_str() {
-            "video/mp4" => "mp4",
             "video/webm" => "webm",
             "video/quicktime" => "mov",
             _ => "mp4",
@@ -215,7 +213,6 @@ async fn upload_image_variants(
     .await?;
 
     let original_ext = match processed.original.mime.as_str() {
-        "image/jpeg" => "jpg",
         "image/png" => "png",
         "image/gif" => "gif",
         "image/webp" => "webp",

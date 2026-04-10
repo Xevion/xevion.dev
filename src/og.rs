@@ -18,9 +18,9 @@ impl OGImageSpec {
     /// Get the R2 storage key for this spec
     pub fn r2_key(&self) -> String {
         match self {
-            OGImageSpec::Index => "og/index.png".to_string(),
-            OGImageSpec::Projects => "og/projects.png".to_string(),
-            OGImageSpec::Project { id } => format!("og/project/{id}.png"),
+            Self::Index => "og/index.png".to_string(),
+            Self::Projects => "og/projects.png".to_string(),
+            Self::Project { id } => format!("og/project/{id}.png"),
         }
     }
 }
@@ -94,7 +94,7 @@ pub async fn ensure_og_image(spec: &OGImageSpec, state: Arc<AppState>) -> Result
 }
 
 /// Regenerate common OG images (index, projects) on server startup
-/// Uses ensure_og_image to skip regeneration if images already exist
+/// Uses `ensure_og_image` to skip regeneration if images already exist
 pub async fn regenerate_common_images(state: Arc<AppState>) {
     // Wait 2 seconds before starting
     tokio::time::sleep(Duration::from_secs(2)).await;

@@ -8,9 +8,9 @@ use std::io::Write;
 
 /// Minimum size threshold for compression (bytes)
 ///
-/// NOTE: This value must match MIN_SIZE in web/scripts/compress-assets.ts
+/// NOTE: This value must match `MIN_SIZE` in web/scripts/compress-assets.ts
 /// to ensure runtime and build-time compression use the same threshold.
-pub const COMPRESSION_MIN_SIZE: usize = 512;
+pub const COMPRESSION_MIN_SIZE: u16 = 512;
 
 /// Supported encodings in priority order (best to worst)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,7 +24,7 @@ pub enum ContentEncoding {
 impl ContentEncoding {
     /// File extension suffix for this encoding
     #[inline]
-    pub fn extension(&self) -> &'static str {
+    pub const fn extension(self) -> &'static str {
         match self {
             Self::Zstd => ".zst",
             Self::Brotli => ".br",
@@ -35,7 +35,7 @@ impl ContentEncoding {
 
     /// Content-Encoding header value
     #[inline]
-    pub fn header_value(&self) -> Option<HeaderValue> {
+    pub const fn header_value(self) -> Option<HeaderValue> {
         match self {
             Self::Zstd => Some(HeaderValue::from_static("zstd")),
             Self::Brotli => Some(HeaderValue::from_static("br")),
@@ -46,7 +46,7 @@ impl ContentEncoding {
 
     /// Default priority (higher = better)
     #[inline]
-    fn default_priority(&self) -> u8 {
+    const fn default_priority(self) -> u8 {
         match self {
             Self::Zstd => 4,
             Self::Brotli => 3,
@@ -97,8 +97,8 @@ pub fn parse_accepted_encodings(headers: &HeaderMap) -> Vec<ContentEncoding> {
         let encoding = match encoding_str.to_lowercase().as_str() {
             "zstd" => ContentEncoding::Zstd,
             "br" | "brotli" => ContentEncoding::Brotli,
-            "gzip" | "x-gzip" => ContentEncoding::Gzip,
-            "*" => ContentEncoding::Gzip, // Wildcard defaults to gzip
+            // Wildcard defaults to gzip
+            "gzip" | "x-gzip" | "*" => ContentEncoding::Gzip,
             "identity" => ContentEncoding::Identity,
             _ => continue,
         };
@@ -133,8 +133,8 @@ pub fn negotiate_encoding(headers: &HeaderMap) -> ContentEncoding {
 }
 
 /// Check if content type should be compressed
+#[cfg(test)]
 #[inline]
-#[allow(dead_code)]
 pub fn is_compressible_content_type(content_type: &str) -> bool {
     let ct = content_type.to_lowercase();
 

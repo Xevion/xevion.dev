@@ -53,8 +53,8 @@ pub const SCHEDULER_TICK_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Calculate the check interval based on how recently the project had activity.
 ///
-/// Uses a logarithmic curve that starts at MIN_INTERVAL for today's activity
-/// and approaches MAX_INTERVAL as activity ages toward DAYS_TO_MAX.
+/// Uses a logarithmic curve that starts at `MIN_INTERVAL` for today's activity
+/// and approaches `MAX_INTERVAL` as activity ages toward `DAYS_TO_MAX`.
 ///
 /// Examples (with default 15min/24hr bounds):
 /// - 0 days (today): 15 min
@@ -67,11 +67,10 @@ pub fn calculate_check_interval(last_activity: Option<OffsetDateTime>) -> Durati
     let max = max_interval();
 
     let days_since = last_activity
-        .map(|t| (OffsetDateTime::now_utc() - t).whole_days().max(0) as f64)
-        .unwrap_or(DAYS_TO_MAX); // Default to max interval if no activity recorded
+        .map_or(DAYS_TO_MAX, |t| (OffsetDateTime::now_utc() - t).whole_days().max(0) as f64); // Default to max interval if no activity recorded
 
     // Logarithmic scaling: ln(1+days) / ln(1+90) gives 0..1 range
-    let scale = (1.0 + days_since).ln() / (1.0 + DAYS_TO_MAX).ln();
+    let scale = days_since.ln_1p() / DAYS_TO_MAX.ln_1p();
     let scale = scale.clamp(0.0, 1.0);
 
     let interval_secs = min.as_secs_f64() + scale * (max.as_secs_f64() - min.as_secs_f64());
@@ -238,7 +237,7 @@ impl GitHubScheduler {
 
     /// Reschedule a project after an error with exponential backoff.
     ///
-    /// Each consecutive error doubles the wait time, capped at max_interval.
+    /// Each consecutive error doubles the wait time, capped at `max_interval`.
     pub fn reschedule_with_error(&self, mut project: ScheduledProject) {
         project.error_count += 1;
 
@@ -351,7 +350,7 @@ pub async fn init_scheduler(pool: &PgPool) -> Option<Arc<GitHubScheduler>> {
 /// GitHub API client with caching for default branches
 pub struct GitHubClient {
     client: reqwest::Client,
-    /// Cache of "owner/repo" -> default_branch
+    /// Cache of "owner/repo" -> `default_branch`
     branch_cache: DashMap<String, String>,
 }
 
@@ -391,11 +390,11 @@ pub enum GitHubError {
 impl std::fmt::Display for GitHubError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GitHubError::Request(e) => write!(f, "HTTP request failed: {e}"),
-            GitHubError::NotFound(repo) => write!(f, "Repository not found: {repo}"),
-            GitHubError::RateLimited => write!(f, "GitHub API rate limit exceeded"),
-            GitHubError::ParseTime(s) => write!(f, "Failed to parse timestamp: {s}"),
-            GitHubError::Api(status, msg) => write!(f, "GitHub API error ({status}): {msg}"),
+            Self::Request(e) => write!(f, "HTTP request failed: {e}"),
+            Self::NotFound(repo) => write!(f, "Repository not found: {repo}"),
+            Self::RateLimited => write!(f, "GitHub API rate limit exceeded"),
+            Self::ParseTime(s) => write!(f, "Failed to parse timestamp: {s}"),
+            Self::Api(status, msg) => write!(f, "GitHub API error ({status}): {msg}"),
         }
     }
 }
@@ -403,7 +402,7 @@ impl std::fmt::Display for GitHubError {
 impl std::error::Error for GitHubError {}
 
 impl GitHubClient {
-    /// Create a new GitHub client if GITHUB_TOKEN is set.
+    /// Create a new GitHub client if `GITHUB_TOKEN` is set.
     fn new() -> Option<Self> {
         let token = std::env::var("GITHUB_TOKEN").ok()?;
 
@@ -438,29 +437,26 @@ impl GitHubClient {
     }
 
     /// Get the shared GitHub client instance.
-    /// Returns None if GITHUB_TOKEN is not set, logging a warning once.
+    /// Returns None if `GITHUB_TOKEN` is not set, logging a warning once.
     pub async fn get() -> Option<Arc<Self>> {
         GITHUB_CLIENT
             .get_or_init(|| async {
-                match GitHubClient::new() {
-                    Some(client) => {
-                        tracing::info!("GitHub sync client initialized");
-                        Some(Arc::new(client))
-                    }
-                    None => {
-                        tracing::warn!(
-                            "GitHub sync disabled: GITHUB_TOKEN not set. \
-                             Set GITHUB_TOKEN to enable automatic activity sync."
-                        );
-                        None
-                    }
+                if let Some(client) = Self::new() {
+                    tracing::info!("GitHub sync client initialized");
+                    Some(Arc::new(client))
+                } else {
+                    tracing::warn!(
+                        "GitHub sync disabled: GITHUB_TOKEN not set. \
+                         Set GITHUB_TOKEN to enable automatic activity sync."
+                    );
+                    None
                 }
             })
             .await
             .clone()
     }
 
-    /// Fetch repository info (primarily for default_branch).
+    /// Fetch repository info (primarily for `default_branch`).
     async fn get_repo_info(&self, owner: &str, repo: &str) -> Result<RepoInfo, GitHubError> {
         let url = format!("https://api.github.com/repos/{owner}/{repo}");
 
@@ -679,17 +675,14 @@ pub async fn sync_single_project(
 /// This is the main entry point for the background sync task.
 /// It checks for due projects every 30 seconds and syncs them individually.
 pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSender) {
-    let client = match GitHubClient::get().await {
-        Some(c) => c,
-        None => return, // GitHub sync disabled
+    // GitHub sync disabled
+    let Some(client) = GitHubClient::get().await else {
+        return;
     };
 
-    let scheduler = match init_scheduler(&pool).await {
-        Some(s) => s,
-        None => {
-            tracing::warn!("Failed to initialize GitHub scheduler");
-            return;
-        }
+    let Some(scheduler) = init_scheduler(&pool).await else {
+        tracing::warn!("Failed to initialize GitHub scheduler");
+        return;
     };
 
     if scheduler.is_empty() {
@@ -730,7 +723,9 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                     );
 
                     // Check if activity changed
-                    if new_activity != project.last_activity {
+                    if new_activity == project.last_activity {
+                        scheduler.reschedule_skipped(project);
+                    } else {
                         crate::events::log_event(
                             &event_sender,
                             crate::events::EventType::GithubSyncCompleted,
@@ -742,8 +737,6 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                             None,
                         );
                         scheduler.reschedule(project, new_activity);
-                    } else {
-                        scheduler.reschedule_skipped(project);
                     }
                 }
                 Err(GitHubError::RateLimited) => {

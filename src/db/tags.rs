@@ -67,7 +67,7 @@ pub async fn create_tag(
     icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
-    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
     sqlx::query_as!(
         DbTag,
@@ -171,7 +171,7 @@ pub async fn update_tag(
     icon: Option<&str>,
     color: Option<&str>,
 ) -> Result<DbTag, sqlx::Error> {
-    let slug = slug_override.map(slugify).unwrap_or_else(|| slugify(name));
+    let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
     sqlx::query_as!(
         DbTag,
@@ -253,7 +253,7 @@ pub async fn get_tags_for_project(
 }
 
 /// Batch fetch tags for multiple projects in a single query.
-/// Returns a HashMap mapping project_id to its tags.
+/// Returns a `HashMap` mapping `project_id` to its tags.
 pub async fn get_tags_for_projects(
     pool: &PgPool,
     project_ids: &[Uuid],

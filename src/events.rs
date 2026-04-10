@@ -54,7 +54,7 @@ pub enum EventType {
 
 impl EventType {
     /// Get the string representation for database storage
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::ProjectCreated => "project.created",
             Self::ProjectUpdated => "project.updated",
@@ -151,21 +151,18 @@ pub async fn run_event_writer(mut receiver: mpsc::Receiver<NewEvent>, pool: sqlx
     loop {
         tokio::select! {
             event = receiver.recv() => {
-                match event {
-                    Some(e) => {
-                        buffer.push(e);
-                        if buffer.len() >= FLUSH_BATCH_SIZE {
-                            flush_events(&pool, &mut buffer).await;
-                        }
+                if let Some(e) = event {
+                    buffer.push(e);
+                    if buffer.len() >= FLUSH_BATCH_SIZE {
+                        flush_events(&pool, &mut buffer).await;
                     }
-                    None => {
-                        // Channel closed, flush remaining and exit
-                        if !buffer.is_empty() {
-                            flush_events(&pool, &mut buffer).await;
-                        }
-                        tracing::debug!("Event writer shutting down");
-                        return;
+                } else {
+                    // Channel closed, flush remaining and exit
+                    if !buffer.is_empty() {
+                        flush_events(&pool, &mut buffer).await;
                     }
+                    tracing::debug!("Event writer shutting down");
+                    return;
                 }
             }
             _ = flush_timer.tick() => {

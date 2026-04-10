@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{assets, proxy, state::AppState, utils};
 
-/// Serve SvelteKit's env.js for dynamic public environment variables.
+/// Serve `SvelteKit`'s env.js for dynamic public environment variables.
 /// Required for prerendered pages that use `$env/dynamic/public` imports.
 pub async fn serve_env_js() -> impl IntoResponse {
     let mut headers = HeaderMap::new();

@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use ts_rs::TS;
 use uuid::Uuid;
 
-/// Media type enum matching PostgreSQL enum
+/// Media type enum matching `PostgreSQL` enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize, TS)]
 #[sqlx(type_name = "media_type", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -243,7 +243,7 @@ impl DbProjectMedia {
 
 // Database query functions
 
-/// Get all media for a project, ordered by display_order
+/// Get all media for a project, ordered by `display_order`
 pub async fn get_media_for_project(
     pool: &PgPool,
     project_id: Uuid,
@@ -271,7 +271,7 @@ pub async fn get_media_for_project(
 }
 
 /// Batch fetch media for multiple projects in a single query.
-/// Returns a HashMap mapping project_id to its media items.
+/// Returns a `HashMap` mapping `project_id` to its media items.
 pub async fn get_media_for_projects(
     pool: &PgPool,
     project_ids: &[Uuid],
@@ -425,7 +425,7 @@ pub async fn delete_media(pool: &PgPool, id: Uuid) -> Result<Option<DbProjectMed
 }
 
 /// Reorder media for a project
-/// Takes a list of media IDs in desired order and updates display_order accordingly
+/// Takes a list of media IDs in desired order and updates `display_order` accordingly
 pub async fn reorder_media(
     pool: &PgPool,
     project_id: Uuid,

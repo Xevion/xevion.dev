@@ -64,7 +64,7 @@ pub struct EventFilters {
     pub event_type: Option<String>,
 }
 
-/// Fetch events with optional filters, ordered by created_at DESC
+/// Fetch events with optional filters, ordered by `created_at` DESC
 pub async fn get_events(
     pool: &PgPool,
     filters: EventFilters,
@@ -98,7 +98,7 @@ pub async fn get_events(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().map(|r| r.into_api()).collect())
+    Ok(rows.into_iter().map(DbEvent::into_api).collect())
 }
 
 struct DbEvent {

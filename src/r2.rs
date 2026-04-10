@@ -9,7 +9,7 @@ pub struct R2Client {
 }
 
 impl R2Client {
-    pub async fn new() -> Result<Self, String> {
+    pub fn new() -> Result<Self, String> {
         let account_id =
             std::env::var("R2_ACCOUNT_ID").map_err(|_| "R2_ACCOUNT_ID not set".to_string())?;
         let access_key_id = std::env::var("R2_ACCESS_KEY_ID")
@@ -34,10 +34,10 @@ impl R2Client {
         Ok(Self { op })
     }
 
-    pub async fn get() -> Option<Arc<R2Client>> {
+    pub async fn get() -> Option<Arc<Self>> {
         R2_CLIENT
             .get_or_try_init(|| async {
-                match R2Client::new().await {
+                match Self::new() {
                     Ok(client) => Ok(Arc::new(client)),
                     Err(e) => {
                         tracing::warn!(error = %e, "Failed to initialize R2 client, OG images will not be cached");

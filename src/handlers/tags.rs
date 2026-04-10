@@ -26,7 +26,7 @@ pub async fn list_tags_handler(State(state): State<Arc<AppState>>) -> AppResult<
 #[tracing::instrument(skip_all)]
 pub async fn create_tag_handler(
     State(state): State<Arc<AppState>>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<CreateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
@@ -56,7 +56,7 @@ pub async fn create_tag_handler(
         EventLevel::Info,
         Some("tag"),
         Some(tag.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Tag created: {}", tag.name),
         None,
     );
@@ -87,7 +87,7 @@ pub async fn get_tag_handler(
 pub async fn update_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    _session: AdminSession,
+    session: AdminSession,
     Json(payload): Json<UpdateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
@@ -122,7 +122,7 @@ pub async fn update_tag_handler(
         EventLevel::Info,
         Some("tag"),
         Some(updated_tag.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Tag updated: {}", updated_tag.name),
         None,
     );
@@ -136,7 +136,7 @@ pub async fn update_tag_handler(
 pub async fn delete_tag_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    _session: AdminSession,
+    session: AdminSession,
 ) -> AppResult<impl IntoResponse> {
     let tag = db::get_tag_by_ref(&state.pool, &ref_str)
         .await?
@@ -150,7 +150,7 @@ pub async fn delete_tag_handler(
         EventLevel::Info,
         Some("tag"),
         Some(tag.id),
-        Some(&_session.0.username),
+        Some(&session.0.username),
         format!("Tag deleted: {}", tag.name),
         None,
     );
@@ -184,7 +184,7 @@ pub async fn get_related_tags_handler(
 #[tracing::instrument(skip_all)]
 pub async fn recalculate_cooccurrence_handler(
     State(state): State<Arc<AppState>>,
-    _session: AdminSession,
+    _: AdminSession,
 ) -> AppResult<impl IntoResponse> {
     db::recalculate_tag_cooccurrence(&state.pool).await?;
     Ok(Json(serde_json::json!({
