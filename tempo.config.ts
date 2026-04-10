@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { defineConfig, presets } from "@xevion/tempo";
+import { defineConfig, presets, runners } from "@xevion/tempo";
 import { hasTool } from "@xevion/tempo/proc";
 
 const rustPreset = presets.rust({ bin: "xevion" });
@@ -37,13 +37,11 @@ export default defineConfig({
         ...rustPreset.commands,
         "sqlx-prepare": {
           cmd: "cargo sqlx prepare --check",
-          requires: ["sqlx"],
-          hint: "Run `cargo sqlx prepare` to update offline query data",
+          requires: [{ tool: "sqlx", hint: "Run `cargo sqlx prepare` to update offline query data" }],
         },
         machete: {
           cmd: "cargo machete",
-          requires: ["cargo-machete"],
-          hint: "Install with `cargo install cargo-machete`",
+          requires: [{ tool: "cargo-machete", hint: "Install with `cargo install cargo-machete`" }],
         },
       },
     },
@@ -53,8 +51,7 @@ export default defineConfig({
         // RUSTSEC-2023-0071: rsa timing sidechannel, no fix available (transitive via sqlx)
         audit: {
           cmd: "cargo audit --ignore RUSTSEC-2023-0071",
-          requires: ["cargo-audit"],
-          hint: "Install with `cargo install cargo-audit`",
+          requires: [{ tool: "cargo-audit", hint: "Install with `cargo install cargo-audit`" }],
         },
       },
     },
@@ -63,7 +60,6 @@ export default defineConfig({
       commands: {
         verify: {
           cmd: 'bash -c \'SQLX_OFFLINE=true cargo test export_bindings_ && git diff --exit-code web/src/lib/bindings/\'',
-          hint: "Run `just bindings` to regenerate, then commit the changes",
         },
       },
     },
@@ -71,18 +67,13 @@ export default defineConfig({
   preflights: [
     (ctx) => {
       if (!existsSync("web/node_modules")) {
-        ctx.fail(
-          "web/node_modules not found -- run `bun install --cwd web` first",
-        );
+        ctx.fail("web/node_modules not found -- run `bun install --cwd web` first");
       }
     },
     {
       label: "svelte-kit sync",
       sources: { dir: "web/src", pattern: "**/*.{svelte,ts}" },
-      artifacts: {
-        dir: "web/.svelte-kit",
-        pattern: "tsconfig.json",
-      },
+      artifacts: { dir: "web/.svelte-kit", pattern: "tsconfig.json" },
       regenerate: "bun run --cwd web svelte-kit sync",
       reason: "panda codegen and svelte-check depend on .svelte-kit/tsconfig.json",
     },
@@ -101,8 +92,18 @@ export default defineConfig({
       reason: "frontend imports generated types from Rust structs",
     },
   ],
-  check: {
-    autoFixStrategy: "fix-first",
+  hooks: {
+    "before:dev": (ctx) => {
+      if (!existsSync(".env")) {
+        ctx.fail(".env not found -- copy .env.example or create one with DATABASE_URL");
+      }
+      if (ctx.targets.has("frontend") && !existsSync("web/node_modules")) {
+        ctx.fail("web/node_modules not found -- run `bun install --cwd web` first");
+      }
+      if (ctx.targets.has("rust") && !hasTool("cargo")) {
+        ctx.fail("cargo not found -- install Rust toolchain first");
+      }
+    },
   },
   dev: {
     exitBehavior: "first-exits",
@@ -130,97 +131,63 @@ export default defineConfig({
       },
     },
   },
-  hooks: {
-    "before:dev": (ctx) => {
-      if (!existsSync(".env")) {
-        ctx.fail(
-          ".env not found -- copy .env.example or create one with DATABASE_URL",
-        );
-      }
-      if (ctx.targets.has("frontend") && !existsSync("web/node_modules")) {
-        ctx.fail(
-          "web/node_modules not found -- run `bun install --cwd web` first",
-        );
-      }
-      if (ctx.targets.has("rust") && !hasTool("cargo")) {
-        ctx.fail("cargo not found -- install Rust toolchain first");
-      }
-    },
-  },
-  custom: {
+  commands: {
+    check: runners.check({ autoFixStrategy: "fix-first" }),
+    fmt: runners.sequential("format-apply", { description: "Sequential per-subsystem formatting", autoFixFallback: true }),
+    lint: runners.sequential("lint", { description: "Sequential per-subsystem linting" }),
+    dev: runners.dev(),
+    "pre-commit": runners.preCommit(),
     bindings: {
       description: "Regenerate TypeScript bindings from Rust types via ts-rs",
       run: async ({ run }) => {
-        run(["cargo", "test", "export_bindings_"], {
-          env: { SQLX_OFFLINE: "true" },
-        });
+        run(["cargo", "test", "export_bindings_"], { env: { SQLX_OFFLINE: "true" } });
         return 0;
       },
     },
     build: {
       description: "Build frontend + Rust binary, optionally serve or install",
       flags: {
-        serve: {
-          type: Boolean,
-          alias: "s",
-          description: "Serve after building",
-        },
-        debug: {
-          type: Boolean,
-          alias: "d",
-          description: "Debug build (default: release)",
-        },
-        "no-build": {
-          type: Boolean,
-          alias: "n",
-          description: "Skip build step",
-        },
-        install: {
-          type: Boolean,
-          alias: "i",
-          description: "Install binary via cargo install",
-        },
+        serve: { type: Boolean, alias: "s", description: "Serve after building" },
+        debug: { type: Boolean, alias: "d", description: "Debug build (default: release)" },
+        "no-build": { type: Boolean, alias: "n", description: "Skip build step" },
+        install: { type: Boolean, alias: "i", description: "Install binary via cargo install" },
       },
       run: async (ctx) => {
         const { serve, debug, "no-build": noBuild, install } = ctx.flags;
         const profile = debug ? "debug" : "release";
 
         if (!noBuild) {
-          ctx.fmt.theme.info(
-            `Building frontend${debug ? " (sourcemaps)" : ""}...`,
+          console.error(ctx.fmt.c.catBlue(`Building frontend${debug ? " (sourcemaps)" : ""}...`));
+          ctx.run(
+            debug
+              ? ["bunx", "--bun", "vite", "build", "--sourcemap"]
+              : ["bunx", "--bun", "vite", "build"],
+            { cwd: "web" },
           );
-          const buildCmd = debug
-            ? ["bunx", "--bun", "vite", "build", "--sourcemap"]
-            : ["bunx", "--bun", "vite", "build"];
-          ctx.run(buildCmd, { cwd: "web" });
 
           if (!debug) {
-            ctx.fmt.theme.info("Pre-compressing assets...");
-            ctx.run(["bun", "run", "scripts/compress-assets.ts"], {
-              cwd: "web",
-            });
+            console.error(ctx.fmt.c.catBlue("Pre-compressing assets..."));
+            ctx.run(["bun", "run", "scripts/compress-assets.ts"], { cwd: "web" });
           }
 
-          ctx.fmt.theme.info(`Building Rust (${profile})...`);
+          console.error(ctx.fmt.c.catBlue(`Building Rust (${profile})...`));
           const cargoArgs = ["cargo", "build"];
           if (!debug) cargoArgs.push("--release");
           ctx.run(cargoArgs);
         }
 
         if (install) {
-          ctx.fmt.theme.info(`Installing (${profile})...`);
+          console.error(ctx.fmt.c.catBlue(`Installing (${profile})...`));
           const installArgs = ["cargo", "install", "--path", "."];
           if (debug) installArgs.push("--debug");
           ctx.run(installArgs);
         }
 
         if (serve) {
-          ctx.fmt.theme.info(`Serving (${profile})...`);
+          console.error(ctx.fmt.c.catBlue(`Serving (${profile})...`));
           const servePort = process.env.PORT || "10237";
           ctx.run([
-            "script",
-            "-q",
-            "-c",
+            "script", "-q", "-c",
             `LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none ` +
               `"SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" ` +
               `"target/${profile}/xevion --listen localhost:${servePort} --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock" ` +
@@ -235,16 +202,16 @@ export default defineConfig({
     seed: {
       description: "Start DB, run migrations, and seed sample data",
       run: async (ctx) => {
-        ctx.run(["tempo", "run", "db"]);
+        ctx.run(["tempo", "db"]);
         ctx.run(["sqlx", "migrate", "run"]);
         ctx.run(["cargo", "run", "--bin", "xevion", "--", "seed"]);
-        ctx.fmt.theme.success("Database ready with seed data");
+        console.error(ctx.fmt.c.catGreen("Database ready with seed data"));
         return 0;
       },
     },
     db: {
-      description:
-        "Manage local PostgreSQL container. Usage: tempo run db [start|reset|rm]",
+      description: "Manage local PostgreSQL container",
+      parameters: ["[subcommand]"],
       run: async (ctx) => {
         const cmd = ctx.args[0] || "start";
         const NAME = "xevion-postgres";
@@ -254,23 +221,11 @@ export default defineConfig({
         const PORT = "5432";
         const ENV_FILE = ".env";
 
-        const docker = (...args: string[]) => {
-          const result = Bun.spawnSync(["docker", ...args], {
-            stdout: "pipe",
-            stderr: "pipe",
-          });
-          return result.stdout.toString().trim();
-        };
+        const docker = (...args: string[]) =>
+          ctx.runPiped(["docker", ...args]).stdout.trim();
 
         const getContainer = () => {
-          const out = docker(
-            "ps",
-            "-a",
-            "--filter",
-            `name=^${NAME}$`,
-            "--format",
-            "json",
-          );
+          const out = docker("ps", "-a", "--filter", `name=^${NAME}$`, "--format", "json");
           return out ? JSON.parse(out) : null;
         };
 
@@ -288,31 +243,24 @@ export default defineConfig({
         };
 
         const create = () => {
-          docker(
-            "run",
-            "-d",
-            "--name",
-            NAME,
-            "-e",
-            `POSTGRES_USER=${USER}`,
-            "-e",
-            `POSTGRES_PASSWORD=${PASS}`,
-            "-e",
-            `POSTGRES_DB=${DB}`,
-            "-p",
-            `${PORT}:5432`,
+          ctx.run([
+            "docker", "run", "-d", "--name", NAME,
+            "-e", `POSTGRES_USER=${USER}`,
+            "-e", `POSTGRES_PASSWORD=${PASS}`,
+            "-e", `POSTGRES_DB=${DB}`,
+            "-p", `${PORT}:5432`,
             "postgres:16-alpine",
-          );
-          ctx.fmt.theme.success("created");
+          ]);
+          console.error(ctx.fmt.c.catGreen("created"));
         };
 
         const container = getContainer();
 
         if (cmd === "rm") {
           if (!container) return 0;
-          docker("stop", NAME);
-          docker("rm", NAME);
-          ctx.fmt.theme.success("removed");
+          ctx.run(["docker", "stop", NAME]);
+          ctx.run(["docker", "rm", NAME]);
+          console.error(ctx.fmt.c.catGreen("removed"));
           return 0;
         }
 
@@ -320,29 +268,9 @@ export default defineConfig({
           if (!container) {
             create();
           } else {
-            docker(
-              "exec",
-              NAME,
-              "psql",
-              "-U",
-              USER,
-              "-d",
-              "postgres",
-              "-c",
-              `DROP DATABASE IF EXISTS ${DB}`,
-            );
-            docker(
-              "exec",
-              NAME,
-              "psql",
-              "-U",
-              USER,
-              "-d",
-              "postgres",
-              "-c",
-              `CREATE DATABASE ${DB}`,
-            );
-            ctx.fmt.theme.success("reset");
+            ctx.run(["docker", "exec", NAME, "psql", "-U", USER, "-d", "postgres", "-c", `DROP DATABASE IF EXISTS ${DB}`]);
+            ctx.run(["docker", "exec", NAME, "psql", "-U", USER, "-d", "postgres", "-c", `CREATE DATABASE ${DB}`]);
+            console.error(ctx.fmt.c.catGreen("reset"));
           }
           await updateEnv();
           return 0;
@@ -352,10 +280,10 @@ export default defineConfig({
         if (!container) {
           create();
         } else if (container.State !== "running") {
-          docker("start", NAME);
-          ctx.fmt.theme.success("started");
+          ctx.run(["docker", "start", NAME]);
+          console.error(ctx.fmt.c.catGreen("started"));
         } else {
-          ctx.fmt.theme.success("running");
+          console.error(ctx.fmt.c.catGreen("running"));
         }
         await updateEnv();
         return 0;
@@ -363,43 +291,27 @@ export default defineConfig({
     },
     "docker-image": {
       description: "Build the Docker image",
-      run: async (ctx) => {
-        ctx.run(["docker", "build", "-t", "xevion-dev", "."]);
+      run: async ({ run }) => {
+        run(["docker", "build", "-t", "xevion-dev", "."]);
         return 0;
       },
     },
     "docker-run": {
       description: "Run the Docker container with hl log formatting",
       flags: {
-        port: {
-          type: String,
-          default: "8080",
-          description: "Host port to bind",
-        },
+        port: { type: String, default: "8080", description: "Host port to bind" },
       },
       run: async (ctx) => {
-        const port = ctx.flags.port;
-        // Stop existing container
-        Bun.spawnSync(["docker", "stop", "xevion-dev-container"], {
-          stdout: "ignore",
-          stderr: "ignore",
-        });
-        Bun.spawnSync(["docker", "rm", "xevion-dev-container"], {
-          stdout: "ignore",
-          stderr: "ignore",
-        });
+        // Stop and remove any existing container, ignoring failures
+        ctx.runPiped(["docker", "stop", "xevion-dev-container"]);
+        ctx.runPiped(["docker", "rm", "xevion-dev-container"]);
 
         const dbUrl = process.env.DATABASE_URL || "";
-        const dockerDbUrl = dbUrl.replaceAll(
-          "localhost",
-          "host.docker.internal",
-        );
+        const dockerDbUrl = dbUrl.replaceAll("localhost", "host.docker.internal");
 
         ctx.run([
-          "script",
-          "-q",
-          "-c",
-          `docker run --name xevion-dev-container -p ${port}:8080 --env-file .env -e DATABASE_URL="${dockerDbUrl}" xevion-dev ` +
+          "script", "-q", "-c",
+          `docker run --name xevion-dev-container -p ${ctx.flags.port}:8080 --env-file .env -e DATABASE_URL="${dockerDbUrl}" xevion-dev ` +
             `| hl --config .hl.config.toml -P --interrupt-ignore-count=0`,
           "/dev/null",
         ]);
