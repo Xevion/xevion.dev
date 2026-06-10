@@ -14,6 +14,7 @@
   import IconInfo from "~icons/lucide/info";
   import { invalidateAll } from "$app/navigation";
   import { getLogger } from "@logtape/logtape";
+  import { toast } from "$lib/toast";
   import { css, cx } from "styled-system/css";
   import { hstack, flex, wrap, grid } from "styled-system/patterns";
   import {
@@ -35,6 +36,7 @@
   let createIcon = $state<string>("");
   let createColor = $state<string | undefined>(undefined);
   let creating = $state(false);
+  let createFieldErrors = $state<Record<string, string>>({});
 
   // Delete mode state (activated by holding Shift)
   let deleteMode = $state(false);
@@ -73,28 +75,28 @@
     if (!createName.trim()) return;
 
     creating = true;
-    try {
-      const createData: CreateTagData = {
-        name: createName,
-        slug: createSlug || undefined,
-        icon: createIcon || undefined,
-        color: createColor,
-      };
-      await createAdminTag(createData);
-      await invalidateAll();
-      createName = "";
-      createSlug = "";
-      createIcon = "";
-      createColor = undefined;
-      showCreateForm = false;
-    } catch (error) {
-      logger.error("Failed to create tag", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to create tag");
-    } finally {
+    createFieldErrors = {};
+    const createData: CreateTagData = {
+      name: createName,
+      slug: createSlug || undefined,
+      icon: createIcon || undefined,
+      color: createColor,
+    };
+    const result = await createAdminTag(createData);
+    if (result.isErr) {
+      logger.error("Failed to create tag", { error: result.error });
+      createFieldErrors = result.error.fieldErrors ?? {};
+      toast.error(result.error.message);
       creating = false;
+      return;
     }
+    await invalidateAll();
+    createName = "";
+    createSlug = "";
+    createIcon = "";
+    createColor = undefined;
+    showCreateForm = false;
+    creating = false;
   }
 
   function handleTagClick(tag: ApiTagWithCount, event: MouseEvent) {
@@ -136,18 +138,16 @@
   async function confirmDelete() {
     if (!deleteTarget || !deleteConfirmReady) return;
 
-    try {
-      await deleteAdminTag(deleteTarget.id);
-      await invalidateAll();
-      deleteModalOpen = false;
-      deleteTarget = null;
-      deleteConfirmReady = false;
-    } catch (error) {
-      logger.error("Failed to delete tag", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to delete tag");
+    const result = await deleteAdminTag(deleteTarget.id);
+    if (result.isErr) {
+      logger.error("Failed to delete tag", { error: result.error });
+      toast.error(result.error.message);
+      return;
     }
+    await invalidateAll();
+    deleteModalOpen = false;
+    deleteTarget = null;
+    deleteConfirmReady = false;
   }
 </script>
 
@@ -199,12 +199,14 @@
           bind:value={createName}
           placeholder="TypeScript"
           required
+          error={createFieldErrors.name}
         />
         <Input
           label="Slug"
           type="text"
           bind:value={createSlug}
           placeholder="Leave empty to auto-generate"
+          error={createFieldErrors.slug}
         />
       </div>
       <div class={css({ mt: "4" })}>

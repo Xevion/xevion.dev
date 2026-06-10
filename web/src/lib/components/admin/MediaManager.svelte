@@ -86,15 +86,15 @@
 
     // Call reorder API
     if (projectId) {
-      try {
-        await reorderProjectMedia(
-          projectId,
-          mediaItems.map((m) => m.id),
-        );
+      const result = await reorderProjectMedia(
+        projectId,
+        mediaItems.map((m) => m.id),
+      );
+      if (result.isErr) {
+        logger.error("Failed to reorder media", { error: result.error });
+        showError(result.error.message);
+      } else {
         logger.info("Media reordered", { projectId, count: mediaItems.length });
-      } catch (err) {
-        logger.error("Failed to reorder media", { error: err });
-        showError("Failed to save new order");
       }
     }
   }
@@ -177,27 +177,35 @@
 
     uploadQueue = [...uploadQueue, task];
 
-    try {
-      const media = await uploadProjectMedia(projectId, file, (progress) => {
-        uploadQueue = uploadQueue.map((t) =>
-          t.id === taskId ? { ...t, progress } : t,
-        );
-      });
-
-      // Add to media items
-      mediaItems = [...mediaItems, media];
-      onchange?.(mediaItems);
-
-      // Remove from queue
-      uploadQueue = uploadQueue.filter((t) => t.id !== taskId);
-
-      logger.info("Media uploaded", { projectId, mediaId: media.id });
-    } catch (err) {
-      logger.error("Upload failed", { error: err, filename: file.name });
+    const result = await uploadProjectMedia(projectId, file, (progress) => {
       uploadQueue = uploadQueue.map((t) =>
-        t.id === taskId ? { ...t, status: "error", error: String(err) } : t,
+        t.id === taskId ? { ...t, progress } : t,
       );
+    });
+
+    if (result.isErr) {
+      logger.error("Upload failed", {
+        error: result.error,
+        filename: file.name,
+      });
+      uploadQueue = uploadQueue.map((t) =>
+        t.id === taskId
+          ? { ...t, status: "error", error: result.error.message }
+          : t,
+      );
+      return;
     }
+
+    const media = result.value;
+
+    // Add to media items
+    mediaItems = [...mediaItems, media];
+    onchange?.(mediaItems);
+
+    // Remove from queue
+    uploadQueue = uploadQueue.filter((t) => t.id !== taskId);
+
+    logger.info("Media uploaded", { projectId, mediaId: media.id });
   }
 
   function removeUploadTask(taskId: string) {
@@ -213,14 +221,14 @@
   async function confirmDelete() {
     if (!projectId || !deletingMedia) return;
 
-    try {
-      await deleteProjectMedia(projectId, deletingMedia.id);
+    const result = await deleteProjectMedia(projectId, deletingMedia.id);
+    if (result.isErr) {
+      logger.error("Failed to delete media", { error: result.error });
+      showError(result.error.message);
+    } else {
       mediaItems = mediaItems.filter((m) => m.id !== deletingMedia!.id);
       onchange?.(mediaItems);
       logger.info("Media deleted", { projectId, mediaId: deletingMedia.id });
-    } catch (err) {
-      logger.error("Failed to delete media", { error: err });
-      showError("Failed to delete media");
     }
 
     deletingMedia = null;

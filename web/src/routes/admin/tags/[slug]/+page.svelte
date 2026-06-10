@@ -12,6 +12,7 @@
   import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconExternalLink from "~icons/lucide/external-link";
   import { getLogger } from "@logtape/logtape";
+  import { toast } from "$lib/toast";
   import { css, cx } from "styled-system/css";
   import { flex, hstack, wrap, grid } from "styled-system/patterns";
   import {
@@ -36,6 +37,7 @@
   // svelte-ignore state_referenced_locally
   let color = $state<string | undefined>(data.tag.color);
   let saving = $state(false);
+  let fieldErrors = $state<Record<string, string>>({});
 
   // Delete state
   let deleteModalOpen = $state(false);
@@ -46,30 +48,30 @@
     if (!name.trim()) return;
 
     saving = true;
-    try {
-      await updateAdminTag({
-        id: data.tag.id,
-        name: name.trim(),
-        slug: slug.trim() || undefined,
-        icon: icon || undefined,
-        color: color,
-      });
-
-      // If slug changed, navigate to new URL
-      const newSlug = slug.trim() || data.tag.slug;
-      if (newSlug !== data.tag.slug) {
-        await goto(`/admin/tags/${newSlug}`, { replaceState: true });
-      } else {
-        await invalidateAll();
-      }
-    } catch (error) {
-      logger.error("Failed to update tag", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to update tag");
-    } finally {
+    fieldErrors = {};
+    const result = await updateAdminTag({
+      id: data.tag.id,
+      name: name.trim(),
+      slug: slug.trim() || undefined,
+      icon: icon || undefined,
+      color: color,
+    });
+    if (result.isErr) {
+      logger.error("Failed to update tag", { error: result.error });
+      fieldErrors = result.error.fieldErrors ?? {};
+      toast.error(result.error.message);
       saving = false;
+      return;
     }
+
+    // If slug changed, navigate to new URL
+    const newSlug = slug.trim() || data.tag.slug;
+    if (newSlug !== data.tag.slug) {
+      await goto(`/admin/tags/${newSlug}`, { replaceState: true });
+    } else {
+      await invalidateAll();
+    }
+    saving = false;
   }
 
   function initiateDelete() {
@@ -91,15 +93,13 @@
   async function confirmDelete() {
     if (!deleteConfirmReady) return;
 
-    try {
-      await deleteAdminTag(data.tag.id);
-      await goto("/admin/tags");
-    } catch (error) {
-      logger.error("Failed to delete tag", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to delete tag");
+    const result = await deleteAdminTag(data.tag.id);
+    if (result.isErr) {
+      logger.error("Failed to delete tag", { error: result.error });
+      toast.error(result.error.message);
+      return;
     }
+    await goto("/admin/tags");
   }
 
   // Base classes for tag chip styling (matches TagChip component)
@@ -162,12 +162,14 @@
         bind:value={name}
         placeholder="TypeScript"
         required
+        error={fieldErrors.name}
       />
       <Input
         label="Slug"
         type="text"
         bind:value={slug}
         placeholder="Leave empty to keep current"
+        error={fieldErrors.slug}
       />
     </div>
 

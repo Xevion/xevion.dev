@@ -7,14 +7,19 @@
   import MediaManager from "./MediaManager.svelte";
   import type { ApiAdminProject, ProjectStatus } from "$lib/bindings";
   import type { CreateProjectData, TagWithIcon } from "$lib/admin-types";
+  import type { ApiError } from "$lib/errors";
+  import type { Result } from "true-myth/result";
   import { getLogger } from "@logtape/logtape";
+  import { toast } from "$lib/toast";
 
   const logger = getLogger(["admin", "components", "ProjectForm"]);
 
   interface Props {
     project?: ApiAdminProject | null;
     availableTags: TagWithIcon[];
-    onsubmit: (data: CreateProjectData) => Promise<void>;
+    onsubmit: (
+      data: CreateProjectData,
+    ) => Promise<Result<ApiAdminProject, ApiError>>;
     ondelete?: () => void;
     submitLabel?: string;
   }
@@ -53,6 +58,9 @@
 
   let submitting = $state(false);
 
+  // Server-returned field-level validation errors, keyed by camelCase field name.
+  let fieldErrors = $state<Record<string, string>>({});
+
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "maintained", label: "Maintained" },
@@ -76,26 +84,25 @@
   async function handleSubmit(e: Event) {
     e.preventDefault();
     submitting = true;
+    fieldErrors = {};
 
-    try {
-      await onsubmit({
-        name,
-        slug: slug || slugPlaceholder,
-        shortDescription,
-        description,
-        status,
-        githubRepo: githubRepo || undefined,
-        demoUrl: demoUrl || undefined,
-        tagIds: selectedTagIds,
-      });
-    } catch (error) {
-      logger.error("Failed to submit project", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to save project");
-    } finally {
-      submitting = false;
+    const result = await onsubmit({
+      name,
+      slug: slug || slugPlaceholder,
+      shortDescription,
+      description,
+      status,
+      githubRepo: githubRepo || undefined,
+      demoUrl: demoUrl || undefined,
+      tagIds: selectedTagIds,
+    });
+
+    if (result.isErr) {
+      logger.error("Failed to submit project", { error: result.error });
+      fieldErrors = result.error.fieldErrors ?? {};
+      toast.error(result.error.message);
     }
+    submitting = false;
   }
 </script>
 
@@ -109,6 +116,7 @@
       required
       placeholder="My Awesome Project"
       help="The display name of your project"
+      error={fieldErrors.name}
     />
 
     <Input
@@ -118,6 +126,7 @@
       oninput={handleSlugInput}
       placeholder={slugPlaceholder}
       help="URL-friendly identifier (leave empty to auto-generate)"
+      error={fieldErrors.slug}
     />
   </div>
 
@@ -129,6 +138,7 @@
     required
     placeholder="A concise one-line summary"
     help="Brief description shown in project cards"
+    error={fieldErrors.shortDescription}
   />
 
   <!-- Description -->
@@ -140,6 +150,7 @@
     rows={6}
     placeholder="A detailed description of your project..."
     help="Full project description (markdown not supported yet)"
+    error={fieldErrors.description}
   />
 
   <!-- Status -->
@@ -159,6 +170,7 @@
       bind:value={githubRepo}
       placeholder="username/repo"
       help="Format: owner/repo (e.g., facebook/react)"
+      error={fieldErrors.githubRepo}
     />
 
     <Input
@@ -167,6 +179,7 @@
       bind:value={demoUrl}
       placeholder="https://example.com"
       help="Live demo or project website"
+      error={fieldErrors.demoUrl}
     />
   </div>
 

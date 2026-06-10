@@ -65,26 +65,22 @@
     } else {
       loadingMore = true;
     }
-    try {
-      const result = await getAdminEvents({
-        limit: PAGE_SIZE,
-        offset: reset ? 0 : events.length,
-        level: (filterLevel || undefined) as EventLevel | undefined,
-        entityType: filterEntityType || undefined,
-        eventType: filterEventType || undefined,
-      });
-      if (reset) {
-        events = result;
-      } else {
-        events = [...events, ...result];
-      }
-      hasMore = result.length === PAGE_SIZE;
-    } catch (error) {
-      logger.error("Failed to load events", { error });
-    } finally {
-      loading = false;
-      loadingMore = false;
+    const result = await getAdminEvents({
+      limit: PAGE_SIZE,
+      offset: reset ? 0 : events.length,
+      level: (filterLevel || undefined) as EventLevel | undefined,
+      entityType: filterEntityType || undefined,
+      eventType: filterEventType || undefined,
+    });
+    if (result.isErr) {
+      logger.error("Failed to load events", { error: result.error });
+    } else {
+      const page = result.value;
+      events = reset ? page : [...events, ...page];
+      hasMore = page.length === PAGE_SIZE;
     }
+    loading = false;
+    loadingMore = false;
   }
 
   // Reload when filters change

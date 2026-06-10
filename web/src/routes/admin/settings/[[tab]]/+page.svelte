@@ -5,6 +5,7 @@
   import Input from "$lib/components/admin/Input.svelte";
   import { getSettings, updateSettings } from "$lib/api";
   import { getLogger } from "@logtape/logtape";
+  import { toast } from "$lib/toast";
   import type { ApiSiteSettings } from "$lib/bindings";
 
   const logger = getLogger(["admin", "settings"]);
@@ -34,6 +35,9 @@
   // Form state - will be populated when settings load
   let formData = $state<ApiSiteSettings | null>(null);
 
+  // Server-returned field-level validation errors, keyed by camelCase field name.
+  let fieldErrors = $state<Record<string, string>>({});
+
   // Deep equality check for change detection
   const hasChanges = $derived.by(() => {
     if (!settings || !formData) return false;
@@ -41,15 +45,14 @@
   });
 
   async function loadSettings() {
-    try {
-      const data = await getSettings();
-      settings = data;
-      formData = structuredClone(data);
-    } catch (error) {
-      logger.error("Failed to load settings", { error });
-    } finally {
-      loading = false;
+    const result = await getSettings();
+    if (result.isErr) {
+      logger.error("Failed to load settings", { error: result.error });
+    } else {
+      settings = result.value;
+      formData = structuredClone(result.value);
     }
+    loading = false;
   }
 
   $effect(() => {
@@ -60,17 +63,18 @@
     if (!formData || !hasChanges) return;
 
     saving = true;
-    try {
-      const updated = await updateSettings(formData);
-      settings = updated;
-      formData = structuredClone(updated);
-      alert("Settings saved successfully!");
-    } catch (error) {
-      logger.error("Failed to save settings", { error });
-      alert("Failed to save settings");
-    } finally {
-      saving = false;
+    fieldErrors = {};
+    const result = await updateSettings(formData);
+    if (result.isErr) {
+      logger.error("Failed to save settings", { error: result.error });
+      fieldErrors = result.error.fieldErrors ?? {};
+      toast.error(result.error.message);
+    } else {
+      settings = result.value;
+      formData = structuredClone(result.value);
+      toast.success("Settings saved successfully!");
     }
+    saving = false;
   }
 
   function handleCancel() {
@@ -141,6 +145,7 @@
             bind:value={formData.identity.displayName}
             placeholder="Ryan Walters"
             required
+            error={fieldErrors.displayName}
           />
           <Input
             label="Occupation/Title"
@@ -148,6 +153,7 @@
             bind:value={formData.identity.occupation}
             placeholder="Full-Stack Software Engineer"
             required
+            error={fieldErrors.occupation}
           />
           <Input
             label="Bio/Description"
@@ -156,6 +162,7 @@
             placeholder="A brief description about yourself..."
             rows={6}
             help="Plain text for now (Markdown support coming later)"
+            error={fieldErrors.bio}
           />
           <Input
             label="Site Title"
@@ -164,6 +171,7 @@
             placeholder="Xevion.dev"
             required
             help="Displayed in browser tab and meta tags"
+            error={fieldErrors.siteTitle}
           />
         </div>
       {:else if activeTab === "social"}

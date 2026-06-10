@@ -11,8 +11,11 @@
   let { data }: { data: PageData } = $props();
 
   async function handleSubmit(formData: CreateProjectData) {
-    await createAdminProject(formData);
-    goto(resolve("/admin/projects"));
+    const result = await createAdminProject(formData);
+    if (result.isOk) {
+      goto(resolve("/admin/projects"));
+    }
+    return result;
   }
 </script>
 

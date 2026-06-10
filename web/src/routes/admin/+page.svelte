@@ -20,14 +20,13 @@
   let loading = $state(true);
 
   async function loadDashboard() {
-    try {
-      const eventsData = await getAdminEvents();
-      recentEvents = eventsData;
-    } catch (error) {
-      logger.error("Failed to load dashboard", { error });
-    } finally {
-      loading = false;
+    const result = await getAdminEvents();
+    if (result.isErr) {
+      logger.error("Failed to load dashboard", { error: result.error });
+    } else {
+      recentEvents = result.value;
     }
+    loading = false;
   }
 
   $effect(() => {

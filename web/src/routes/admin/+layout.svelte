@@ -7,6 +7,7 @@
   import { getAdminStats } from "$lib/api";
   import { telemetry } from "$lib/telemetry";
   import { getLogger } from "@logtape/logtape";
+  import { Toaster } from "svelte-sonner";
   import type { AdminStats } from "$lib/bindings";
 
   const logger = getLogger(["admin", "layout"]);
@@ -23,10 +24,11 @@
   async function loadStats() {
     if (isLoginPage || !authStore.isAuthenticated) return;
 
-    try {
-      stats = await getAdminStats();
-    } catch (error) {
-      logger.error("Failed to load stats", { error });
+    const result = await getAdminStats();
+    if (result.isErr) {
+      logger.error("Failed to load stats", { error: result.error });
+    } else {
+      stats = result.value;
     }
   }
 
@@ -54,6 +56,8 @@
     goto(resolve("/admin/login"));
   }
 </script>
+
+<Toaster position="top-right" theme="dark" richColors closeButton />
 
 {#if isLoginPage}
   <!-- Login page has no sidebar -->

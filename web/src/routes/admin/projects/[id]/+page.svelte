@@ -4,9 +4,12 @@
   import ProjectForm from "$lib/components/admin/ProjectForm.svelte";
   import Modal from "$lib/components/admin/Modal.svelte";
   import { updateAdminProject, deleteAdminProject } from "$lib/api";
+  import { ApiError } from "$lib/errors";
+  import { err } from "true-myth/result";
   import type { UpdateProjectData, CreateProjectData } from "$lib/admin-types";
   import type { PageData } from "./$types";
   import { getLogger } from "@logtape/logtape";
+  import { toast } from "$lib/toast";
   import { css } from "styled-system/css";
   import { pageDescriptionClass, adminCardClass } from "$lib/styles/admin";
 
@@ -35,26 +38,29 @@
 
   async function confirmDelete() {
     if (!data.project || !deleteConfirmReady) return;
-    try {
-      await deleteAdminProject(data.project.id);
-      goto(resolve("/admin/projects"));
-    } catch (error) {
-      logger.error("Failed to delete project", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      alert("Failed to delete project");
+    const result = await deleteAdminProject(data.project.id);
+    if (result.isErr) {
+      logger.error("Failed to delete project", { error: result.error });
+      toast.error(result.error.message);
+      return;
     }
+    goto(resolve("/admin/projects"));
   }
 
   async function handleSubmit(formData: CreateProjectData) {
-    if (!data.project) return;
+    if (!data.project) {
+      return err(new ApiError(404, "Not Found", "Project not found"));
+    }
 
     const updateData: UpdateProjectData = {
       ...formData,
       id: data.project.id,
     };
-    await updateAdminProject(updateData);
-    goto(resolve("/admin/projects"));
+    const result = await updateAdminProject(updateData);
+    if (result.isOk) {
+      goto(resolve("/admin/projects"));
+    }
+    return result;
   }
 </script>
 
