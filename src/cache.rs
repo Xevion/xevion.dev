@@ -49,7 +49,8 @@ impl CachedResponse {
     /// requested if the body is too small or compression doesn't help.
     pub fn get_body(&self, encoding: ContentEncoding) -> (axum::body::Bytes, ContentEncoding) {
         // Identity encoding or small body - return uncompressed
-        if encoding == ContentEncoding::Identity || self.body.len() < COMPRESSION_MIN_SIZE as usize {
+        if encoding == ContentEncoding::Identity || self.body.len() < COMPRESSION_MIN_SIZE as usize
+        {
             return (self.body.clone(), ContentEncoding::Identity);
         }
 

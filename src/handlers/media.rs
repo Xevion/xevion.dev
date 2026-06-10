@@ -39,14 +39,14 @@ pub async fn upload_media_handler(
 
     let (filename, content_type, data) = extract_file(&mut multipart)
         .await
-        .map_err(AppError::Validation)?
-        .ok_or_else(|| AppError::Validation("No file provided".into()))?;
+        .map_err(AppError::validation)?
+        .ok_or_else(|| AppError::validation("No file provided"))?;
 
     let is_video = media_processing::is_supported_video(&content_type);
     let is_image = media_processing::is_supported_image(&content_type);
 
     if !is_video && !is_image {
-        return Err(AppError::Validation(format!(
+        return Err(AppError::validation(format!(
             "Content type '{content_type}' is not supported. Supported: JPEG, PNG, GIF, WebP, AVIF, MP4, WebM"
         )));
     }
@@ -56,7 +56,7 @@ pub async fn upload_media_handler(
 
     if is_image {
         let processed = media_processing::process_image(&data, &filename)
-            .map_err(|e| AppError::Validation(format!("Failed to process image: {e}")))?;
+            .map_err(|e| AppError::validation(format!("Failed to process image: {e}")))?;
 
         upload_image_variants(&r2, &r2_base_path, &processed)
             .await
@@ -257,7 +257,7 @@ pub async fn delete_media_handler(
         .or_not_found()?;
 
     let media_id = Uuid::parse_str(&media_id)
-        .map_err(|_| AppError::Validation("Media ID must be a valid UUID".into()))?;
+        .map_err(|_| AppError::validation("Media ID must be a valid UUID"))?;
 
     let media = db::get_media_by_id(&state.pool, media_id)
         .await?
@@ -323,7 +323,7 @@ pub async fn reorder_media_handler(
         .iter()
         .map(|id| Uuid::parse_str(id))
         .collect::<Result<_, _>>()
-        .map_err(|_| AppError::Validation("All media IDs must be valid UUIDs".into()))?;
+        .map_err(|_| AppError::field("mediaIds", "All media IDs must be valid UUIDs"))?;
 
     db::reorder_media(&state.pool, project.id, &media_ids).await?;
 

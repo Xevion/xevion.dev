@@ -56,11 +56,12 @@ pub async fn create_project_handler(
     Json(payload): Json<CreateProjectRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
-        return Err(AppError::Validation("Project name cannot be empty".into()));
+        return Err(AppError::field("name", "Project name cannot be empty"));
     }
     if payload.short_description.trim().is_empty() {
-        return Err(AppError::Validation(
-            "Project short description cannot be empty".into(),
+        return Err(AppError::field(
+            "shortDescription",
+            "Project short description cannot be empty",
         ));
     }
 
@@ -69,7 +70,7 @@ pub async fn create_project_handler(
         .iter()
         .map(|id| uuid::Uuid::parse_str(id))
         .collect::<Result<_, _>>()
-        .map_err(|_| AppError::Validation("Invalid tag UUID format".into()))?;
+        .map_err(|_| AppError::field("tagIds", "Invalid tag UUID format"))?;
 
     let project = db::create_project(
         &state.pool,
@@ -133,11 +134,12 @@ pub async fn update_project_handler(
     let project_id = existing_project.id;
 
     if payload.name.trim().is_empty() {
-        return Err(AppError::Validation("Project name cannot be empty".into()));
+        return Err(AppError::field("name", "Project name cannot be empty"));
     }
     if payload.short_description.trim().is_empty() {
-        return Err(AppError::Validation(
-            "Project short description cannot be empty".into(),
+        return Err(AppError::field(
+            "shortDescription",
+            "Project short description cannot be empty",
         ));
     }
 
@@ -146,7 +148,7 @@ pub async fn update_project_handler(
         .iter()
         .map(|id| uuid::Uuid::parse_str(id))
         .collect::<Result<_, _>>()
-        .map_err(|_| AppError::Validation("Invalid tag UUID format".into()))?;
+        .map_err(|_| AppError::field("tagIds", "Invalid tag UUID format"))?;
 
     let project = db::update_project(
         &state.pool,
@@ -282,7 +284,7 @@ pub async fn add_project_tag_handler(
         .or_not_found()?;
 
     let tag_id = uuid::Uuid::parse_str(&payload.tag_id)
-        .map_err(|_| AppError::Validation("Tag ID must be a valid UUID".into()))?;
+        .map_err(|_| AppError::field("tagId", "Tag ID must be a valid UUID"))?;
 
     db::add_tag_to_project(&state.pool, project.id, tag_id)
         .await

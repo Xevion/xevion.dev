@@ -66,8 +66,9 @@ pub fn calculate_check_interval(last_activity: Option<OffsetDateTime>) -> Durati
     let min = min_interval();
     let max = max_interval();
 
-    let days_since = last_activity
-        .map_or(DAYS_TO_MAX, |t| (OffsetDateTime::now_utc() - t).whole_days().max(0) as f64); // Default to max interval if no activity recorded
+    let days_since = last_activity.map_or(DAYS_TO_MAX, |t| {
+        (OffsetDateTime::now_utc() - t).whole_days().max(0) as f64
+    }); // Default to max interval if no activity recorded
 
     // Logarithmic scaling: ln(1+days) / ln(1+90) gives 0..1 range
     let scale = days_since.ln_1p() / DAYS_TO_MAX.ln_1p();

@@ -30,13 +30,14 @@ pub async fn create_tag_handler(
     Json(payload): Json<CreateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
-        return Err(AppError::Validation("Tag name cannot be empty".into()));
+        return Err(AppError::field("name", "Tag name cannot be empty"));
     }
     if let Some(ref color) = payload.color
         && !utils::validate_hex_color(color)
     {
-        return Err(AppError::Validation(
-            "Invalid color format. Must be 6-character hex (e.g., '3b82f6')".into(),
+        return Err(AppError::field(
+            "color",
+            "Invalid color format. Must be 6-character hex (e.g., '3b82f6')",
         ));
     }
 
@@ -91,13 +92,14 @@ pub async fn update_tag_handler(
     Json(payload): Json<UpdateTagRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.name.trim().is_empty() {
-        return Err(AppError::Validation("Tag name cannot be empty".into()));
+        return Err(AppError::field("name", "Tag name cannot be empty"));
     }
     if let Some(ref color) = payload.color
         && !utils::validate_hex_color(color)
     {
-        return Err(AppError::Validation(
-            "Invalid color format. Must be 6-character hex (e.g., '3b82f6')".into(),
+        return Err(AppError::field(
+            "color",
+            "Invalid color format. Must be 6-character hex (e.g., '3b82f6')",
         ));
     }
 

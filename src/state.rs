@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::{
@@ -34,6 +35,55 @@ impl std::fmt::Display for ProxyError {
 
 impl std::error::Error for ProxyError {}
 
+/// Structured validation errors with optional per-field messages.
+///
+/// When `fields` is non-empty, each key is a camelCase JSON request field name.
+/// When `fields` is empty, `general` carries the error message.
+#[derive(Debug, Default)]
+pub struct ValidationErrors {
+    /// Per-field error messages keyed by camelCase JSON field name.
+    pub fields: BTreeMap<String, String>,
+    /// General (non-field-specific) error message used when `fields` is empty.
+    pub general: Option<String>,
+}
+
+impl ValidationErrors {
+    /// A single-field validation error.
+    pub fn field(field: impl Into<String>, msg: impl Into<String>) -> Self {
+        let mut fields = BTreeMap::new();
+        fields.insert(field.into(), msg.into());
+        Self {
+            fields,
+            general: None,
+        }
+    }
+
+    /// A general (non-field-specific) validation error.
+    pub fn general(msg: impl Into<String>) -> Self {
+        Self {
+            fields: BTreeMap::new(),
+            general: Some(msg.into()),
+        }
+    }
+
+    /// Human-readable summary for use in the `error` JSON field and `Display`.
+    fn summary(&self) -> String {
+        if self.fields.is_empty() {
+            self.general
+                .clone()
+                .unwrap_or_else(|| "Validation failed".to_string())
+        } else {
+            "Validation failed".to_string()
+        }
+    }
+}
+
+impl std::fmt::Display for ValidationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.summary())
+    }
+}
+
 /// Typed API errors with automatic HTTP response mapping
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -47,7 +97,7 @@ pub enum AppError {
     InvalidCredentials,
 
     #[error("{0}")]
-    Validation(String),
+    Validation(ValidationErrors),
 
     #[error("{0}")]
     Conflict(String),
@@ -60,6 +110,18 @@ pub enum AppError {
 
     #[error("{0}")]
     Internal(String),
+}
+
+impl AppError {
+    /// Validation error for a single named request field.
+    pub fn field(field: impl Into<String>, msg: impl Into<String>) -> Self {
+        Self::Validation(ValidationErrors::field(field, msg))
+    }
+
+    /// General (non-field-specific) validation error.
+    pub fn validation(msg: impl Into<String>) -> Self {
+        Self::Validation(ValidationErrors::general(msg))
+    }
 }
 
 pub type AppResult<T> = Result<T, AppError>;
@@ -89,6 +151,18 @@ impl axum::response::IntoResponse for AppError {
             Self::Database(_) | Self::Internal(_) => "Internal server error".to_string(),
             other => other.to_string(),
         };
+
+        if let Self::Validation(ref errs) = self {
+            return (
+                status,
+                Json(serde_json::json!({
+                    "error": message,
+                    "code": code,
+                    "fieldErrors": errs.fields,
+                })),
+            )
+                .into_response();
+        }
 
         (
             status,

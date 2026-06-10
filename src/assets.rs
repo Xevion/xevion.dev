@@ -123,14 +123,18 @@ fn serve_asset_by_path(path: &str) -> Response {
 
 /// Get a static file from the embedded `CLIENT_ASSETS`.
 pub fn get_static_file(path: &str) -> Option<&'static [u8]> {
-    CLIENT_ASSETS.get_file(path).map(include_dir::File::contents)
+    CLIENT_ASSETS
+        .get_file(path)
+        .map(include_dir::File::contents)
 }
 
 /// Get prerendered error page HTML for a given status code.
 /// Available codes defined in web/src/lib/error-codes.ts.
 pub fn get_error_page(status_code: u16) -> Option<&'static [u8]> {
     let filename = format!("{status_code}.html");
-    ERROR_PAGES.get_file(&filename).map(include_dir::File::contents)
+    ERROR_PAGES
+        .get_file(&filename)
+        .map(include_dir::File::contents)
 }
 
 /// Get the embedded `SvelteKit` env.js file for dynamic public environment variables.

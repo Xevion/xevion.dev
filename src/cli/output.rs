@@ -167,7 +167,8 @@ pub fn print_tags_table(tags: &[ApiTagWithCount]) {
         let color = tag
             .tag
             .color
-            .as_ref().map_or_else(|| "-".to_string(), |c| format!("#{c}"));
+            .as_ref()
+            .map_or_else(|| "-".to_string(), |c| format!("#{c}"));
 
         println!(
             "{:name_width$}  {:slug_width$}  {:8}  {:20}  {}",
