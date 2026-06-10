@@ -363,6 +363,18 @@ export default defineConfig({
     "html.dark .native-scrollbar": {
       scrollbarColor: "rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.05)",
     },
+    // Code-block chrome (github canvas + scrollbar) shared by the in-editor block
+    // (lowlight, ContentEditor.svelte) and the public detail page block (Shiki,
+    // projects/[slug]). Token colors are NOT shared — the editor approximates via
+    // local `--cb-*` vars; the public page uses Shiki's inline per-token colors.
+    html: {
+      "--code-canvas": "#f6f8fa",
+      "--code-scrollbar": "#afb8c1",
+    },
+    "html.dark": {
+      "--code-canvas": "#161b22",
+      "--code-scrollbar": "#30363d",
+    },
     // Hide native scrollbar on html/body - OverlayScrollbars handles body scrolling
     "html, body ": {
       scrollbarWidth: "none",

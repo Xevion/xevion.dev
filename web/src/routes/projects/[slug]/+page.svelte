@@ -30,15 +30,8 @@
   const proseClass = css({
     color: "zinc.700",
     _dark: { color: "zinc.200" },
-    "& :global(h1)": {
-      fontSize: "2xl",
-      fontWeight: "bold",
-      color: "zinc.900",
-      mt: "6",
-      mb: "3",
-      _dark: { color: "white" },
-    },
-    "& :global(h2)": {
+    // Body headings are h2–h4 (editor schema); the page header owns the sole h1.
+    "& h2": {
       fontSize: "xl",
       fontWeight: "bold",
       color: "zinc.900",
@@ -46,7 +39,7 @@
       mb: "2",
       _dark: { color: "white" },
     },
-    "& :global(h3)": {
+    "& h3": {
       fontSize: "lg",
       fontWeight: "semibold",
       color: "zinc.900",
@@ -54,16 +47,16 @@
       mb: "1.5",
       _dark: { color: "zinc.100" },
     },
-    "& :global(p)": { my: "3", lineHeight: "relaxed" },
-    "& :global(ul)": { listStyle: "disc", pl: "6", my: "3" },
-    "& :global(ol)": { listStyle: "decimal", pl: "6", my: "3" },
-    "& :global(li)": { my: "1" },
-    "& :global(a)": {
+    "& p": { my: "3", lineHeight: "relaxed" },
+    "& ul": { listStyle: "disc", pl: "6", my: "3" },
+    "& ol": { listStyle: "decimal", pl: "6", my: "3" },
+    "& li": { my: "1" },
+    "& a": {
       color: "blue.600",
       textDecoration: "underline",
       _dark: { color: "blue.400" },
     },
-    "& :global(blockquote)": {
+    "& blockquote": {
       borderLeftWidth: "3px",
       borderColor: "zinc.300",
       pl: "4",
@@ -72,7 +65,7 @@
       my: "4",
       _dark: { borderColor: "zinc.700", color: "zinc.400" },
     },
-    "& :global(code)": {
+    "& code": {
       bg: "zinc.100",
       px: "1.5",
       py: "0.5",
@@ -81,21 +74,15 @@
       fontSize: "0.85em",
       _dark: { bg: "zinc.800" },
     },
-    "& :global(pre)": {
-      bg: "zinc.100",
-      p: "3",
-      rounded: "md",
-      overflowX: "auto",
-      my: "4",
-      _dark: { bg: "zinc.900" },
-    },
-    "& :global(pre code)": { bg: "transparent", p: "0" },
-    "& :global(hr)": {
+    // Code blocks (Shiki `pre.shiki`) are styled in the component style block —
+    // overriding Shiki's inline canvas needs plain CSS with !important, which
+    // Panda css() can't express. Inline `& code` above is reset there too.
+    "& hr": {
       borderColor: "zinc.200",
       my: "6",
       _dark: { borderColor: "zinc.700" },
     },
-    "& :global(img)": { maxW: "full", rounded: "md", my: "4" },
+    "& img": { maxW: "full", rounded: "md", my: "4" },
   });
 </script>
 
@@ -184,3 +171,50 @@
     </article>
   </div>
 </main>
+
+<style>
+  /* Code blocks (Shiki output). Shiki emits light-theme token colors inline plus a
+     --shiki-dark custom property per token; the dark palette is activated under an
+     .dark ancestor (the site's class-based dark mode lives on <html>).
+
+     The canvas is overridden to github's subtle-canvas so the block stays distinct
+     from the page — Shiki's own light canvas is pure white, invisible on a white
+     page. Canvas/scrollbar colors come from the shared --code-canvas/--code-scrollbar
+     vars (panda.config.ts globalCss), which flip under .dark on their own, so only
+     the token color needs a dark rule below. The canvas override needs !important to
+     beat Shiki's inline background. */
+  :global(.project-detail .shiki) {
+    margin: 1rem 0;
+    padding: 0.875rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-height: 32rem;
+    overflow: auto;
+    background-color: var(--code-canvas) !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--code-scrollbar) transparent;
+  }
+  :global(.project-detail .shiki code) {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    border-radius: 0;
+  }
+  :global(.project-detail .shiki::-webkit-scrollbar) {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+  :global(.project-detail .shiki::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+  :global(.project-detail .shiki::-webkit-scrollbar-thumb) {
+    background-color: var(--code-scrollbar);
+    border-radius: 0.25rem;
+  }
+  /* Token colors only — canvas/scrollbar flip via the shared --code-* vars. */
+  :global(.dark .project-detail .shiki),
+  :global(.dark .project-detail .shiki span) {
+    color: var(--shiki-dark) !important;
+  }
+</style>

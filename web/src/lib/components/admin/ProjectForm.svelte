@@ -47,7 +47,15 @@
   let githubRepo = $state("");
   let demoUrl = $state("");
   let selectedTagIds = $state<string[]>([]);
-  let detailContent = $state<JSONContent | null>(null);
+  // Initialized synchronously (not in the $effect below) because ContentEditor
+  // snapshots this value in its onMount to build the editor — an $effect would
+  // run after the child mounts, leaving the editor empty on edit. Reading the
+  // initial `project` value is correct because the edit route keys the form on
+  // project.id, so each project gets a fresh mount (and thus a fresh snapshot).
+  // svelte-ignore state_referenced_locally
+  let detailContent = $state<JSONContent | null>(
+    (project?.detailContent as JSONContent | null) ?? null,
+  );
 
   // Initialize form from project prop
   $effect(() => {
@@ -60,7 +68,6 @@
       githubRepo = project.githubRepo ?? "";
       demoUrl = project.demoUrl ?? "";
       selectedTagIds = project.tags.map((t) => t.id);
-      detailContent = (project.detailContent as JSONContent | null) ?? null;
     }
   });
 

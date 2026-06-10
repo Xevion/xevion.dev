@@ -97,13 +97,18 @@
     </div>
   {:else}
     <div class={adminCardClass}>
-      <ProjectForm
-        project={data.project}
-        availableTags={data.availableTags}
-        onsubmit={handleSubmit}
-        ondelete={initiateDelete}
-        submitLabel="Update Project"
-      />
+      <!-- Key on project id so switching projects fully remounts the form. The
+           ContentEditor snapshots its content at mount (see ProjectForm), so a
+           reused instance would keep the previous project's detail document. -->
+      {#key data.project.id}
+        <ProjectForm
+          project={data.project}
+          availableTags={data.availableTags}
+          onsubmit={handleSubmit}
+          ondelete={initiateDelete}
+          submitLabel="Update Project"
+        />
+      {/key}
     </div>
   {/if}
 </div>

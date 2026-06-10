@@ -23,6 +23,6 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 
   return {
     project,
-    html: renderDetailContent(project.detailContent as JSONContent),
+    html: await renderDetailContent(project.detailContent as JSONContent),
   };
 };
