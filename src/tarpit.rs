@@ -28,9 +28,7 @@ pub struct TarpitConfig {
 impl TarpitConfig {
     pub fn from_env() -> Self {
         Self {
-            enabled: std::env::var("TARPIT_ENABLED")
-                .map(|v| v == "true" || v == "1")
-                .unwrap_or(true),
+            enabled: std::env::var("TARPIT_ENABLED").map_or(true, |v| v == "true" || v == "1"),
             delay_min_ms: std::env::var("TARPIT_DELAY_MIN_MS")
                 .ok()
                 .and_then(|v| v.parse().ok())

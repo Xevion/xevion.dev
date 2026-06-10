@@ -117,8 +117,8 @@ impl Default for IsrCacheConfig {
     fn default() -> Self {
         Self {
             max_entries: 1000,
-            fresh_duration: Duration::from_secs(60),
-            stale_duration: Duration::from_secs(300),
+            fresh_duration: Duration::from_mins(1),
+            stale_duration: Duration::from_mins(5),
             enabled: true,
         }
     }
@@ -142,9 +142,7 @@ impl IsrCacheConfig {
             .and_then(|v| v.parse().ok())
             .unwrap_or(300);
 
-        let enabled = std::env::var("ISR_CACHE_ENABLED")
-            .map(|v| v != "false" && v != "0")
-            .unwrap_or(true);
+        let enabled = std::env::var("ISR_CACHE_ENABLED").map_or(true, |v| v != "false" && v != "0");
 
         Self {
             max_entries,

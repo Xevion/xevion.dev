@@ -742,7 +742,7 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                 }
                 Err(GitHubError::RateLimited) => {
                     // Back off ALL projects by 5 minutes
-                    scheduler.backoff_all(Duration::from_secs(5 * 60));
+                    scheduler.backoff_all(Duration::from_mins(5));
                     tracing::warn!(
                         processed,
                         "GitHub rate limit hit, backing off all projects 5 minutes"

@@ -86,7 +86,7 @@ pub async fn run(
     tokio::spawn({
         let session_manager = session_manager.clone();
         async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(3600)); // Every hour
+            let mut interval = tokio::time::interval(Duration::from_hours(1)); // Every hour
             loop {
                 interval.tick().await;
                 if let Err(e) = session_manager.cleanup_expired().await {

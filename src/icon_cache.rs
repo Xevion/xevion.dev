@@ -18,7 +18,7 @@ impl IconCache {
     pub fn new() -> Self {
         let cache = Cache::builder()
             .max_capacity(10_000)
-            .time_to_live(Duration::from_secs(86400)) // 24 hours
+            .time_to_live(Duration::from_hours(24)) // 24 hours
             .name("icon_cache")
             .build();
 

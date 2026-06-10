@@ -56,7 +56,7 @@ impl HttpClient {
         let client = match &target {
             TargetUrl::Unix(path) => reqwest::Client::builder()
                 .pool_max_idle_per_host(8)
-                .pool_idle_timeout(Duration::from_secs(600))
+                .pool_idle_timeout(Duration::from_mins(10))
                 .timeout(Duration::from_secs(5))
                 .connect_timeout(Duration::from_secs(3))
                 .redirect(reqwest::redirect::Policy::none())
@@ -64,8 +64,8 @@ impl HttpClient {
                 .build()?,
             TargetUrl::Tcp(_) => reqwest::Client::builder()
                 .pool_max_idle_per_host(8)
-                .pool_idle_timeout(Duration::from_secs(600))
-                .tcp_keepalive(Some(Duration::from_secs(60)))
+                .pool_idle_timeout(Duration::from_mins(10))
+                .tcp_keepalive(Some(Duration::from_mins(1)))
                 .timeout(Duration::from_secs(5))
                 .connect_timeout(Duration::from_secs(3))
                 .redirect(reqwest::redirect::Policy::none())

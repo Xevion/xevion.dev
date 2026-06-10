@@ -29,9 +29,7 @@ use cli::{Cli, Command};
 use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
 
 fn init_tracing() {
-    let use_json = std::env::var("LOG_JSON")
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false);
+    let use_json = std::env::var("LOG_JSON").is_ok_and(|v| v == "true" || v == "1");
 
     let filter = if let Ok(rust_log) = std::env::var("RUST_LOG") {
         EnvFilter::new(rust_log)
