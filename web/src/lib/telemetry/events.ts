@@ -21,7 +21,7 @@ export type PageViewEvent = {
 export type ProjectInteractionEvent = {
   name: "project_interaction";
   properties: {
-    action: "card_view" | "github_click" | "demo_click";
+    action: "card_view" | "github_click" | "demo_click" | "detail_view";
     projectSlug: string;
     projectName: string;
     targetUrl?: string;

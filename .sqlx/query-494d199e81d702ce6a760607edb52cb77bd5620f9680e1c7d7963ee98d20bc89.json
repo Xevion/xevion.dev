@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at\n        FROM projects\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.name,\n            p.short_description,\n            p.description, \n            p.status as \"status: super::ProjectStatus\", \n            p.github_repo, \n            p.demo_url, \n            p.last_github_activity,\n            p.created_at,\n            p.detail_content\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY COALESCE(p.last_github_activity, p.created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "status: ProjectStatus",
+        "name": "status: super::ProjectStatus",
         "type_info": {
           "Custom": {
             "name": "project_status",
@@ -64,6 +64,11 @@
         "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "detail_content",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -81,8 +86,9 @@
       true,
       true,
       true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "347673cd07409cc8bfc4f532d0918b5cc8d294b1529d7566ddf3b607b0c3e47f"
+  "hash": "494d199e81d702ce6a760607edb52cb77bd5620f9680e1c7d7963ee98d20bc89"
 }

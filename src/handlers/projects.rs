@@ -45,7 +45,7 @@ pub async fn get_project_handler(
         return Err(AppError::NotFound);
     }
 
-    Ok(Json(project.to_api_admin_project(tags, media)?))
+    Ok(Json(project.to_api_project_detail(tags, media)?))
 }
 
 /// Create a new project (requires authentication)
@@ -81,6 +81,7 @@ pub async fn create_project_handler(
         payload.status,
         payload.github_repo.as_deref(),
         payload.demo_url.as_deref(),
+        payload.detail_content.as_ref(),
     )
     .await
     .conflict_on_unique("A project with this slug already exists")?;
@@ -160,6 +161,7 @@ pub async fn update_project_handler(
         payload.status,
         payload.github_repo.as_deref(),
         payload.demo_url.as_deref(),
+        payload.detail_content.as_ref(),
     )
     .await
     .conflict_on_unique("A project with this slug already exists")?;
@@ -207,6 +209,16 @@ pub async fn update_project_handler(
     }
 
     state.isr_cache.invalidate("/").await;
+    state
+        .isr_cache
+        .invalidate(&format!("/projects/{}", project.slug))
+        .await;
+    if existing_project.slug != project.slug {
+        state
+            .isr_cache
+            .invalidate(&format!("/projects/{}", existing_project.slug))
+            .await;
+    }
 
     Ok(Json(project.to_api_admin_project(tags, media)?))
 }
@@ -242,6 +254,10 @@ pub async fn delete_project_handler(
     }
 
     state.isr_cache.invalidate("/").await;
+    state
+        .isr_cache
+        .invalidate(&format!("/projects/{}", project.slug))
+        .await;
 
     Ok(Json(project.to_api_admin_project(tags, media)?))
 }

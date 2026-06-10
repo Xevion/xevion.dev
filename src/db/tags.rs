@@ -314,8 +314,9 @@ pub async fn get_projects_for_tag(
             p.status as "status: super::ProjectStatus", 
             p.github_repo, 
             p.demo_url, 
-            p.last_github_activity, 
-            p.created_at
+            p.last_github_activity,
+            p.created_at,
+            p.detail_content
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1

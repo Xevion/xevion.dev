@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::cli::client::{ApiClient, ApiError, check_response};
+use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
 use crate::cli::{ProjectsCommand, TagOp, parse_create_tags, parse_update_tags};
-use crate::db::{ApiAdminProject, ApiTag, ProjectStatus};
+use crate::db::{ApiAdminProject, ApiProjectDetail, ApiTag, ProjectStatus};
 use crate::handlers::{CreateProjectRequest, UpdateProjectRequest};
 
 /// Run a projects subcommand
@@ -101,7 +101,7 @@ async fn get(
     if json {
         println!("{}", serde_json::to_string_pretty(&project)?);
     } else {
-        output::print_project(&project);
+        output::print_project(&project.project);
     }
 
     Ok(())
@@ -135,6 +135,7 @@ async fn create(
         github_repo: github_repo.filter(|s| !s.is_empty()),
         demo_url: demo_url.filter(|s| !s.is_empty()),
         tag_ids,
+        detail_content: None,
     };
 
     let response = client.post_auth("/api/projects", &request).await?;
@@ -168,6 +169,10 @@ async fn update(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // First fetch the current project
     let current = resolve_project(&client, reference).await?;
+    // PUT is a full replace, so carry the current detail content through unchanged
+    // (the CLI never edits it — that's the web editor's job).
+    let detail_content = current.detail_content.clone();
+    let current = current.project;
 
     // Apply tag operations
     let mut current_tag_ids: Vec<String> = current.tags.iter().map(|t| t.id.clone()).collect();
@@ -211,6 +216,7 @@ async fn update(
             None => current.demo_url,
         },
         tag_ids: current_tag_ids,
+        detail_content,
     };
 
     let response = client
@@ -236,7 +242,7 @@ async fn delete(
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // First resolve to get the ID
-    let project = resolve_project(&client, reference).await?;
+    let project = resolve_project(&client, reference).await?.project;
 
     let response = client
         .delete_auth(&format!("/api/projects/{}", project.project.id))
@@ -257,25 +263,14 @@ async fn delete(
 async fn resolve_project(
     client: &ApiClient,
     reference: &str,
-) -> Result<ApiAdminProject, Box<dyn std::error::Error>> {
-    // Try as UUID first
-    if Uuid::parse_str(reference).is_ok() {
-        let response = client
-            .get_auth(&format!("/api/projects/{reference}"))
-            .await?;
-        let response = check_response(response).await?;
-        return Ok(response.json().await?);
-    }
-
-    // Otherwise search by slug in the list
-    let response = client.get_auth("/api/projects").await?;
+) -> Result<ApiProjectDetail, Box<dyn std::error::Error>> {
+    // The single-project endpoint accepts both UUID and slug, and returns the
+    // full detail (including detail_content) so update can preserve it.
+    let response = client
+        .get_auth(&format!("/api/projects/{reference}"))
+        .await?;
     let response = check_response(response).await?;
-    let projects: Vec<ApiAdminProject> = response.json().await?;
-
-    projects
-        .into_iter()
-        .find(|p| p.project.slug == reference)
-        .ok_or_else(|| ApiError::Parse(format!("Project not found: {reference}")).into())
+    Ok(response.json().await?)
 }
 
 /// Resolve tag slugs to IDs

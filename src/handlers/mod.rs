@@ -53,6 +53,9 @@ pub struct CreateProjectRequest {
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
     pub tag_ids: Vec<String>,
+    /// `TipTap` document JSON. Null/absent means the project has no detail page.
+    #[serde(default)]
+    pub detail_content: Option<serde_json::Value>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -66,4 +69,9 @@ pub struct UpdateProjectRequest {
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
     pub tag_ids: Vec<String>,
+    /// `TipTap` document JSON. PUT semantics: this is the full new value, so null
+    /// (or absent) clears the detail page. The admin form always sends the current
+    /// editor state (null when empty); the CLI echoes the existing value to preserve it.
+    #[serde(default)]
+    pub detail_content: Option<serde_json::Value>,
 }

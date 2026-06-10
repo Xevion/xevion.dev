@@ -5,6 +5,7 @@ export type { ApiEvent } from "./ApiEvent";
 export type { ApiMediaVariant } from "./ApiMediaVariant";
 export type { ApiMediaVariants } from "./ApiMediaVariants";
 export type { ApiProject } from "./ApiProject";
+export type { ApiProjectDetail } from "./ApiProjectDetail";
 export type { ApiProjectLink } from "./ApiProjectLink";
 export type { ApiProjectMedia } from "./ApiProjectMedia";
 export type { ApiRelatedTag } from "./ApiRelatedTag";

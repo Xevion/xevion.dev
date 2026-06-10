@@ -12,29 +12,35 @@
 
   let { project, class: className }: Props = $props();
 
-  // Prefer demo URL, fallback to GitHub repo
-  const projectUrl = $derived(
+  // Internal detail page, when the project has authored content.
+  const detailUrl = $derived(
+    project.hasDetail ? `/projects/${project.slug}` : null,
+  );
+
+  // External target (prefer demo, fall back to GitHub).
+  const externalUrl = $derived(
     project.demoUrl ||
       (project.githubRepo ? `https://github.com/${project.githubRepo}` : null),
   );
 
-  const isLink = $derived(!!projectUrl);
+  // The card's primary click target: the detail page if it exists, else the
+  // external link (preserving the original whole-card-is-external behavior).
+  const primaryHref = $derived(detailUrl ?? externalUrl);
+  const primaryIsExternal = $derived(!detailUrl && !!externalUrl);
+  const isLink = $derived(!!primaryHref);
 
-  // Determine click action type for telemetry
-  const clickAction = $derived(
-    project.demoUrl ? "demo_click" : project.githubRepo ? "github_click" : null,
-  );
+  // When the card goes to a detail page, surface external links as corner pills
+  // (they can't nest inside the stretched primary <a>).
+  const cornerLinks = $derived(detailUrl ? project.links : []);
 
-  // Get primary media (first by display order) if available
+  // Primary media (first by display order), used as a faded background.
   const primaryMedia = $derived(project.media?.[0]);
   const hasMedia = $derived(!!primaryMedia);
   const isVideo = $derived(primaryMedia?.mediaType === "video");
 
-  // Get media URLs from primary media
   const videoUrl = $derived(
     isVideo ? primaryMedia?.variants.video?.url : undefined,
   );
-
   const imageUrl = $derived(
     !isVideo && primaryMedia
       ? (primaryMedia.variants.medium?.url ??
@@ -42,42 +48,47 @@
           primaryMedia.variants.full?.url)
       : undefined,
   );
-
-  // Video poster URL (for video media, use the poster variant)
   const videoPosterUrl = $derived(
     isVideo ? primaryMedia?.variants.poster?.url : undefined,
   );
 
-  // Video element reference for play/pause control
   let videoElement: HTMLVideoElement | null = $state(null);
 
   function handleMouseEnter() {
-    if (videoElement) {
-      videoElement.play();
-    }
+    videoElement?.play();
   }
 
   function handleMouseLeave() {
-    if (videoElement) {
-      videoElement.pause();
-    }
+    videoElement?.pause();
   }
 
-  function handleClick() {
-    if (clickAction && projectUrl) {
+  function trackPrimaryClick() {
+    if (primaryIsExternal && primaryHref) {
       telemetry.track({
         name: "project_interaction",
         properties: {
-          action: clickAction,
+          action: project.demoUrl ? "demo_click" : "github_click",
           projectSlug: project.slug,
           projectName: project.name,
-          targetUrl: projectUrl,
+          targetUrl: primaryHref,
+        },
+      });
+    } else if (detailUrl) {
+      telemetry.track({
+        name: "project_interaction",
+        properties: {
+          action: "detail_view",
+          projectSlug: project.slug,
+          projectName: project.name,
         },
       });
     }
   }
 
-  // Shared classes for background media (image/video)
+  function trackCornerClick(url: string) {
+    telemetry.trackExternalLink(url, "project");
+  }
+
   const mediaBaseStyles = cx(
     "media-mask-fade-left",
     css({
@@ -109,15 +120,10 @@
   }
 </script>
 
-<svelte:element
-  this={isLink ? "a" : "div"}
-  href={isLink ? projectUrl : undefined}
-  target={isLink ? "_blank" : undefined}
-  rel={isLink ? "noopener noreferrer" : undefined}
-  onclick={handleClick}
+<div
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
-  role={isLink ? undefined : "article"}
+  role="article"
   class={cx(
     "group",
     flex({
@@ -185,6 +191,56 @@
       {:else if imageUrl}
         <img src={imageUrl} alt="" class={mediaBaseStyles} loading="lazy" />
       {/if}
+    </div>
+  {/if}
+
+  <!-- Stretched primary link (covers the card; transparent overlay) -->
+  {#if isLink && primaryHref}
+    <a
+      href={primaryHref}
+      target={primaryIsExternal ? "_blank" : undefined}
+      rel={primaryIsExternal ? "noopener noreferrer" : undefined}
+      onclick={trackPrimaryClick}
+      aria-label={project.name}
+      class={css({ position: "absolute", inset: "0", zIndex: "20" })}
+    ></a>
+  {/if}
+
+  <!-- External link pills (above the stretched link) -->
+  {#if cornerLinks.length > 0}
+    <div
+      class={cx(
+        flex({ gap: "1" }),
+        css({ position: "absolute", top: "2", right: "2", zIndex: "30" }),
+      )}
+    >
+      {#each cornerLinks as link (link.url)}
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onclick={() => trackCornerClick(link.url)}
+          class={css({
+            px: "1.5",
+            py: "0.5",
+            rounded: "sm",
+            fontSize: "xs",
+            fontWeight: "medium",
+            bg: "zinc.200/80",
+            color: "zinc.700",
+            backdropFilter: "blur(2px)",
+            transition: "colors",
+            _hover: { bg: "zinc.300", color: "zinc.900" },
+            _dark: {
+              bg: "zinc.800/80",
+              color: "zinc.300",
+              _hover: { bg: "zinc.700", color: "white" },
+            },
+          })}
+        >
+          {link.title ?? "Link"}
+        </a>
+      {/each}
     </div>
   {/if}
 
@@ -260,4 +316,4 @@
       _groupHover: { opacity: "0.9" },
     })}
   />
-</svelte:element>
+</div>

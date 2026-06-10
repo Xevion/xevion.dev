@@ -5,7 +5,13 @@
   import Input from "./Input.svelte";
   import TagPicker from "./TagPicker.svelte";
   import MediaManager from "./MediaManager.svelte";
-  import type { ApiAdminProject, ProjectStatus } from "$lib/bindings";
+  import ContentEditor from "./ContentEditor.svelte";
+  import type {
+    ApiAdminProject,
+    ApiProjectDetail,
+    ProjectStatus,
+  } from "$lib/bindings";
+  import type { JSONContent } from "@tiptap/core";
   import type { CreateProjectData, TagWithIcon } from "$lib/admin-types";
   import type { ApiError } from "$lib/errors";
   import type { Result } from "true-myth/result";
@@ -15,7 +21,7 @@
   const logger = getLogger(["admin", "components", "ProjectForm"]);
 
   interface Props {
-    project?: ApiAdminProject | null;
+    project?: ApiProjectDetail | null;
     availableTags: TagWithIcon[];
     onsubmit: (
       data: CreateProjectData,
@@ -41,6 +47,7 @@
   let githubRepo = $state("");
   let demoUrl = $state("");
   let selectedTagIds = $state<string[]>([]);
+  let detailContent = $state<JSONContent | null>(null);
 
   // Initialize form from project prop
   $effect(() => {
@@ -53,6 +60,7 @@
       githubRepo = project.githubRepo ?? "";
       demoUrl = project.demoUrl ?? "";
       selectedTagIds = project.tags.map((t) => t.id);
+      detailContent = (project.detailContent as JSONContent | null) ?? null;
     }
   });
 
@@ -95,6 +103,7 @@
       githubRepo: githubRepo || undefined,
       demoUrl: demoUrl || undefined,
       tagIds: selectedTagIds,
+      detailContent: detailContent ?? undefined,
     });
 
     if (result.isErr) {
@@ -151,6 +160,13 @@
     placeholder="A detailed description of your project..."
     help="Full project description (markdown not supported yet)"
     error={fieldErrors.description}
+  />
+
+  <!-- Detail Content -->
+  <ContentEditor
+    label="Detail Content"
+    help="Rich content for the project's /projects/{slug} page. Leave empty for no detail page (card links straight to demo/GitHub)."
+    bind:content={detailContent}
   />
 
   <!-- Status -->

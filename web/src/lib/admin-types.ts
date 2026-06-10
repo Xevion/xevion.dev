@@ -3,6 +3,7 @@
 
 import type { ApiTag } from "$lib/bindings";
 import type { ProjectStatus } from "$lib/bindings";
+import type { JSONContent } from "@tiptap/core";
 
 // Frontend alias
 export type TagWithIcon = ApiTag;
@@ -17,6 +18,7 @@ export interface CreateProjectData {
   githubRepo?: string;
   demoUrl?: string;
   tagIds: string[];
+  detailContent?: JSONContent | null;
 }
 
 export interface UpdateProjectData extends CreateProjectData {

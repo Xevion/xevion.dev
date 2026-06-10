@@ -33,8 +33,6 @@ pub enum ApiError {
     Request(reqwest::Error),
     /// Server returned an error response
     Http { status: StatusCode, body: String },
-    /// Failed to parse response
-    Parse(String),
     /// Session file error
     Session(String),
     /// Not authenticated
@@ -48,7 +46,6 @@ impl std::fmt::Display for ApiError {
             Self::Http { status, body } => {
                 write!(f, "HTTP {status}: {body}")
             }
-            Self::Parse(msg) => write!(f, "Parse error: {msg}"),
             Self::Session(msg) => write!(f, "Session error: {msg}"),
             Self::Unauthorized => write!(f, "Not authenticated. Run 'xevion api login' first."),
         }

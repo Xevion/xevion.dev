@@ -26,6 +26,7 @@ pub struct DbProject {
     pub demo_url: Option<String>,
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
+    pub detail_content: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -46,6 +47,9 @@ pub struct ApiProject {
     pub name: String,
     pub short_description: String,
     pub links: Vec<ApiProjectLink>,
+    /// Whether this project has rich detail content (a `/projects/{slug}` page).
+    /// Lets cards link internally without shipping the full content JSON in lists.
+    pub has_detail: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -66,6 +70,24 @@ pub struct ApiAdminProject {
     pub demo_url: Option<String>,
     pub created_at: String,
     pub last_activity: String,
+}
+
+/// Single-project response that additionally carries the rich detail content.
+///
+/// Returned only by the single-project endpoint (`GET /api/projects/{ref}`) —
+/// never in list responses, so the homepage payload stays free of every
+/// project's full `ProseMirror` JSON. Feeds both the admin editor and the public
+/// `/projects/{slug}` page.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ApiProjectDetail {
+    #[serde(flatten)]
+    pub project: ApiAdminProject,
+    /// `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "unknown")]
+    pub detail_content: Option<serde_json::Value>,
 }
 
 impl DbProject {
@@ -92,6 +114,7 @@ impl DbProject {
             name: self.name.clone(),
             short_description: self.short_description.clone(),
             links,
+            has_detail: self.detail_content.is_some(),
         }
     }
 
@@ -121,6 +144,17 @@ impl DbProject {
             last_activity,
         })
     }
+
+    pub fn to_api_project_detail(
+        &self,
+        tags: Vec<DbTag>,
+        media: Vec<DbProjectMedia>,
+    ) -> AppResult<ApiProjectDetail> {
+        Ok(ApiProjectDetail {
+            project: self.to_api_admin_project(tags, media)?,
+            detail_content: self.detail_content.clone(),
+        })
+    }
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -147,7 +181,8 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             github_repo,
             demo_url,
             last_github_activity,
-            created_at
+            created_at,
+            detail_content
         FROM projects
         WHERE status != 'hidden'
         ORDER BY COALESCE(last_github_activity, created_at) DESC
@@ -203,7 +238,8 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             github_repo,
             demo_url,
             last_github_activity,
-            created_at
+            created_at,
+            detail_content
         FROM projects
         ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
@@ -259,7 +295,8 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             github_repo,
             demo_url,
             last_github_activity,
-            created_at
+            created_at,
+            detail_content
         FROM projects
         WHERE id = $1
         "#,
@@ -304,7 +341,8 @@ pub async fn get_project_by_slug(
             github_repo,
             demo_url,
             last_github_activity,
-            created_at
+            created_at,
+            detail_content
         FROM projects
         WHERE slug = $1
         "#,
@@ -354,16 +392,17 @@ pub async fn create_project(
     status: ProjectStatus,
     github_repo: Option<&str>,
     demo_url: Option<&str>,
+    detail_content: Option<&serde_json::Value>,
 ) -> Result<DbProject, sqlx::Error> {
     let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
     query_as!(
         DbProject,
         r#"
-        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url, detail_content)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at
+                  github_repo, demo_url, last_github_activity, created_at, detail_content
         "#,
         slug,
         name,
@@ -371,7 +410,8 @@ pub async fn create_project(
         description,
         status as ProjectStatus,
         github_repo,
-        demo_url
+        demo_url,
+        detail_content as Option<&serde_json::Value>
     )
     .fetch_one(pool)
     .await
@@ -389,6 +429,7 @@ pub async fn update_project(
     status: ProjectStatus,
     github_repo: Option<&str>,
     demo_url: Option<&str>,
+    detail_content: Option<&serde_json::Value>,
 ) -> Result<DbProject, sqlx::Error> {
     let slug = slug_override.map_or_else(|| slugify(name), slugify);
 
@@ -397,10 +438,10 @@ pub async fn update_project(
         r#"
         UPDATE projects
         SET slug = $2, name = $3, short_description = $4, description = $5,
-            status = $6, github_repo = $7, demo_url = $8
+            status = $6, github_repo = $7, demo_url = $8, detail_content = $9
         WHERE id = $1
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at
+                  github_repo, demo_url, last_github_activity, created_at, detail_content
         "#,
         id,
         slug,
@@ -409,7 +450,8 @@ pub async fn update_project(
         description,
         status as ProjectStatus,
         github_repo,
-        demo_url
+        demo_url,
+        detail_content as Option<&serde_json::Value>
     )
     .fetch_one(pool)
     .await
@@ -482,7 +524,8 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             github_repo,
             demo_url,
             last_github_activity,
-            created_at
+            created_at,
+            detail_content
         FROM projects
         WHERE github_repo IS NOT NULL
         ORDER BY last_github_activity DESC NULLS LAST
