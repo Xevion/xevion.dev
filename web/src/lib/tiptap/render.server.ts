@@ -21,7 +21,10 @@ import { getHighlighter } from "./shiki.server";
  * custom property while dropping everything else.
  */
 const sanitizeOptions: sanitizeHtml.IOptions = {
-  allowedTags: sanitizeHtml.defaults.allowedTags.filter((tag) => tag !== "h1"),
+  allowedTags: [
+    ...sanitizeHtml.defaults.allowedTags.filter((tag) => tag !== "h1"),
+    "kbd",
+  ],
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
     a: ["href", "name", "target", "rel"],
@@ -35,6 +38,32 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
   },
   allowedSchemes: ["http", "https", "mailto"],
 };
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Turn `[[Key]]` tokens in the prose into `<kbd>` keycaps, leaving any `<pre>`
+ * code blocks untouched so code samples that happen to contain `[[…]]` survive.
+ */
+function applyKeycaps(html: string): string {
+  return html
+    .split(/(<pre[\s\S]*?<\/pre>)/g)
+    .map((segment, i) =>
+      i % 2 === 1
+        ? segment
+        : segment.replace(
+            /\[\[([^\]]+)\]\]/g,
+            (_, key: string) => `<kbd>${escapeHtml(key)}</kbd>`,
+          ),
+    )
+    .join("");
+}
 
 /** Render TipTap/ProseMirror document JSON to sanitized HTML. Server-only. */
 export async function renderDetailContent(
@@ -54,14 +83,21 @@ export async function renderDetailContent(
           // codeToHtml is sync once the highlighter has resolved. Dual themes:
           // light is emitted as inline color, dark as a --shiki-dark var that a
           // `.dark` ancestor rule activates on the public page.
-          return highlighter.codeToHtml(node.textContent, {
+          const shiki = highlighter.codeToHtml(node.textContent, {
             lang,
             themes: { light: "github-light", dark: "github-dark" },
           });
+          // A labeled header bar carries the language; plain `text` blocks omit it.
+          const showLabel =
+            requested && requested !== "text" && requested !== "plaintext";
+          const head = showLabel
+            ? `<div class="rd-codeblock-head">${escapeHtml(requested)}</div>`
+            : "";
+          return `<div class="rd-codeblock">${head}<div class="rd-codeblock-body">${shiki}</div></div>`;
         },
       },
     },
   });
 
-  return sanitizeHtml(html, sanitizeOptions);
+  return sanitizeHtml(applyKeycaps(html), sanitizeOptions);
 }

@@ -25,7 +25,7 @@
       color: "zinc.500",
       sm: {
         px: "1.5",
-        py: "0.75",
+        py: "3px",
         fontSize: "xs",
       },
       _dark: {

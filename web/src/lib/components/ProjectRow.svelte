@@ -14,33 +14,19 @@
 
   interface Props {
     project: ApiAdminProject;
-    /** Featured cover that spans two columns (taller cover region). */
-    span?: boolean;
-    /** Non-matching (filtered) — dimmed, not hidden. */
     dim?: boolean;
-    class?: string;
   }
 
-  let {
-    project,
-    span = false,
-    dim = false,
-    class: className,
-  }: Props = $props();
+  let { project, dim = false }: Props = $props();
 
   // Every project has a detail page; demo/GitHub links live in its sidebar.
   const href = $derived(`/projects/${project.slug}`);
 
   const accent = $derived(accentOf(project));
   const language = $derived(detectLanguage(project));
-  // Exclude the project's own language from the tag row.
   const rowTags = $derived(
-    project.tags
-      .filter((t) => t.name !== language?.name)
-      .slice(0, span ? 4 : 3),
+    project.tags.filter((t) => t.name !== language?.name).slice(0, 3),
   );
-
-  // This card carries the shared transition name only while it's the one opening.
   const active = $derived(morph.slug === project.slug);
 
   function handleClick() {
@@ -61,69 +47,55 @@
   data-slug={project.slug}
   onclick={handleClick}
   class={cx(
-    "group",
     css({
-      position: "relative",
       display: "flex",
-      flexDirection: "column",
-      rounded: "4px",
-      borderWidth: "1px",
-      borderColor: "zinc.200",
-      bg: "surface",
-      overflow: "hidden",
+      gap: "16px",
+      alignItems: "center",
+      p: "15px 8px",
       cursor: "pointer",
       textDecoration: "none",
-      shadow:
-        "0 1px 2px rgba(24,24,27,.04), 0 2px 10px -6px rgba(24,24,27,.06)",
-      transition:
-        "border-color .18s ease, box-shadow .18s ease, transform .18s ease, opacity .18s ease",
-      _hover: {
-        borderColor: "zinc.300",
-        shadow: "0 10px 28px -10px rgba(24,24,27,.16)",
-        transform: "translateY(-2px)",
-      },
+      rounded: "8px",
+      borderBottomWidth: "1px",
+      borderColor: "zinc.100",
+      transition: "background .15s ease, opacity .18s ease",
+      _hover: { bg: "surface.secondary/90" },
       _dark: { borderColor: "zinc.800" },
     }),
     dim && css({ opacity: "0.58!", _hover: { opacity: "0.82!" } }),
-    className,
   )}
-  style={span ? "grid-column: span 2" : undefined}
 >
   <div
     class={css({
       position: "relative",
+      w: "52px",
+      h: "52px",
+      flexShrink: "0",
+      rounded: "8px",
+      overflow: "hidden",
       bg: "surface.secondary",
-      borderBottomWidth: "1px",
+      borderWidth: "1px",
       borderColor: "zinc.100",
       _dark: { borderColor: "zinc.800" },
     })}
-    style="height: {span ? 168 : 116}px; {active
-      ? 'view-transition-name: project-cover'
-      : ''}"
+    style={active ? "view-transition-name: project-cover" : undefined}
   >
     <ProjectCover
       seed={project.name}
       {accent}
-      cols={span ? 18 : 11}
-      rows={span ? 7 : 5}
-      cell={22}
+      cols={4}
+      rows={4}
+      cell={16}
+      monogram={project.name[0]}
     />
   </div>
 
-  <div
-    class={css({
-      p: "13px 15px 15px",
-      display: "flex",
-      flexDirection: "column",
-      flex: "1",
-    })}
-  >
+  <div class={css({ flex: "1", minW: "0" })}>
     <div
       class={css({
         display: "flex",
         alignItems: "baseline",
-        justifyContent: "space-between",
         gap: "10px",
+        flexWrap: "wrap",
       })}
     >
       <h3
@@ -140,42 +112,70 @@
       </h3>
       <span
         class={css({
-          flexShrink: "0",
           fontFamily: "geist",
-          fontSize: "11px",
+          fontSize: "11.5px",
           color: "zinc.400",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
         })}
       >
+        {#if language}
+          <span
+            class={css({
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+            })}
+          >
+            <span
+              class={css({
+                w: "6px",
+                h: "6px",
+                rounded: "full",
+                flexShrink: "0",
+              })}
+              style="background: {language.color}"
+            ></span>
+            {language.name}
+          </span>
+          <span class={css({ color: "zinc.300" })}>·</span>
+        {/if}
         {formatAge(project.lastActivity)}
       </span>
     </div>
     <p
       class={css({
-        mt: "6px",
+        mt: "4px",
         fontSize: "13.5px",
-        lineHeight: "1.5",
+        lineHeight: "1.45",
         color: "zinc.600",
-        lineClamp: "2",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
         _dark: { color: "zinc.400" },
       })}
     >
       {project.shortDescription}
     </p>
-    {#if rowTags.length > 0}
-      <div
-        class={css({
-          mt: "auto",
-          pt: "13px",
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: "14px",
-        })}
-      >
-        {#each rowTags as tag (tag.id)}
-          <TagChip variant="tick" name={tag.name} color={tagColor(tag)} />
-        {/each}
-      </div>
-    {/if}
   </div>
+
+  {#if rowTags.length > 0}
+    <div
+      class={css({
+        flexShrink: "0",
+        maxW: "250px",
+        display: "none",
+        sm: { display: "flex" },
+        flexWrap: "wrap",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        gap: "13px",
+      })}
+    >
+      {#each rowTags as tag (tag.id)}
+        <TagChip variant="tick" name={tag.name} color={tagColor(tag)} />
+      {/each}
+    </div>
+  {/if}
 </a>

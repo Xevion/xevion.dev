@@ -2,6 +2,8 @@
   import "@fontsource-variable/inter/wght.css";
   import "@fontsource/hanken-grotesk/900.css";
   import "@fontsource-variable/schibsted-grotesk/wght.css";
+  import "@fontsource/geist-mono/400.css";
+  import "@fontsource/geist-mono/500.css";
   import "overlayscrollbars/overlayscrollbars.css";
   import "../app.css";
   import { OverlayScrollbars } from "overlayscrollbars";
@@ -16,6 +18,22 @@
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
   import AdminButton from "$lib/components/AdminButton.svelte";
   import { hstack } from "styled-system/patterns";
+  import { css } from "styled-system/css";
+
+  // Reading scrim: fades the dot/cloud field behind the reading column so the
+  // foreground separates, while leaving the background alive in the margins.
+  const scrimClass = css({
+    position: "fixed",
+    inset: "0",
+    zIndex: "-10",
+    pointerEvents: "none",
+    background:
+      "radial-gradient(ellipse 840px 92% at 50% 34%, rgba(255,255,255,.92), rgba(255,255,255,.64) 48%, rgba(255,255,255,0) 80%)",
+    _dark: {
+      background:
+        "radial-gradient(ellipse 840px 92% at 50% 34%, rgba(0,0,0,.92), rgba(0,0,0,.64) 48%, rgba(0,0,0,0) 80%)",
+    },
+  });
 
   let { children, data } = $props();
 
@@ -142,6 +160,15 @@
   {:else if backgroundComponent === "dots"}
     <Dots style="view-transition-name: background" />
   {/if}
+
+  <!-- Reading scrim sits above the background canvas, behind page content.
+       Named so it gets its own view-transition group — otherwise it falls into
+       `root`, which paints beneath the `background` group and vanishes mid-transition. -->
+  <div
+    class={scrimClass}
+    style="view-transition-name: scrim"
+    aria-hidden="true"
+  ></div>
 
   <!-- Header buttons - persistent across page transitions -->
   <div

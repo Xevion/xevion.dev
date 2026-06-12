@@ -16,9 +16,4 @@ export type ApiProjectDetail = {
 /**
  * `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
  */
-detailContent?: unknown, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, 
-/**
- * Whether this project has rich detail content (a `/projects/{slug}` page).
- * Lets cards link internally without shipping the full content JSON in lists.
- */
-hasDetail: boolean, };
+detailContent?: unknown, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };

@@ -106,7 +106,7 @@
   const tagBaseClasses = css({
     display: "inline-flex",
     alignItems: "center",
-    gap: "1.25",
+    gap: "5px",
     borderTopRightRadius: "sm",
     borderBottomRightRadius: "sm",
     borderTopLeftRadius: "xs",
@@ -119,7 +119,7 @@
     borderLeftWidth: "3px",
     shadow: "sm",
     _dark: { bg: "zinc.700/50", color: "zinc.300" },
-    sm: { px: "1.5", py: "0.75", fontSize: "xs" },
+    sm: { px: "1.5", py: "3px", fontSize: "xs" },
   });
 </script>
 

@@ -47,9 +47,6 @@ pub struct ApiProject {
     pub name: String,
     pub short_description: String,
     pub links: Vec<ApiProjectLink>,
-    /// Whether this project has rich detail content (a `/projects/{slug}` page).
-    /// Lets cards link internally without shipping the full content JSON in lists.
-    pub has_detail: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -114,7 +111,6 @@ impl DbProject {
             name: self.name.clone(),
             short_description: self.short_description.clone(),
             links,
-            has_detail: self.detail_content.is_some(),
         }
     }
 

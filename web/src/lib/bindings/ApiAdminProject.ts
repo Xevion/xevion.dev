@@ -4,9 +4,4 @@ import type { ApiProjectMedia } from "./ApiProjectMedia";
 import type { ApiTag } from "./ApiTag";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, 
-/**
- * Whether this project has rich detail content (a `/projects/{slug}` page).
- * Lets cards link internally without shipping the full content JSON in lists.
- */
-hasDetail: boolean, };
+export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };

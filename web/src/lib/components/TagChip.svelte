@@ -8,14 +8,27 @@
     icon?: string;
     href?: string;
     class?: string;
+    /**
+     * `chip` (default) is the bordered, left-accent chip used across admin.
+     * `tick` is the minimal mono label with a small square color dot used on the
+     * public cards/rows — pass a fully-resolved CSS color in `color`.
+     */
+    variant?: "chip" | "tick";
   }
 
-  let { name, color, icon, href, class: className }: Props = $props();
+  let {
+    name,
+    color,
+    icon,
+    href,
+    class: className,
+    variant = "chip",
+  }: Props = $props();
 
   const baseStyles = css({
     display: "inline-flex",
     alignItems: "center",
-    gap: "1.25",
+    gap: "5px",
     roundedRight: "sm",
     roundedLeft: "xs",
     bg: "zinc.200/80",
@@ -27,7 +40,7 @@
     shadow: "sm",
     sm: {
       px: "1.5",
-      py: "0.75",
+      py: "3px",
       fontSize: "xs",
     },
     _dark: {
@@ -56,28 +69,52 @@
       h: "3.5",
     },
   });
+
+  const tickStyles = css({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    fontFamily: "geist",
+    fontSize: "12px",
+    fontWeight: "400",
+    letterSpacing: "-0.01em",
+    color: "zinc.600",
+    whiteSpace: "nowrap",
+    _dark: { color: "zinc.400" },
+  });
+
+  const tickDotClass = css({
+    w: "6px",
+    h: "6px",
+    rounded: "1.5px",
+    flexShrink: "0",
+  });
 </script>
 
-{#snippet iconAndName()}
-  {#if icon}
-    <Icon {icon} sizeClass={iconSizeClass} />
-  {/if}
-  <span>{name}</span>
-{/snippet}
-
-{#if href}
+{#if variant === "tick"}
+  <span class={cx(tickStyles, className)}>
+    <span class={tickDotClass} style="background: {color ?? '#71717a'}"></span>
+    {name}
+  </span>
+{:else if href}
   <a
     {href}
     class={cx(baseStyles, linkStyles, className)}
     style="border-left-color: #{color || '06b6d4'}"
   >
-    {@render iconAndName()}
+    {#if icon}
+      <Icon {icon} sizeClass={iconSizeClass} />
+    {/if}
+    <span>{name}</span>
   </a>
 {:else}
   <span
     class={cx(baseStyles, className)}
     style="border-left-color: #{color || '06b6d4'}"
   >
-    {@render iconAndName()}
+    {#if icon}
+      <Icon {icon} sizeClass={iconSizeClass} />
+    {/if}
+    <span>{name}</span>
   </span>
 {/if}

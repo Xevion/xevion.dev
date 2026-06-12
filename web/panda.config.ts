@@ -25,6 +25,7 @@ export default defineConfig({
           inter: { value: '"Inter Variable", sans-serif' },
           hanken: { value: '"Hanken Grotesk", sans-serif' },
           schibsted: { value: '"Schibsted Grotesk Variable", sans-serif' },
+          geist: { value: '"Geist Mono", ui-monospace, monospace' },
         },
         fontSizes: {
           "10xl": { value: "10rem" },
@@ -398,11 +399,11 @@ export default defineConfig({
       mixBlendMode: "normal",
     },
     // Persistent elements excluded from page transitions
-    "::view-transition-old(background), ::view-transition-old(theme-toggle), ::view-transition-old(scrollbar-h), ::view-transition-old(scrollbar-v)":
+    "::view-transition-old(background), ::view-transition-old(theme-toggle), ::view-transition-old(scrim), ::view-transition-old(scrollbar-h), ::view-transition-old(scrollbar-v)":
       {
         display: "none",
       },
-    "::view-transition-new(background), ::view-transition-new(theme-toggle), ::view-transition-new(scrollbar-h), ::view-transition-new(scrollbar-v)":
+    "::view-transition-new(background), ::view-transition-new(theme-toggle), ::view-transition-new(scrim), ::view-transition-new(scrollbar-h), ::view-transition-new(scrollbar-v)":
       {
         animation: "none",
       },
@@ -412,6 +413,20 @@ export default defineConfig({
     },
     "::view-transition-new(page-content)": {
       animation: "vt-slide-from-right 250ms cubic-bezier(0.4, 0, 0.2, 1) both",
+    },
+    // Index ↔ detail "morph": the opening card's cover + title fly into the
+    // detail hero + h1. Each named element forms its own transition group that
+    // animates independently of the page-content slide.
+    "@media (prefers-reduced-motion: no-preference)": {
+      "::view-transition-group(project-cover), ::view-transition-group(project-title)":
+        {
+          animationDuration: "520ms",
+          animationTimingFunction: "cubic-bezier(.32, .72, 0, 1)",
+        },
+      "::view-transition-old(project-cover), ::view-transition-new(project-cover)":
+        {
+          mixBlendMode: "normal",
+        },
     },
     // Media mask for project card backgrounds
     ".media-mask-fade-left": {
