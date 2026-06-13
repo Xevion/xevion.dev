@@ -5,14 +5,17 @@
 //! non-empty types, resolvable anchors) and applies one op at a time.
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// One content block. `data` carries the type-specific payload (e.g. a prose
 /// block's markdown) and is never interpreted here.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Block {
     pub id: String,
     #[serde(rename = "type")]
     pub r#type: String,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }
 
@@ -30,26 +33,32 @@ impl Block {
 
 /// A new block's content for `insert`. The store owns the `id`, so it isn't
 /// part of the input; `type` is required.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct BlockInput {
     #[serde(rename = "type")]
     pub r#type: String,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }
 
 /// A `set` payload. `data` always replaces the block's data; `type` is optional
 /// — omit it to change data while keeping the block's existing type, or supply
 /// it to retype the block in place.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct BlockPatch {
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub r#type: Option<String>,
+    #[ts(type = "unknown")]
     pub data: serde_json::Value,
 }
 
 /// Where an insert or move lands, relative to the existing block list.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "at", rename_all = "snake_case")]
+#[ts(export)]
 pub enum Anchor {
     Start,
     End,
@@ -80,14 +89,16 @@ impl Anchor {
 
 /// The body document: an ordered list of blocks. Stored as the project's
 /// `detail_content` JSONB.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ContentDoc {
     pub blocks: Vec<Block>,
 }
 
 /// A single mutating operation, applied server-side.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "op", rename_all = "snake_case")]
+#[ts(export)]
 pub enum ContentOp {
     Set { id: String, block: BlockPatch },
     Insert { anchor: Anchor, block: BlockInput },

@@ -18,7 +18,7 @@ format *flags:
 
 # Generate TypeScript bindings from Rust API types
 bindings:
-	tempo run bindings
+	tempo bindings
 
 # Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build), -i (install)
 build *flags:
