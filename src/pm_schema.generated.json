@@ -19,5 +19,15 @@
     "link",
     "strike",
     "underline"
+  ],
+  "idTypes": [
+    "blockquote",
+    "bulletList",
+    "codeBlock",
+    "heading",
+    "horizontalRule",
+    "listItem",
+    "orderedList",
+    "paragraph"
   ]
 }

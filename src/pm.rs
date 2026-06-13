@@ -9,6 +9,8 @@
 //! validation here is the write-path safety net (defense-in-depth, the same
 //! posture as the SSR sanitizer).
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -407,6 +409,48 @@ impl Node {
             NodeSpec::lookup(&self.r#type).map(|spec| spec.group),
             Some(Group::Inline)
         )
+    }
+
+    /// Whether this node is a known block-group node — exactly the set the
+    /// editor's unique-id extension stamps. Unknown types are excluded (a write
+    /// carrying one fails validation regardless).
+    fn is_block(&self) -> bool {
+        matches!(
+            NodeSpec::lookup(&self.r#type).map(|spec| spec.group),
+            Some(Group::Block)
+        )
+    }
+
+    /// Record every block id in this subtree into `used`.
+    fn collect_block_ids(&self, used: &mut HashSet<String>) {
+        if let Some(id) = self.block_id() {
+            used.insert(id.to_string());
+        }
+        for child in &self.content {
+            child.collect_block_ids(used);
+        }
+    }
+
+    /// Stamp a unique id on every block-group descendant that lacks one,
+    /// drawing fresh ids from `gen` and skipping any that collide with `used`.
+    /// `self` is never stamped — the doc root is not a block — only its subtree.
+    fn stamp_missing_block_ids<F: FnMut() -> String>(
+        &mut self,
+        used: &mut HashSet<String>,
+        gen_id: &mut F,
+    ) {
+        for child in &mut self.content {
+            if child.is_block() && child.block_id().is_none() {
+                let id = loop {
+                    let candidate = gen_id();
+                    if used.insert(candidate.clone()) {
+                        break candidate;
+                    }
+                };
+                child.set_block_id(&id);
+            }
+            child.stamp_missing_block_ids(used, gen_id);
+        }
     }
 }
 
@@ -902,6 +946,18 @@ impl Doc {
         Ok(node)
     }
 
+    /// Stamp a fresh id on every block-group node in the document that lacks
+    /// one, leaving existing ids untouched. This is the same invariant the
+    /// editor's unique-id extension maintains — the same block types
+    /// ([`Group::Block`]) and the same id format — so a document written through
+    /// ops converges on the shape the editor would have produced, with no
+    /// per-op special-casing. [`Self::apply_all`] runs this on every write.
+    pub fn ensure_block_ids<F: FnMut() -> String>(&mut self, mut gen_id: F) {
+        let mut used = HashSet::new();
+        self.0.collect_block_ids(&mut used);
+        self.0.stamp_missing_block_ids(&mut used, &mut gen_id);
+    }
+
     /// Apply one operation, sourcing a fresh id from `gen_id` for inserts.
     /// Returns the affected block. A building block for [`Self::apply_all`]; it
     /// does not validate the resulting document.
@@ -928,6 +984,7 @@ impl Doc {
         for op in ops {
             working.apply(op, &mut gen_id)?;
         }
+        working.ensure_block_ids(&mut gen_id);
         working.validate().map_err(OpError::Invalid)?;
         *self = working;
         Ok(())
@@ -2324,27 +2381,160 @@ mod sequence_tests {
     }
 }
 
+#[cfg(test)]
+mod block_id_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn doc(value: Value) -> Doc {
+        Doc::parse(&value).expect("valid fixture")
+    }
+
+    /// Every block id present in the subtree, in pre-order.
+    fn all_ids(node: &Node) -> Vec<String> {
+        let mut out = Vec::new();
+        fn walk(node: &Node, out: &mut Vec<String>) {
+            if let Some(id) = node.block_id() {
+                out.push(id.to_string());
+            }
+            for child in &node.content {
+                walk(child, out);
+            }
+        }
+        walk(node, &mut out);
+        out
+    }
+
+    fn counter() -> impl FnMut() -> String {
+        let mut n = 0;
+        move || {
+            n += 1;
+            format!("g{n}")
+        }
+    }
+
+    #[test]
+    fn ensure_block_ids_stamps_every_block_node_missing_one() {
+        let mut doc = doc(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [{ "type": "text", "text": "p" }] },
+            { "type": "bulletList", "content": [
+                { "type": "listItem", "content": [
+                    { "type": "paragraph", "content": [{ "type": "text", "text": "i" }] }
+                ]}
+            ]}
+        ]}));
+        doc.ensure_block_ids(counter());
+        // paragraph, bulletList, listItem, nested paragraph — four block nodes.
+        assert_eq!(all_ids(doc.node()).len(), 4);
+        // the doc root and the inline text nodes are never stamped.
+        assert!(doc.node().block_id().is_none());
+        let para = doc.at_path(&BlockPath::parse(".0").unwrap()).unwrap();
+        assert!(
+            para.content[0].block_id().is_none(),
+            "text node was stamped"
+        );
+    }
+
+    #[test]
+    fn ensure_block_ids_preserves_existing_ids() {
+        let mut doc = doc(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "attrs": { "id": "keep" },
+              "content": [{ "type": "text", "text": "a" }] },
+            { "type": "paragraph", "content": [{ "type": "text", "text": "b" }] }
+        ]}));
+        doc.ensure_block_ids(counter());
+        assert_eq!(doc.node().content[0].block_id(), Some("keep"));
+        assert_eq!(doc.node().content[1].block_id(), Some("g1"));
+    }
+
+    #[test]
+    fn ensure_block_ids_does_not_collide_with_an_existing_id() {
+        // The generator's first output (`g1`) already exists, so the unstamped
+        // block must skip to the next free id rather than duplicate it.
+        let mut doc = doc(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "attrs": { "id": "g1" },
+              "content": [{ "type": "text", "text": "a" }] },
+            { "type": "paragraph", "content": [{ "type": "text", "text": "b" }] }
+        ]}));
+        doc.ensure_block_ids(counter());
+        assert_eq!(doc.node().content[1].block_id(), Some("g2"));
+    }
+
+    #[test]
+    fn apply_all_backfills_ids_across_the_whole_document() {
+        // A seeded-style document with no ids anywhere.
+        let mut doc = doc(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [{ "type": "text", "text": "seed" }] }
+        ]}));
+        assert!(doc.node().content[0].block_id().is_none());
+        let new_para = serde_json::from_value(json!({ "type": "paragraph",
+                "content": [{ "type": "text", "text": "added" }] }))
+        .unwrap();
+        doc.apply_all(
+            vec![DocOp::Insert {
+                anchor: Anchor::End,
+                node: new_para,
+            }],
+            counter(),
+        )
+        .unwrap();
+        // both the pre-existing seed block and the inserted block carry ids.
+        assert!(doc.node().content.iter().all(|b| b.block_id().is_some()));
+    }
+
+    #[test]
+    fn apply_all_stamps_nested_blocks_of_an_inserted_container() {
+        let mut doc = Doc::default();
+        let list = serde_json::from_value(json!({ "type": "bulletList", "content": [
+            { "type": "listItem", "content": [
+                { "type": "paragraph", "content": [{ "type": "text", "text": "x" }] }
+            ]}
+        ]}))
+        .unwrap();
+        doc.apply_all(
+            vec![DocOp::Insert {
+                anchor: Anchor::End,
+                node: list,
+            }],
+            counter(),
+        )
+        .unwrap();
+        let list = &doc.node().content[0];
+        assert!(list.block_id().is_some(), "bulletList");
+        assert!(list.content[0].block_id().is_some(), "listItem");
+        assert!(list.content[0].content[0].block_id().is_some(), "paragraph");
+    }
+}
+
 /// Guards against schema drift between the Rust allow-list ([`NODES`]/[`MARKS`])
 /// and the `TipTap` editor schema. `web/scripts/dump-pm-schema.ts` derives
 /// `pm_schema.generated.json` from `getSchema(tiptapExtensions)`; `tempo check`
 /// regenerates it when the extension files change and fails on a dirty diff.
 /// This test closes the loop: the validator must permit exactly the node and
-/// mark names the editor can emit — no more, no less.
+/// mark names the editor can emit, and id stamping ([`Doc::ensure_block_ids`])
+/// must cover exactly the node types the editor's unique-id extension does — no
+/// more, no less.
 #[cfg(test)]
 mod schema_sync {
-    use super::{MARKS, NODES};
+    use super::{Group, MARKS, NODES};
     use std::collections::BTreeSet;
 
     #[derive(serde::Deserialize)]
     struct TiptapSchema {
         nodes: Vec<String>,
         marks: Vec<String>,
+        #[serde(rename = "idTypes")]
+        id_types: Vec<String>,
+    }
+
+    fn tiptap() -> TiptapSchema {
+        serde_json::from_str(include_str!("pm_schema.generated.json"))
+            .expect("pm_schema.generated.json is valid JSON")
     }
 
     #[test]
     fn rust_allowlist_matches_tiptap_schema() {
-        let tiptap: TiptapSchema = serde_json::from_str(include_str!("pm_schema.generated.json"))
-            .expect("pm_schema.generated.json is valid JSON");
+        let tiptap = tiptap();
 
         let rust_nodes: BTreeSet<&str> = NODES.iter().map(|spec| spec.name).collect();
         let tiptap_nodes: BTreeSet<&str> = tiptap.nodes.iter().map(String::as_str).collect();
@@ -2360,6 +2550,27 @@ mod schema_sync {
             rust_marks, tiptap_marks,
             "mark allow-list drifted from the TipTap schema; update MARKS or \
              regenerate pm_schema.generated.json (`just check`)"
+        );
+    }
+
+    #[test]
+    fn block_group_matches_editor_id_types() {
+        let tiptap = tiptap();
+
+        // The set Rust stamps ids on (every block-group node) must equal the
+        // set the editor's unique-id extension stamps, or content written
+        // through ops and content saved from the editor would carry ids on
+        // different nodes.
+        let rust_blocks: BTreeSet<&str> = NODES
+            .iter()
+            .filter(|spec| matches!(spec.group, Group::Block))
+            .map(|spec| spec.name)
+            .collect();
+        let editor_id_types: BTreeSet<&str> = tiptap.id_types.iter().map(String::as_str).collect();
+        assert_eq!(
+            rust_blocks, editor_id_types,
+            "block-group nodes drifted from the editor's unique-id types; update \
+             the uniqueId config or NODES, then regenerate pm_schema.generated.json"
         );
     }
 }

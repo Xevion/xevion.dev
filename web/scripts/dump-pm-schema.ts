@@ -1,8 +1,10 @@
 /**
  * Emits `src/pm_schema.generated.json` — the canonical node + mark name set the
- * TipTap document schema permits. The Rust `pm` module's `schema_sync` test
- * `include_str!`s that file and asserts its NODES/MARKS allow-list matches, so
- * the Rust validator and the editor can never silently diverge.
+ * TipTap document schema permits, plus `idTypes`: the node types the unique-id
+ * extension stamps. The Rust `pm` module's `schema_sync` test `include_str!`s
+ * that file and asserts its NODES/MARKS allow-list and block-group set match,
+ * so the Rust validator and id-stamping can never silently diverge from the
+ * editor.
  *
  * Also asserts the server renderer (`tiptapExtensions`) and the editor
  * (`editorExtensions`) expose an identical node/mark set — the two arrays are
@@ -15,7 +17,10 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getSchema } from "@tiptap/core";
 import type { Extensions } from "@tiptap/core";
-import { tiptapExtensions } from "../src/lib/tiptap/extensions";
+import {
+  tiptapExtensions,
+  uniqueIdOptions,
+} from "../src/lib/tiptap/extensions";
 import { editorExtensions } from "../src/lib/tiptap/extensions.editor";
 
 interface SchemaNames {
@@ -52,9 +57,18 @@ const editor = schemaNames(editorExtensions);
 assertSameSet("node types", server.nodes, editor.nodes);
 assertSameSet("mark types", server.marks, editor.marks);
 
+const idTypes = [...(uniqueIdOptions.types ?? [])].sort();
+const schemaOnly = idTypes.filter((name) => !server.nodes.includes(name));
+if (schemaOnly.length) {
+  throw new Error(
+    `unique-id stamps node types absent from the schema: ${schemaOnly.join(", ")}`,
+  );
+}
+
+const out = { ...server, idTypes };
 const outPath = join(import.meta.dir, "../../src/pm_schema.generated.json");
-writeFileSync(outPath, `${JSON.stringify(server, null, 2)}\n`);
+writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`);
 
 console.log(
-  `Wrote ${outPath}\n  nodes: ${server.nodes.join(", ")}\n  marks: ${server.marks.join(", ")}`,
+  `Wrote ${outPath}\n  nodes: ${server.nodes.join(", ")}\n  marks: ${server.marks.join(", ")}\n  idTypes: ${idTypes.join(", ")}`,
 );
