@@ -18,6 +18,7 @@
     "dump-schema": "bun scripts/dump-pm-schema.ts"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.7.6",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/schibsted-grotesk": "^5.2.8",
     "@fontsource/geist-mono": "^5.2.8",
@@ -30,10 +31,12 @@
     "@resvg/resvg-js": "^2.6.2",
     "@tiptap/core": "^3.26.0",
     "@tiptap/extension-code-block-lowlight": "^3.26.0",
+    "@tiptap/extension-drag-handle": "^3.26.1",
     "@tiptap/extension-unique-id": "^3.26.1",
     "@tiptap/pm": "^3.26.0",
     "@tiptap/starter-kit": "^3.26.0",
     "@tiptap/static-renderer": "^3.26.0",
+    "@tiptap/suggestion": "^3.26.1",
     "@xevion/satori-html": "^0.4.1",
     "blurhash": "^2.0.5",
     "cookie": "^1.1.1",

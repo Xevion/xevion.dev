@@ -3,7 +3,10 @@
   import type { Readable } from "svelte/store";
   import { createEditor, Editor, EditorContent } from "svelte-tiptap";
   import type { JSONContent } from "@tiptap/core";
+  import { DragHandle } from "@tiptap/extension-drag-handle";
+  import { offset } from "@floating-ui/dom";
   import { editorExtensions } from "$lib/tiptap/extensions.editor";
+  import { SlashCommand } from "$lib/tiptap/slash-command.svelte";
   import { codeLanguages } from "$lib/tiptap/languages";
   import { css, cx } from "styled-system/css";
   import { flex } from "styled-system/patterns";
@@ -20,9 +23,38 @@
 
   let editor = $state() as Readable<Editor>;
 
+  // grip-vertical (lucide). Inlined as raw SVG because DragHandle.render builds a
+  // plain DOM element, where the project's ~icons Svelte component can't be used.
+  const GRIP_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>`;
+
+  const dragHandle = DragHandle.configure({
+    // Target top-level blocks only: a whole list/blockquote drags as one unit,
+    // never an individual list item. Matches the document's block model (the
+    // doc's direct children are "the blocks") and is easier to aim than nested.
+    nested: false,
+    render: () => {
+      const el = document.createElement("div");
+      el.className = "tiptap-drag-handle";
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", "Drag to reorder block");
+      el.innerHTML = GRIP_SVG;
+      return el;
+    },
+    // `fixed` escapes the editor wrapper's `overflow: hidden` (the handle is
+    // appended inside it); the offset keeps the grip in the left gutter rather
+    // than flush against the block's edge.
+    computePositionConfig: {
+      placement: "left-start",
+      strategy: "fixed",
+      middleware: [offset(4)],
+    },
+  });
+
   onMount(() => {
     editor = createEditor({
-      extensions: editorExtensions,
+      // Block chrome (slash menu, drag handle) is editor-only behavior with no
+      // schema impact, so it's composed here rather than in the shared arrays.
+      extensions: [...editorExtensions, SlashCommand, dragHandle],
       content: content ?? "",
       onUpdate: ({ editor }) => {
         // Empty doc → null so the project simply has no detail page.
@@ -255,13 +287,19 @@
       class={cx(
         "tiptap-content",
         css({
-          px: "3",
+          pr: "3",
           py: "2",
           minH: "16rem",
           fontSize: "sm",
           color: "admin.text",
           cursor: "text",
-          "& .ProseMirror": { outline: "none", minH: "14rem" },
+          // The drag-handle gutter lives on .ProseMirror, not this wrapper, so the
+          // gutter band is part of the editor's hover region. The extension hides
+          // the handle on .ProseMirror's mouseleave unless the pointer lands
+          // straight on the handle; if the gutter belonged to this wrapper, the
+          // cursor would exit .ProseMirror crossing it and the handle would vanish
+          // mid-reach (handle x is unchanged — it sits inside this left padding).
+          "& .ProseMirror": { outline: "none", minH: "14rem", pl: "7" },
           "& .ProseMirror p": { my: "2" },
           "& .ProseMirror h2": {
             fontSize: "xl",
@@ -316,6 +354,35 @@
 </div>
 
 <style>
+  /* The drag handle is raw DOM injected by the extension (not a Svelte node), so
+     it's reached with :global() and themed via the admin token CSS vars. The
+     extension toggles visibility on block hover; we style appearance only. */
+  :global(.tiptap-drag-handle) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+    color: var(--colors-admin-text-secondary, #71717a);
+    cursor: grab;
+    transition:
+      background-color 0.12s,
+      color 0.12s;
+  }
+  :global(.tiptap-drag-handle:hover) {
+    background-color: var(--colors-admin-surface-hover, rgba(0, 0, 0, 0.06));
+    color: var(--colors-admin-text, #18181b);
+  }
+  :global(.tiptap-drag-handle:active),
+  :global(.tiptap-drag-handle[data-dragging="true"]) {
+    cursor: grabbing;
+  }
+  :global(.tiptap-drag-handle svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
   /* Code blocks are styled here with plain global CSS, not Panda css(), because
      ProseMirror's editor DOM and lowlight's hljs decoration spans are injected at
      runtime — :global() is the reliable way to reach them (Panda's `& .x`
