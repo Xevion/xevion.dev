@@ -6,26 +6,21 @@ use axum::{
 use std::sync::Arc;
 
 use crate::{
-    auth,
-    content::{ContentDoc, ContentError, ContentOp, generate_block_id},
-    db,
+    auth, db,
     events::{self, EventLevel, EventType},
+    pm::{Doc, DocOp, OpError, generate_block_id},
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt},
 };
 
 // Block-level failures are about the request payload, not the project resource
 // (which we've already resolved), so they map to 4xx, never 404.
-impl From<ContentError> for AppError {
-    fn from(err: ContentError) -> Self {
+impl From<OpError> for AppError {
+    fn from(err: OpError) -> Self {
         match err {
-            ContentError::NotFound(id) => {
-                Self::validation(format!("block \"{id}\" does not exist"))
-            }
-            ContentError::DuplicateId(id) => {
-                Self::Conflict(format!("block id \"{id}\" already exists"))
-            }
-            ContentError::SelfAnchor => Self::validation("a block cannot anchor to itself"),
-            ContentError::EmptyType => Self::field("type", "block type cannot be empty"),
+            OpError::NotFound(id) => Self::validation(format!("block \"{id}\" does not exist")),
+            OpError::DuplicateId(id) => Self::Conflict(format!("block id \"{id}\" already exists")),
+            OpError::SelfAnchor => Self::validation("a block cannot anchor to itself"),
+            OpError::Invalid(schema_err) => Self::validation(schema_err.to_string()),
         }
     }
 }
@@ -46,9 +41,9 @@ pub async fn get_project_content_handler(
         return Err(AppError::NotFound);
     }
 
-    Ok(Json(ContentDoc::from_stored(
-        project.detail_content.as_ref(),
-    )))
+    Ok(Json(
+        Doc::from_stored(project.detail_content.as_ref()).into_inner(),
+    ))
 }
 
 /// PATCH an atomic batch of block ops; returns the full updated document.
@@ -57,13 +52,13 @@ pub async fn patch_project_content_handler(
     State(state): State<Arc<AppState>>,
     Path(ref_str): Path<String>,
     session: AdminSession,
-    Json(ops): Json<Vec<ContentOp>>,
+    Json(ops): Json<Vec<DocOp>>,
 ) -> AppResult<impl IntoResponse> {
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;
 
-    let mut doc = ContentDoc::from_stored(project.detail_content.as_ref());
+    let mut doc = Doc::from_stored(project.detail_content.as_ref());
     doc.apply_all(ops, generate_block_id)?;
     db::update_project_content(&state.pool, project.id, doc.to_stored().as_ref()).await?;
 
@@ -85,5 +80,5 @@ pub async fn patch_project_content_handler(
         .invalidate(&format!("/projects/{}", project.slug))
         .await;
 
-    Ok(Json(doc))
+    Ok(Json(doc.into_inner()))
 }

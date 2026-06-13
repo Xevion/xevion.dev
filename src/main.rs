@@ -19,6 +19,7 @@ mod icon_cache;
 mod media_processing;
 mod middleware;
 mod og;
+mod pm;
 mod proxy;
 mod r2;
 mod routes;

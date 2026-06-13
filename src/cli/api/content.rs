@@ -1,7 +1,7 @@
+use crate::cli::ProjectContentCommand;
 use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
-use crate::cli::{BlockContentArgs, ProjectContentCommand};
-use crate::content::{Anchor, BlockInput, BlockPatch, ContentDoc, ContentOp};
+use crate::pm::{Anchor, Doc, DocOp, Node};
 
 type CliResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -15,16 +15,14 @@ pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) 
         } => get(&client, &reference, block_id.as_deref(), json).await,
         ProjectContentCommand::Insert {
             reference,
-            r#type,
             at,
-            content,
-        } => insert(&client, &reference, r#type, &at, &content, json).await,
-        ProjectContentCommand::Set {
+            json: node,
+        } => insert(&client, &reference, &at, &node, json).await,
+        ProjectContentCommand::Replace {
             reference,
             block_id,
-            r#type,
-            content,
-        } => set(&client, &reference, &block_id, r#type, &content, json).await,
+            json: node,
+        } => replace(&client, &reference, &block_id, &node, json).await,
         ProjectContentCommand::Rm {
             reference,
             block_id,
@@ -47,11 +45,8 @@ async fn get(client: &ApiClient, reference: &str, block_id: Option<&str>, json: 
     match block_id {
         Some(id) => {
             let block = doc
-                .blocks
-                .iter()
-                .find(|b| b.id == id)
+                .block(id)
                 .ok_or_else(|| format!("block \"{id}\" not found"))?;
-            // A block's data is opaque, so JSON is the faithful representation.
             println!("{}", serde_json::to_string_pretty(block)?);
             Ok(())
         }
@@ -62,55 +57,34 @@ async fn get(client: &ApiClient, reference: &str, block_id: Option<&str>, json: 
 async fn insert(
     client: &ApiClient,
     reference: &str,
-    r#type: Option<String>,
     at: &str,
-    content: &BlockContentArgs,
+    node_json: &str,
     json: bool,
 ) -> CliResult {
-    let (data, is_prose) = content.build_data()?;
-    let r#type = match r#type {
-        Some(t) => t,
-        None if is_prose => "prose".to_string(),
-        None => return Err("--type is required unless using --md/--file".into()),
-    };
     let anchor = Anchor::parse(at)?;
-    let op = ContentOp::Insert {
-        anchor: anchor.clone(),
-        block: BlockInput { r#type, data },
-    };
-    let doc = apply_op(client, reference, op).await?;
-
-    if json {
-        println!("{}", serde_json::to_string_pretty(&doc)?);
-    } else {
-        match doc.block_at_anchor(&anchor) {
-            Some(b) => output::success(&format!("Inserted block {} ({})", b.id, b.r#type)),
-            None => output::success("Inserted block"),
-        }
-        output::print_blocks(&doc);
-    }
-    Ok(())
+    let node = parse_node(node_json)?;
+    let doc = apply_op(client, reference, DocOp::Insert { anchor, node }).await?;
+    report(&doc, json, "Inserted block")
 }
 
-async fn set(
+async fn replace(
     client: &ApiClient,
     reference: &str,
     block_id: &str,
-    r#type: Option<String>,
-    content: &BlockContentArgs,
+    node_json: &str,
     json: bool,
 ) -> CliResult {
-    let (data, _) = content.build_data()?;
-    let op = ContentOp::Set {
+    let node = parse_node(node_json)?;
+    let op = DocOp::Replace {
         id: block_id.to_string(),
-        block: BlockPatch { r#type, data },
+        node,
     };
     let doc = apply_op(client, reference, op).await?;
-    report(&doc, json, &format!("Updated block {block_id}"))
+    report(&doc, json, &format!("Replaced block {block_id}"))
 }
 
 async fn rm(client: &ApiClient, reference: &str, block_id: &str, json: bool) -> CliResult {
-    let op = ContentOp::Delete {
+    let op = DocOp::Delete {
         id: block_id.to_string(),
     };
     let doc = apply_op(client, reference, op).await?;
@@ -124,7 +98,7 @@ async fn move_block(
     at: &str,
     json: bool,
 ) -> CliResult {
-    let op = ContentOp::Move {
+    let op = DocOp::Move {
         id: block_id.to_string(),
         anchor: Anchor::parse(at)?,
     };
@@ -132,33 +106,37 @@ async fn move_block(
     report(&doc, json, &format!("Moved block {block_id}"))
 }
 
-async fn fetch_doc(
-    client: &ApiClient,
-    reference: &str,
-) -> Result<ContentDoc, Box<dyn std::error::Error>> {
+fn parse_node(node_json: &str) -> Result<Node, Box<dyn std::error::Error>> {
+    serde_json::from_str(node_json)
+        .map_err(|e| format!("--json is not a valid ProseMirror node: {e}").into())
+}
+
+async fn fetch_doc(client: &ApiClient, reference: &str) -> Result<Doc, Box<dyn std::error::Error>> {
     // GET is public; the cookie (if present) lets admins read hidden projects.
     let response = client
         .get(&format!("/api/projects/{reference}/content"))
         .await?;
     let response = check_response(response).await?;
-    Ok(response.json().await?)
+    let value: serde_json::Value = response.json().await?;
+    Ok(Doc::from_stored(Some(&value)))
 }
 
 async fn apply_op(
     client: &ApiClient,
     reference: &str,
-    op: ContentOp,
-) -> Result<ContentDoc, Box<dyn std::error::Error>> {
+    op: DocOp,
+) -> Result<Doc, Box<dyn std::error::Error>> {
     let response = client
         .patch_auth(&format!("/api/projects/{reference}/content"), &vec![op])
         .await?;
     let response = check_response(response).await?;
-    Ok(response.json().await?)
+    let value: serde_json::Value = response.json().await?;
+    Ok(Doc::from_stored(Some(&value)))
 }
 
-fn report(doc: &ContentDoc, json: bool, msg: &str) -> CliResult {
+fn report(doc: &Doc, json: bool, msg: &str) -> CliResult {
     if json {
-        println!("{}", serde_json::to_string_pretty(doc)?);
+        println!("{}", serde_json::to_string_pretty(doc.node())?);
     } else {
         output::success(msg);
         output::print_blocks(doc);
@@ -166,9 +144,9 @@ fn report(doc: &ContentDoc, json: bool, msg: &str) -> CliResult {
     Ok(())
 }
 
-fn print_doc(doc: &ContentDoc, json: bool) -> CliResult {
+fn print_doc(doc: &Doc, json: bool) -> CliResult {
     if json {
-        println!("{}", serde_json::to_string_pretty(doc)?);
+        println!("{}", serde_json::to_string_pretty(doc.node())?);
     } else {
         output::print_blocks(doc);
     }

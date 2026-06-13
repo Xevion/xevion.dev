@@ -1,7 +1,7 @@
 use nu_ansi_term::{Color, Style};
 
-use crate::content::ContentDoc;
 use crate::db::{ApiAdminProject, ApiSiteSettings, ApiTag, ApiTagWithCount};
+use crate::pm::{Doc, Node};
 
 /// Print a success message
 pub fn success(msg: &str) {
@@ -112,8 +112,9 @@ pub fn print_projects_table(projects: &[ApiAdminProject]) {
 }
 
 /// Print a content document's blocks as a table (id, type, preview).
-pub fn print_blocks(doc: &ContentDoc) {
-    if doc.blocks.is_empty() {
+pub fn print_blocks(doc: &Doc) {
+    let blocks = doc.blocks();
+    if blocks.is_empty() {
         info("No content blocks");
         return;
     }
@@ -121,15 +122,14 @@ pub fn print_blocks(doc: &ContentDoc) {
     let header = Style::new().bold().underline();
     let dim = Style::new().dimmed();
 
-    let id_width = doc
-        .blocks
+    let id_width = blocks
         .iter()
-        .map(|b| b.id.len())
+        .filter_map(Node::block_id)
+        .map(str::len)
         .max()
         .unwrap_or(2)
         .max(2);
-    let type_width = doc
-        .blocks
+    let type_width = blocks
         .iter()
         .map(|b| b.r#type.len())
         .max()
@@ -143,17 +143,25 @@ pub fn print_blocks(doc: &ContentDoc) {
         header.paint("PREVIEW"),
     );
 
-    for block in &doc.blocks {
+    for block in blocks {
+        let preview: String = block
+            .text_content()
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .chars()
+            .take(60)
+            .collect();
         println!(
             "{:id_width$}  {:type_width$}  {}",
-            dim.paint(&block.id),
+            dim.paint(block.block_id().unwrap_or("—")),
             block.r#type,
-            dim.paint(block.preview()),
+            dim.paint(preview),
         );
     }
 
     println!();
-    info(&format!("{} block(s)", doc.blocks.len()));
+    info(&format!("{} block(s)", blocks.len()));
 }
 
 /// Print a tag in formatted output

@@ -1,3 +1,7 @@
+// Doc comments here are clap `--help` text, not rustdoc; clap renders backticks
+// literally, so don't let `doc_markdown` push CamelCase product names into them.
+#![allow(clippy::doc_markdown)]
+
 pub mod api;
 pub mod client;
 pub mod output;
@@ -183,62 +187,6 @@ pub enum ProjectsCommand {
     Content(ProjectContentCommand),
 }
 
-/// One source of a block's `data`. Exactly one must be given.
-#[derive(clap::Args, Debug)]
-pub struct BlockContentArgs {
-    /// Markdown body for a prose block (builds `{"md": ...}`)
-    #[arg(long)]
-    pub md: Option<String>,
-
-    /// Read the markdown body from a file
-    #[arg(long)]
-    pub file: Option<String>,
-
-    /// Raw JSON for the block's `data` field (any block type)
-    #[arg(long)]
-    pub data: Option<String>,
-
-    /// Read raw JSON `data` from a file
-    #[arg(long = "data-file")]
-    pub data_file: Option<String>,
-}
-
-impl BlockContentArgs {
-    /// Build a block's `data` from exactly one content source.
-    /// Returns `(data, is_prose_shorthand)`.
-    pub fn build_data(&self) -> Result<(serde_json::Value, bool), Box<dyn std::error::Error>> {
-        let count = [
-            self.md.is_some(),
-            self.file.is_some(),
-            self.data.is_some(),
-            self.data_file.is_some(),
-        ]
-        .into_iter()
-        .filter(|set| *set)
-        .count();
-        if count == 0 {
-            return Err("provide one of --md, --file, --data, or --data-file".into());
-        }
-        if count > 1 {
-            return Err("provide only one of --md, --file, --data, --data-file".into());
-        }
-
-        if let Some(text) = &self.md {
-            Ok((serde_json::json!({ "md": text }), true))
-        } else if let Some(path) = &self.file {
-            Ok((
-                serde_json::json!({ "md": std::fs::read_to_string(path)? }),
-                true,
-            ))
-        } else if let Some(raw) = &self.data {
-            Ok((serde_json::from_str(raw)?, false))
-        } else {
-            let raw = std::fs::read_to_string(self.data_file.as_ref().unwrap())?;
-            Ok((serde_json::from_str(&raw)?, false))
-        }
-    }
-}
-
 #[derive(Subcommand, Debug)]
 pub enum ProjectContentCommand {
     /// List blocks (id, type, preview)
@@ -257,33 +205,29 @@ pub enum ProjectContentCommand {
         block_id: Option<String>,
     },
 
-    /// Insert a new block
+    /// Insert a new block from a ProseMirror node
     Insert {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Block type (defaults to "prose" with --md/--file)
-        #[arg(long = "type")]
-        r#type: Option<String>,
         /// Position: start | end | after:<id> | before:<id>
         #[arg(long, default_value = "end")]
         at: String,
-        #[command(flatten)]
-        content: BlockContentArgs,
+        /// The block as a ProseMirror node, e.g. '{"type":"paragraph","content":[{"type":"text","text":"Hi"}]}'
+        #[arg(long)]
+        json: String,
     },
 
-    /// Replace a block's data (and optionally its type)
-    Set {
+    /// Replace a block with a new ProseMirror node, keeping its id and position
+    Replace {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
         /// Block id
         block_id: String,
-        /// New block type (omit to keep the existing one)
-        #[arg(long = "type")]
-        r#type: Option<String>,
-        #[command(flatten)]
-        content: BlockContentArgs,
+        /// The replacement block as a ProseMirror node JSON object
+        #[arg(long)]
+        json: String,
     },
 
     /// Remove a block
