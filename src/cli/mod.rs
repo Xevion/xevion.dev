@@ -213,12 +213,15 @@ pub enum ProjectContentCommand {
         /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long, default_value = "end")]
         at: String,
-        /// Block(s) as Markdown, e.g. '## Heading' or 'A line with **bold**.'
-        #[arg(long, conflicts_with = "node")]
+        /// Block(s) as Markdown, e.g. '## Heading' or '- a bullet'
+        #[arg(long, conflicts_with = "node", allow_hyphen_values = true)]
         md: Option<String>,
         /// Raw ProseMirror node JSON (escape hatch), e.g. '{"type":"paragraph",...}'
         #[arg(long, required_unless_present = "md")]
         node: Option<String>,
+        /// Print only the confirmation line, not the re-rendered document
+        #[arg(long, short = 'q')]
+        quiet: bool,
     },
 
     /// Replace a block, authored as Markdown (--md) or a raw node (--node)
@@ -229,11 +232,14 @@ pub enum ProjectContentCommand {
         /// Block locator: a path like .3 or .3.0, or a block id
         locator: String,
         /// Replacement as Markdown; multiple blocks replace the target then follow it
-        #[arg(long, conflicts_with = "node")]
+        #[arg(long, conflicts_with = "node", allow_hyphen_values = true)]
         md: Option<String>,
         /// Raw ProseMirror node JSON (escape hatch), keeps the target's position and id
         #[arg(long, required_unless_present = "md")]
         node: Option<String>,
+        /// Print only the confirmation line, not the re-rendered document
+        #[arg(long, short = 'q')]
+        quiet: bool,
     },
 
     /// Remove a block
@@ -243,6 +249,9 @@ pub enum ProjectContentCommand {
         reference: String,
         /// Block locator: a path like .3 or .3.0, or a block id
         locator: String,
+        /// Print only the confirmation line, not the re-rendered document
+        #[arg(long, short = 'q')]
+        quiet: bool,
     },
 
     /// Move a block to a new position
@@ -255,6 +264,22 @@ pub enum ProjectContentCommand {
         /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long)]
         at: String,
+        /// Print only the confirmation line, not the re-rendered document
+        #[arg(long, short = 'q')]
+        quiet: bool,
+    },
+
+    /// Replace the entire document from a JSON file
+    Set {
+        /// Project slug or UUID
+        #[arg(name = "ref")]
+        reference: String,
+        /// Path to a file holding the full ProseMirror document as JSON
+        #[arg(long)]
+        file: String,
+        /// Print only the confirmation line, not the re-rendered document
+        #[arg(long, short = 'q')]
+        quiet: bool,
     },
 }
 

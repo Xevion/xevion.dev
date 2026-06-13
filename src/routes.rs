@@ -33,6 +33,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         .route(
             "/projects/{ref}/content",
             get(handlers::get_project_content_handler)
+                .put(handlers::put_project_content_handler)
                 .patch(handlers::patch_project_content_handler),
         )
         .route(

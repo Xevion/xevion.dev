@@ -19,21 +19,51 @@ pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) 
             at,
             md,
             node,
-        } => insert(&client, &reference, &at, body_blocks(md, node)?, json).await,
+            quiet,
+        } => {
+            insert(
+                &client,
+                &reference,
+                &at,
+                body_blocks(md, node)?,
+                json,
+                quiet,
+            )
+            .await
+        }
         ProjectContentCommand::Replace {
             reference,
             locator,
             md,
             node,
-        } => replace(&client, &reference, &locator, body_blocks(md, node)?, json).await,
-        ProjectContentCommand::Rm { reference, locator } => {
-            rm(&client, &reference, &locator, json).await
+            quiet,
+        } => {
+            replace(
+                &client,
+                &reference,
+                &locator,
+                body_blocks(md, node)?,
+                json,
+                quiet,
+            )
+            .await
         }
+        ProjectContentCommand::Rm {
+            reference,
+            locator,
+            quiet,
+        } => rm(&client, &reference, &locator, json, quiet).await,
         ProjectContentCommand::Move {
             reference,
             locator,
             at,
-        } => move_block(&client, &reference, &locator, &at, json).await,
+            quiet,
+        } => move_block(&client, &reference, &locator, &at, json, quiet).await,
+        ProjectContentCommand::Set {
+            reference,
+            file,
+            quiet,
+        } => set(&client, &reference, &file, json, quiet).await,
     }
 }
 
@@ -85,12 +115,13 @@ async fn insert(
     at: &str,
     blocks: Vec<Node>,
     json: bool,
+    quiet: bool,
 ) -> CliResult {
     let anchor = Anchor::parse(at)?;
     let count = blocks.len();
     let ops = DocOp::insert_sequence(&anchor, blocks);
     let doc = apply_ops(client, reference, ops).await?;
-    report(&doc, json, &format!("Inserted {count} block(s)"))
+    report(&doc, json, quiet, &format!("Inserted {count} block(s)"))
 }
 
 async fn replace(
@@ -99,19 +130,26 @@ async fn replace(
     locator: &str,
     blocks: Vec<Node>,
     json: bool,
+    quiet: bool,
 ) -> CliResult {
     let target: Locator = locator.parse()?;
     let ops = DocOp::replace_sequence(target, blocks);
     let doc = apply_ops(client, reference, ops).await?;
-    report(&doc, json, &format!("Replaced block {locator}"))
+    report(&doc, json, quiet, &format!("Replaced block {locator}"))
 }
 
-async fn rm(client: &ApiClient, reference: &str, locator: &str, json: bool) -> CliResult {
+async fn rm(
+    client: &ApiClient,
+    reference: &str,
+    locator: &str,
+    json: bool,
+    quiet: bool,
+) -> CliResult {
     let op = DocOp::Delete {
         id: locator.parse()?,
     };
     let doc = apply_ops(client, reference, vec![op]).await?;
-    report(&doc, json, &format!("Removed block {locator}"))
+    report(&doc, json, quiet, &format!("Removed block {locator}"))
 }
 
 async fn move_block(
@@ -120,13 +158,36 @@ async fn move_block(
     locator: &str,
     at: &str,
     json: bool,
+    quiet: bool,
 ) -> CliResult {
     let op = DocOp::Move {
         id: locator.parse()?,
         anchor: Anchor::parse(at)?,
     };
     let doc = apply_ops(client, reference, vec![op]).await?;
-    report(&doc, json, &format!("Moved block {locator}"))
+    report(&doc, json, quiet, &format!("Moved block {locator}"))
+}
+
+/// Replace the whole document with the JSON in `file`. The server validates the
+/// entire tree and stamps any block missing an id — the same invariant the ops
+/// path enforces — so an exported or hand-authored document converges on load.
+async fn set(
+    client: &ApiClient,
+    reference: &str,
+    file: &str,
+    json: bool,
+    quiet: bool,
+) -> CliResult {
+    let raw = std::fs::read_to_string(file).map_err(|e| format!("reading {file}: {e}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("{file} is not valid JSON: {e}"))?;
+    let response = client
+        .put_auth(&format!("/api/projects/{reference}/content"), &value)
+        .await?;
+    let response = check_response(response).await?;
+    let stored: serde_json::Value = response.json().await?;
+    let doc = Doc::from_stored(Some(&stored));
+    report(&doc, json, quiet, "Replaced document")
 }
 
 fn parse_node(node_json: &str) -> Result<Node, CliError> {
@@ -153,12 +214,14 @@ async fn apply_ops(client: &ApiClient, reference: &str, ops: Vec<DocOp>) -> Resu
     Ok(Doc::from_stored(Some(&value)))
 }
 
-fn report(doc: &Doc, json: bool, msg: &str) -> CliResult {
+fn report(doc: &Doc, json: bool, quiet: bool, msg: &str) -> CliResult {
     if json {
         println!("{}", serde_json::to_string_pretty(doc.node())?);
     } else {
         output::success(msg);
-        output::print_blocks(doc);
+        if !quiet {
+            output::print_blocks(doc);
+        }
     }
     Ok(())
 }

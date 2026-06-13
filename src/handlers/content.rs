@@ -70,6 +70,42 @@ pub async fn patch_project_content_handler(
 
     let mut doc = Doc::from_stored(project.detail_content.as_ref());
     doc.apply_all(ops, generate_block_id)?;
+    persist_content(&state, &project, &doc, &session.0.username).await?;
+
+    Ok(Json(doc.into_inner()))
+}
+
+/// PUT the entire block document, replacing whatever exists. Validates the whole
+/// tree (strict) and stamps ids on any block missing one — the same invariant
+/// the ops path enforces — so a hand-authored or exported document converges to
+/// the editor's shape.
+#[tracing::instrument(skip_all, fields(ref_str))]
+pub async fn put_project_content_handler(
+    State(state): State<Arc<AppState>>,
+    Path(ref_str): Path<String>,
+    session: AdminSession,
+    Json(value): Json<serde_json::Value>,
+) -> AppResult<impl IntoResponse> {
+    let project = db::get_project_by_ref(&state.pool, &ref_str)
+        .await?
+        .or_not_found()?;
+
+    let mut doc = Doc::parse(&value)?;
+    doc.ensure_block_ids(generate_block_id);
+    persist_content(&state, &project, &doc, &session.0.username).await?;
+
+    Ok(Json(doc.into_inner()))
+}
+
+/// Persist a fully-formed document, then log the update and invalidate the
+/// affected ISR cache entries. Shared by the ops (PATCH) and whole-document
+/// (PUT) paths so neither drifts on event or cache bookkeeping.
+async fn persist_content(
+    state: &AppState,
+    project: &db::DbProject,
+    doc: &Doc,
+    username: &str,
+) -> AppResult<()> {
     db::update_project_content(&state.pool, project.id, doc.to_stored().as_ref()).await?;
 
     tracing::info!(project_id = %project.id, "Project content updated");
@@ -79,7 +115,7 @@ pub async fn patch_project_content_handler(
         EventLevel::Info,
         Some("project"),
         Some(project.id),
-        Some(&session.0.username),
+        Some(username),
         format!("Project content updated: {}", project.name),
         None,
     );
@@ -90,5 +126,5 @@ pub async fn patch_project_content_handler(
         .invalidate(&format!("/projects/{}", project.slug))
         .await;
 
-    Ok(Json(doc.into_inner()))
+    Ok(())
 }
