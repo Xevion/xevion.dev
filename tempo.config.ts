@@ -173,6 +173,10 @@ export default defineConfig({
         verify: {
           cmd: "bash -c 'SQLX_OFFLINE=true cargo test export_bindings_ && git diff --exit-code web/src/lib/bindings/'",
         },
+        "schema-sync": {
+          cmd: "bash -c 'bun run --cwd web dump-schema && git diff --exit-code src/pm_schema.generated.json'",
+          requires: ["bun"],
+        },
       },
     },
   },
@@ -212,6 +216,16 @@ export default defineConfig({
       } catch (err) {
         ctx.fail(err instanceof Error ? err.message : String(err));
       }
+    },
+    // PM schema allow-list: TipTap node/mark names → JSON the Rust drift test
+    // (pm::schema_sync) include_str!s. Regenerate when the extension files change.
+    {
+      label: "pm schema allow-list",
+      sources: { dir: "web/src/lib/tiptap", pattern: "extensions*.ts" },
+      artifacts: { dir: "src", pattern: "pm_schema.generated.json" },
+      regenerate: "bun run --cwd web dump-schema",
+      reason:
+        "Rust pm::schema_sync asserts NODES/MARKS == getSchema(extensions)",
     },
   ],
   hooks: {

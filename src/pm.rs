@@ -1285,3 +1285,43 @@ mod op_tests {
         assert_eq!(op, back);
     }
 }
+
+/// Guards against schema drift between the Rust allow-list ([`NODES`]/[`MARKS`])
+/// and the `TipTap` editor schema. `web/scripts/dump-pm-schema.ts` derives
+/// `pm_schema.generated.json` from `getSchema(tiptapExtensions)`; `tempo check`
+/// regenerates it when the extension files change and fails on a dirty diff.
+/// This test closes the loop: the validator must permit exactly the node and
+/// mark names the editor can emit — no more, no less.
+#[cfg(test)]
+mod schema_sync {
+    use super::{MARKS, NODES};
+    use std::collections::BTreeSet;
+
+    #[derive(serde::Deserialize)]
+    struct TiptapSchema {
+        nodes: Vec<String>,
+        marks: Vec<String>,
+    }
+
+    #[test]
+    fn rust_allowlist_matches_tiptap_schema() {
+        let tiptap: TiptapSchema = serde_json::from_str(include_str!("pm_schema.generated.json"))
+            .expect("pm_schema.generated.json is valid JSON");
+
+        let rust_nodes: BTreeSet<&str> = NODES.iter().map(|spec| spec.name).collect();
+        let tiptap_nodes: BTreeSet<&str> = tiptap.nodes.iter().map(String::as_str).collect();
+        assert_eq!(
+            rust_nodes, tiptap_nodes,
+            "node allow-list drifted from the TipTap schema; update NODES or \
+             regenerate pm_schema.generated.json (`just check`)"
+        );
+
+        let rust_marks: BTreeSet<&str> = MARKS.iter().copied().collect();
+        let tiptap_marks: BTreeSet<&str> = tiptap.marks.iter().map(String::as_str).collect();
+        assert_eq!(
+            rust_marks, tiptap_marks,
+            "mark allow-list drifted from the TipTap schema; update MARKS or \
+             regenerate pm_schema.generated.json (`just check`)"
+        );
+    }
+}

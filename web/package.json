@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "codegen": "panda codegen"
+    "codegen": "panda codegen",
+    "dump-schema": "bun scripts/dump-pm-schema.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
