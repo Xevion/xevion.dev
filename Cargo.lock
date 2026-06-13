@@ -139,6 +139,7 @@ dependencies = [
  "include_dir",
  "mime_guess",
  "moka",
+ "nanoid",
  "nu-ansi-term",
  "opendal",
  "parking_lot",
@@ -1934,6 +1935,15 @@ dependencies = [
  "mime",
  "spin",
  "version_check",
+]
+
+[[package]]
+name = "nanoid"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8628de41fe064cc3f0cf07f3d299ee3e73521adaff72278731d5c8cae3797873"
+dependencies = [
+ "rand 0.9.2",
 ]
 
 [[package]]
