@@ -30,6 +30,9 @@ export const load: LayoutServerLoad = async ({ url, fetch }) => {
 
   return {
     settings,
+    // Seeded once per request and serialized into the payload, so relative-time
+    // rendering (formatAge) is identical across SSR and client hydration.
+    now: Date.now(),
     metadata: {
       title: settings.identity.siteTitle,
       description: settings.identity.bio.split("\n")[0],

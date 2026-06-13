@@ -136,6 +136,12 @@ async fn create(
         demo_url: demo_url.filter(|s| !s.is_empty()),
         tag_ids,
         detail_content: None,
+        // Authored via the admin editor, not the CLI.
+        project_type: None,
+        source_closed: false,
+        terminal_cast: None,
+        accent_color: None,
+        related_ids: vec![],
     };
 
     let response = client.post_auth("/api/projects", &request).await?;
@@ -169,9 +175,11 @@ async fn update(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // First fetch the current project
     let current = resolve_project(&client, reference).await?;
-    // PUT is a full replace, so carry the current detail content through unchanged
-    // (the CLI never edits it — that's the web editor's job).
+    // PUT is a full replace, so carry the v2 detail fields through unchanged
+    // (the CLI never edits them — that's the web editor's job).
     let detail_content = current.detail_content.clone();
+    let terminal_cast = current.terminal_cast.clone();
+    let related_ids: Vec<String> = current.related.iter().map(|r| r.id.clone()).collect();
     let current = current.project;
 
     // Apply tag operations
@@ -217,6 +225,11 @@ async fn update(
         },
         tag_ids: current_tag_ids,
         detail_content,
+        project_type: current.project_type,
+        source_closed: current.source_closed,
+        terminal_cast,
+        accent_color: current.accent_color,
+        related_ids,
     };
 
     let response = client

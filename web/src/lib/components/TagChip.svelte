@@ -10,8 +10,7 @@
     class?: string;
     /**
      * `chip` (default) is the bordered, left-accent chip used across admin.
-     * `tick` is the minimal mono label with a small square color dot used on the
-     * public cards/rows — pass a fully-resolved CSS color in `color`.
+     * `tick` is the minimal mono label + small color dot used on public cards/rows.
      */
     variant?: "chip" | "tick";
   }
@@ -24,6 +23,12 @@
     class: className,
     variant = "chip",
   }: Props = $props();
+
+  // Accept colors with or without a leading `#` (admin stores them bare); never
+  // double-prefix. Each variant keeps its own fallback hue.
+  const withHash = (c: string) => (c.startsWith("#") ? c : `#${c}`);
+  const tickColor = $derived(color ? withHash(color) : "#71717a");
+  const chipColor = $derived(color ? withHash(color) : "#06b6d4");
 
   const baseStyles = css({
     display: "inline-flex",
@@ -93,14 +98,14 @@
 
 {#if variant === "tick"}
   <span class={cx(tickStyles, className)}>
-    <span class={tickDotClass} style="background: {color ?? '#71717a'}"></span>
+    <span class={tickDotClass} style="background: {tickColor}"></span>
     {name}
   </span>
 {:else if href}
   <a
     {href}
     class={cx(baseStyles, linkStyles, className)}
-    style="border-left-color: #{color || '06b6d4'}"
+    style="border-left-color: {chipColor}"
   >
     {#if icon}
       <Icon {icon} sizeClass={iconSizeClass} />
@@ -110,7 +115,7 @@
 {:else}
   <span
     class={cx(baseStyles, className)}
-    style="border-left-color: #{color || '06b6d4'}"
+    style="border-left-color: {chipColor}"
   >
     {#if icon}
       <Icon {icon} sizeClass={iconSizeClass} />

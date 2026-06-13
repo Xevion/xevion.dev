@@ -1,11 +1,13 @@
 pub mod events;
 pub mod media;
 pub mod projects;
+pub mod relations;
 pub mod settings;
 pub mod tags;
 
 pub use media::*;
 pub use projects::*;
+pub use relations::*;
 pub use settings::*;
 pub use tags::*;
 

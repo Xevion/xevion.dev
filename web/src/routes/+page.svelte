@@ -243,7 +243,11 @@
         <div>
           {#each orderedProjects as project (project.slug)}
             <div animate:flip={{ duration: 460, easing: cubicOut }}>
-              <ProjectRow {project} dim={dimSet.has(project.slug)} />
+              <ProjectRow
+                {project}
+                now={data.now}
+                dim={dimSet.has(project.slug)}
+              />
             </div>
           {/each}
         </div>
@@ -251,14 +255,14 @@
         {#if featuredProjects.length > 0}
           <div class={grid({ columns: 2, gap: "12px" })}>
             {#each featuredProjects as project (project.slug)}
-              <ProjectCard {project} />
+              <ProjectCard {project} now={data.now} />
             {/each}
           </div>
         {/if}
         <div class={css({ mt: "14px" })}>
           {#each restProjects as project (project.slug)}
             <div animate:flip={{ duration: 460, easing: cubicOut }}>
-              <ProjectRow {project} />
+              <ProjectRow {project} now={data.now} />
             </div>
           {/each}
         </div>

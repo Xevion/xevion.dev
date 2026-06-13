@@ -13,6 +13,7 @@
   import { page } from "$app/stores";
   import { afterNavigate, onNavigate } from "$app/navigation";
   import { telemetry } from "$lib/telemetry";
+  import { morph } from "$lib/stores/morph.svelte";
   import Clouds from "$lib/components/Clouds.svelte";
   import Dots from "$lib/components/Dots.svelte";
   import ThemeToggle from "$lib/components/ThemeToggle.svelte";
@@ -86,6 +87,12 @@
   afterNavigate(({ to }) => {
     if (to?.url.pathname) {
       telemetry.trackPageView(to.url.pathname);
+    }
+    // Release the morph target once we've landed anywhere that isn't a project
+    // detail page (which re-arms it on mount for reverse navigation). onNavigate
+    // has already captured the transition snapshot, so this won't break the morph.
+    if (!to?.url.pathname.startsWith("/projects/")) {
+      morph.slug = null;
     }
   });
 

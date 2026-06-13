@@ -56,6 +56,21 @@ pub struct CreateProjectRequest {
     /// `TipTap` document JSON. Null/absent means the project has no detail page.
     #[serde(default)]
     pub detail_content: Option<serde_json::Value>,
+    /// Authored primary label ("CLI Tool", "Web App", …).
+    #[serde(default)]
+    pub project_type: Option<String>,
+    /// Closed-source flag (orthogonal to `status`).
+    #[serde(default)]
+    pub source_closed: bool,
+    /// Authored CLI-hero transcript.
+    #[serde(default)]
+    pub terminal_cast: Option<crate::db::TerminalCast>,
+    /// Explicit per-project accent (hex).
+    #[serde(default)]
+    pub accent_color: Option<String>,
+    /// Curated related project IDs, in authored order (full replace).
+    #[serde(default)]
+    pub related_ids: Vec<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -74,4 +89,19 @@ pub struct UpdateProjectRequest {
     /// editor state (null when empty); the CLI echoes the existing value to preserve it.
     #[serde(default)]
     pub detail_content: Option<serde_json::Value>,
+    /// Authored primary label ("CLI Tool", "Web App", …). PUT replace.
+    #[serde(default)]
+    pub project_type: Option<String>,
+    /// Closed-source flag (orthogonal to `status`).
+    #[serde(default)]
+    pub source_closed: bool,
+    /// Authored CLI-hero transcript. PUT replace (null clears it).
+    #[serde(default)]
+    pub terminal_cast: Option<crate::db::TerminalCast>,
+    /// Explicit per-project accent (hex). PUT replace.
+    #[serde(default)]
+    pub accent_color: Option<String>,
+    /// Curated related project IDs, in authored order (full replace).
+    #[serde(default)]
+    pub related_ids: Vec<String>,
 }

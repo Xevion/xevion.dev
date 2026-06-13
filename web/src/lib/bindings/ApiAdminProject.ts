@@ -4,4 +4,16 @@ import type { ApiProjectMedia } from "./ApiProjectMedia";
 import type { ApiTag } from "./ApiTag";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };
+export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
+/**
+ * Authored primary label; the rail's "Type" slot (replaces "Language").
+ */
+projectType?: string, 
+/**
+ * When true the page hides repo links and shows the closed-source callout.
+ */
+sourceClosed: boolean, 
+/**
+ * Explicit accent hex; frontend falls back to `#71717a` when absent.
+ */
+accentColor?: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };

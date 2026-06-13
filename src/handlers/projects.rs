@@ -45,7 +45,9 @@ pub async fn get_project_handler(
         return Err(AppError::NotFound);
     }
 
-    Ok(Json(project.to_api_project_detail(tags, media)?))
+    let related = db::get_related_projects(&state.pool, project.id).await?;
+
+    Ok(Json(project.to_api_project_detail(tags, media, related)?))
 }
 
 /// Create a new project (requires authentication)
@@ -72,22 +74,46 @@ pub async fn create_project_handler(
         .collect::<Result<_, _>>()
         .map_err(|_| AppError::field("tagIds", "Invalid tag UUID format"))?;
 
+    let related_ids: Vec<uuid::Uuid> = payload
+        .related_ids
+        .iter()
+        .map(|id| uuid::Uuid::parse_str(id))
+        .collect::<Result<_, _>>()
+        .map_err(|_| AppError::field("relatedIds", "Invalid project UUID format"))?;
+
+    let terminal_cast = payload
+        .terminal_cast
+        .as_ref()
+        .map(serde_json::to_value)
+        .transpose()
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
     let project = db::create_project(
         &state.pool,
-        &payload.name,
-        payload.slug.as_deref(),
-        &payload.short_description,
-        &payload.description,
-        payload.status,
-        payload.github_repo.as_deref(),
-        payload.demo_url.as_deref(),
-        payload.detail_content.as_ref(),
+        db::ProjectInput {
+            name: &payload.name,
+            slug_override: payload.slug.as_deref(),
+            short_description: &payload.short_description,
+            description: &payload.description,
+            status: payload.status,
+            github_repo: payload.github_repo.as_deref(),
+            demo_url: payload.demo_url.as_deref(),
+            detail_content: payload.detail_content.as_ref(),
+            project_type: payload.project_type.as_deref(),
+            source_closed: payload.source_closed,
+            terminal_cast: terminal_cast.as_ref(),
+            accent_color: payload.accent_color.as_deref(),
+        },
     )
     .await
     .conflict_on_unique("A project with this slug already exists")?;
 
     if let Err(err) = db::set_project_tags(&state.pool, project.id, &tag_ids).await {
         tracing::error!(error = %err, project_id = %project.id, "Failed to set project tags");
+    }
+
+    if let Err(err) = db::set_project_relations(&state.pool, project.id, &related_ids).await {
+        tracing::error!(error = %err, project_id = %project.id, "Failed to set project relations");
     }
 
     let (project, tags, media) = db::get_project_by_id_with_tags(&state.pool, project.id)
@@ -151,23 +177,47 @@ pub async fn update_project_handler(
         .collect::<Result<_, _>>()
         .map_err(|_| AppError::field("tagIds", "Invalid tag UUID format"))?;
 
+    let related_ids: Vec<uuid::Uuid> = payload
+        .related_ids
+        .iter()
+        .map(|id| uuid::Uuid::parse_str(id))
+        .collect::<Result<_, _>>()
+        .map_err(|_| AppError::field("relatedIds", "Invalid project UUID format"))?;
+
+    let terminal_cast = payload
+        .terminal_cast
+        .as_ref()
+        .map(serde_json::to_value)
+        .transpose()
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
     let project = db::update_project(
         &state.pool,
         project_id,
-        &payload.name,
-        payload.slug.as_deref(),
-        &payload.short_description,
-        &payload.description,
-        payload.status,
-        payload.github_repo.as_deref(),
-        payload.demo_url.as_deref(),
-        payload.detail_content.as_ref(),
+        db::ProjectInput {
+            name: &payload.name,
+            slug_override: payload.slug.as_deref(),
+            short_description: &payload.short_description,
+            description: &payload.description,
+            status: payload.status,
+            github_repo: payload.github_repo.as_deref(),
+            demo_url: payload.demo_url.as_deref(),
+            detail_content: payload.detail_content.as_ref(),
+            project_type: payload.project_type.as_deref(),
+            source_closed: payload.source_closed,
+            terminal_cast: terminal_cast.as_ref(),
+            accent_color: payload.accent_color.as_deref(),
+        },
     )
     .await
     .conflict_on_unique("A project with this slug already exists")?;
 
     if let Err(err) = db::set_project_tags(&state.pool, project.id, &tag_ids).await {
         tracing::error!(error = %err, project_id = %project.id, "Failed to update project tags");
+    }
+
+    if let Err(err) = db::set_project_relations(&state.pool, project.id, &related_ids).await {
+        tracing::error!(error = %err, project_id = %project.id, "Failed to update project relations");
     }
 
     let (project, tags, media) = db::get_project_by_id_with_tags(&state.pool, project.id)

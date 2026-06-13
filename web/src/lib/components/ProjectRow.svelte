@@ -1,51 +1,29 @@
 <script lang="ts">
   import { css, cx } from "styled-system/css";
-  import { telemetry } from "$lib/telemetry";
   import TagChip from "./TagChip.svelte";
   import ProjectCover from "./ProjectCover.svelte";
   import { morph } from "$lib/stores/morph.svelte";
-  import {
-    accentOf,
-    detectLanguage,
-    formatAge,
-    tagColor,
-  } from "$lib/project-display";
+  import { projectCardView, tagColor, formatAge } from "$lib/project-display";
+  import { navigateToProject } from "$lib/project-nav";
   import type { ApiAdminProject } from "$lib/bindings";
 
   interface Props {
     project: ApiAdminProject;
     dim?: boolean;
+    /** Server-seeded clock so relative ages match across SSR/hydration. */
+    now?: number;
   }
 
-  let { project, dim = false }: Props = $props();
+  let { project, dim = false, now }: Props = $props();
 
-  // Every project has a detail page; demo/GitHub links live in its sidebar.
-  const href = $derived(`/projects/${project.slug}`);
-
-  const accent = $derived(accentOf(project));
-  const language = $derived(detectLanguage(project));
-  const rowTags = $derived(
-    project.tags.filter((t) => t.name !== language?.name).slice(0, 3),
-  );
+  const view = $derived(projectCardView(project));
   const active = $derived(morph.slug === project.slug);
-
-  function handleClick() {
-    morph.slug = project.slug;
-    telemetry.track({
-      name: "project_interaction",
-      properties: {
-        action: "detail_view",
-        projectSlug: project.slug,
-        projectName: project.name,
-      },
-    });
-  }
 </script>
 
 <a
-  {href}
+  href={view.href}
   data-slug={project.slug}
-  onclick={handleClick}
+  onclick={() => navigateToProject(project)}
   class={cx(
     css({
       display: "flex",
@@ -81,7 +59,7 @@
   >
     <ProjectCover
       seed={project.name}
-      {accent}
+      accent={view.accent}
       cols={4}
       rows={4}
       cell={16}
@@ -100,7 +78,7 @@
     >
       <h3
         class={css({
-          fontSize: "16.5px",
+          fontSize: "title",
           fontWeight: "600",
           color: "zinc.900",
           letterSpacing: "-0.01em",
@@ -113,41 +91,24 @@
       <span
         class={css({
           fontFamily: "geist",
-          fontSize: "11.5px",
+          fontSize: "metaLg",
           color: "zinc.400",
           display: "inline-flex",
           alignItems: "center",
           gap: "8px",
         })}
       >
-        {#if language}
-          <span
-            class={css({
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-            })}
-          >
-            <span
-              class={css({
-                w: "6px",
-                h: "6px",
-                rounded: "full",
-                flexShrink: "0",
-              })}
-              style="background: {language.color}"
-            ></span>
-            {language.name}
-          </span>
+        {#if view.typeLabel}
+          <span>{view.typeLabel}</span>
           <span class={css({ color: "zinc.300" })}>·</span>
         {/if}
-        {formatAge(project.lastActivity)}
+        {formatAge(project.lastActivity, now)}
       </span>
     </div>
     <p
       class={css({
         mt: "4px",
-        fontSize: "13.5px",
+        fontSize: "bodySm",
         lineHeight: "1.45",
         color: "zinc.600",
         whiteSpace: "nowrap",
@@ -160,7 +121,7 @@
     </p>
   </div>
 
-  {#if rowTags.length > 0}
+  {#if view.tags.length > 0}
     <div
       class={css({
         flexShrink: "0",
@@ -173,7 +134,7 @@
         gap: "13px",
       })}
     >
-      {#each rowTags as tag (tag.id)}
+      {#each view.tags as tag (tag.id)}
         <TagChip variant="tick" name={tag.name} color={tagColor(tag)} />
       {/each}
     </div>

@@ -316,7 +316,11 @@ pub async fn get_projects_for_tag(
             p.demo_url, 
             p.last_github_activity,
             p.created_at,
-            p.detail_content
+            p.detail_content,
+            p.project_type,
+            p.source_closed,
+            p.terminal_cast,
+            p.accent_color
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1

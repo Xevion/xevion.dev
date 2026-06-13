@@ -99,9 +99,19 @@ pub struct MediaMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub focal_point: Option<FocalPoint>,
+    /// Accessibility text (the `alt` attribute) — distinct from the visible
+    /// `label`/`caption` below.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub alt_text: Option<String>,
+    /// Bold title shown under a gallery tile (e.g. "Interactive masking").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub label: Option<String>,
+    /// Gray descriptive caption shown under the `label`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub caption: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub duration: Option<f64>,

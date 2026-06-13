@@ -27,6 +27,47 @@ pub struct DbProject {
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
     pub detail_content: Option<serde_json::Value>,
+    /// Authored primary label ("CLI Tool", "Web App", …). Replaces the old
+    /// tag-derived "Language" field.
+    pub project_type: Option<String>,
+    /// Closed-source flag, orthogonal to `status`: a project can be `active`
+    /// and still have no public repo.
+    pub source_closed: bool,
+    /// Optional asciinema-style cast for the CLI hero, shaped like [`TerminalCast`].
+    pub terminal_cast: Option<serde_json::Value>,
+    /// Explicit per-project accent (hex); the frontend falls back to `#71717a`.
+    pub accent_color: Option<String>,
+}
+
+/// One line of a [`TerminalCast`], tagged by how it should be styled.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum TerminalLineKind {
+    /// A typed command (rendered after the accent-colored prompt).
+    Cmd,
+    /// Standard output.
+    Out,
+    /// Error output.
+    Err,
+    /// De-emphasized output (e.g. trailing summary lines).
+    Muted,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TerminalLine {
+    pub t: TerminalLineKind,
+    pub text: String,
+}
+
+/// Authored CLI-hero transcript. Stored as JSONB on the project; absent for
+/// non-CLI projects (the page then falls through to its normal body).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TerminalCast {
+    pub prompt: String,
+    pub lines: Vec<TerminalLine>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -67,6 +108,16 @@ pub struct ApiAdminProject {
     pub demo_url: Option<String>,
     pub created_at: String,
     pub last_activity: String,
+    /// Authored primary label; the rail's "Type" slot (replaces "Language").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub project_type: Option<String>,
+    /// When true the page hides repo links and shows the closed-source callout.
+    pub source_closed: bool,
+    /// Explicit accent hex; frontend falls back to `#71717a` when absent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub accent_color: Option<String>,
 }
 
 /// Single-project response that additionally carries the rich detail content.
@@ -85,6 +136,13 @@ pub struct ApiProjectDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional, type = "unknown")]
     pub detail_content: Option<serde_json::Value>,
+    /// Authored CLI-hero transcript; absent for non-CLI projects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub terminal_cast: Option<TerminalCast>,
+    /// Curated related projects in authored order (resolved server-side from the
+    /// `project_relations` table). Empty when none are authored.
+    pub related: Vec<super::relations::ApiRelatedProject>,
 }
 
 impl DbProject {
@@ -138,6 +196,9 @@ impl DbProject {
                 .format(&Rfc3339)
                 .map_err(|e| AppError::Internal(e.to_string()))?,
             last_activity,
+            project_type: self.project_type.clone(),
+            source_closed: self.source_closed,
+            accent_color: self.accent_color.clone(),
         })
     }
 
@@ -145,10 +206,16 @@ impl DbProject {
         &self,
         tags: Vec<DbTag>,
         media: Vec<DbProjectMedia>,
+        related: Vec<super::relations::ApiRelatedProject>,
     ) -> AppResult<ApiProjectDetail> {
         Ok(ApiProjectDetail {
             project: self.to_api_admin_project(tags, media)?,
             detail_content: self.detail_content.clone(),
+            terminal_cast: self
+                .terminal_cast
+                .as_ref()
+                .and_then(|v| serde_json::from_value(v.clone()).ok()),
+            related,
         })
     }
 }
@@ -178,7 +245,11 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             demo_url,
             last_github_activity,
             created_at,
-            detail_content
+            detail_content,
+            project_type,
+            source_closed,
+            terminal_cast,
+            accent_color
         FROM projects
         WHERE status != 'hidden'
         ORDER BY COALESCE(last_github_activity, created_at) DESC
@@ -235,7 +306,11 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             demo_url,
             last_github_activity,
             created_at,
-            detail_content
+            detail_content,
+            project_type,
+            source_closed,
+            terminal_cast,
+            accent_color
         FROM projects
         ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
@@ -292,7 +367,11 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             demo_url,
             last_github_activity,
             created_at,
-            detail_content
+            detail_content,
+            project_type,
+            source_closed,
+            terminal_cast,
+            accent_color
         FROM projects
         WHERE id = $1
         "#,
@@ -338,7 +417,11 @@ pub async fn get_project_by_slug(
             demo_url,
             last_github_activity,
             created_at,
-            detail_content
+            detail_content,
+            project_type,
+            source_closed,
+            terminal_cast,
+            accent_color
         FROM projects
         WHERE slug = $1
         "#,
@@ -377,77 +460,94 @@ pub async fn get_project_by_ref_with_tags(
     }
 }
 
-/// Create project (without tags - tags handled separately)
-#[allow(clippy::too_many_arguments)]
+/// Field values for creating or updating a project (tags and relations are
+/// handled separately). Groups the column set so the create/update query
+/// functions don't carry a dozen positional arguments.
+pub struct ProjectInput<'a> {
+    pub name: &'a str,
+    pub slug_override: Option<&'a str>,
+    pub short_description: &'a str,
+    pub description: &'a str,
+    pub status: ProjectStatus,
+    pub github_repo: Option<&'a str>,
+    pub demo_url: Option<&'a str>,
+    pub detail_content: Option<&'a serde_json::Value>,
+    pub project_type: Option<&'a str>,
+    pub source_closed: bool,
+    pub terminal_cast: Option<&'a serde_json::Value>,
+    pub accent_color: Option<&'a str>,
+}
+
+/// Create project (without tags/relations - those are handled separately)
 pub async fn create_project(
     pool: &PgPool,
-    name: &str,
-    slug_override: Option<&str>,
-    short_description: &str,
-    description: &str,
-    status: ProjectStatus,
-    github_repo: Option<&str>,
-    demo_url: Option<&str>,
-    detail_content: Option<&serde_json::Value>,
+    input: ProjectInput<'_>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override.map_or_else(|| slugify(name), slugify);
+    let slug = input
+        .slug_override
+        .map_or_else(|| slugify(input.name), slugify);
 
     query_as!(
         DbProject,
         r#"
-        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url, detail_content)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, detail_content
+                  github_repo, demo_url, last_github_activity, created_at, detail_content,
+                  project_type, source_closed, terminal_cast, accent_color
         "#,
         slug,
-        name,
-        short_description,
-        description,
-        status as ProjectStatus,
-        github_repo,
-        demo_url,
-        detail_content as Option<&serde_json::Value>
+        input.name,
+        input.short_description,
+        input.description,
+        input.status as ProjectStatus,
+        input.github_repo,
+        input.demo_url,
+        input.detail_content as Option<&serde_json::Value>,
+        input.project_type,
+        input.source_closed,
+        input.terminal_cast as Option<&serde_json::Value>,
+        input.accent_color
     )
     .fetch_one(pool)
     .await
 }
 
-/// Update project (without tags - tags handled separately)
-#[allow(clippy::too_many_arguments)]
+/// Update project (without tags/relations - those are handled separately)
 pub async fn update_project(
     pool: &PgPool,
     id: Uuid,
-    name: &str,
-    slug_override: Option<&str>,
-    short_description: &str,
-    description: &str,
-    status: ProjectStatus,
-    github_repo: Option<&str>,
-    demo_url: Option<&str>,
-    detail_content: Option<&serde_json::Value>,
+    input: ProjectInput<'_>,
 ) -> Result<DbProject, sqlx::Error> {
-    let slug = slug_override.map_or_else(|| slugify(name), slugify);
+    let slug = input
+        .slug_override
+        .map_or_else(|| slugify(input.name), slugify);
 
     query_as!(
         DbProject,
         r#"
         UPDATE projects
         SET slug = $2, name = $3, short_description = $4, description = $5,
-            status = $6, github_repo = $7, demo_url = $8, detail_content = $9
+            status = $6, github_repo = $7, demo_url = $8, detail_content = $9,
+            project_type = $10, source_closed = $11, terminal_cast = $12, accent_color = $13
         WHERE id = $1
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, detail_content
+                  github_repo, demo_url, last_github_activity, created_at, detail_content,
+                  project_type, source_closed, terminal_cast, accent_color
         "#,
         id,
         slug,
-        name,
-        short_description,
-        description,
-        status as ProjectStatus,
-        github_repo,
-        demo_url,
-        detail_content as Option<&serde_json::Value>
+        input.name,
+        input.short_description,
+        input.description,
+        input.status as ProjectStatus,
+        input.github_repo,
+        input.demo_url,
+        input.detail_content as Option<&serde_json::Value>,
+        input.project_type,
+        input.source_closed,
+        input.terminal_cast as Option<&serde_json::Value>,
+        input.accent_color
     )
     .fetch_one(pool)
     .await
@@ -521,7 +621,11 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             demo_url,
             last_github_activity,
             created_at,
-            detail_content
+            detail_content,
+            project_type,
+            source_closed,
+            terminal_cast,
+            accent_color
         FROM projects
         WHERE github_repo IS NOT NULL
         ORDER BY last_github_activity DESC NULLS LAST

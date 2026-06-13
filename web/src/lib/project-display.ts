@@ -1,80 +1,12 @@
-// Presentation-layer derivations that bridge the API bindings to the redesign.
+// Presentation-layer derivations bridging the API bindings to the redesign.
 //
-// The prototype dataset carried explicit `lang` / `featured` / tag-`kind` fields
-// that the API does not. Rather than widen the backend, we derive them here from
-// the data that already ships: tags (with slug + admin color), status, and dates.
+// Accent and type are authored fields on the project (`accent_color`,
+// `project_type`); there is no language/kind heuristic. Tags carry their own
+// admin-set colors. Index card and row share one view-model so they can't drift.
 
-import type { ApiTag } from "$lib/bindings";
-import type { ProjectStatus } from "$lib/bindings";
-
-/** Minimal shape shared by `ApiAdminProject` and `ApiProjectDetail`. */
-export interface DisplayProject {
-  slug: string;
-  name: string;
-  status: ProjectStatus;
-  createdAt: string;
-  lastActivity: string;
-  tags: ApiTag[];
-}
+import type { ApiTag, ApiAdminProject, ProjectStatus } from "$lib/bindings";
 
 const NEUTRAL = "#71717a";
-
-/**
- * Known languages keyed by tag slug, with the brand accent hues from the design.
- * Order is priority: a project's "primary" language is the first of these present
- * on it, so a Rust+Svelte+TS project reads as Rust.
- */
-const LANGUAGES: { slug: string; color: string }[] = [
-  { slug: "rust", color: "#b7410e" },
-  { slug: "go", color: "#0a93b8" },
-  { slug: "typescript", color: "#2f74c0" },
-  { slug: "svelte", color: "#e8410a" },
-  { slug: "react", color: "#0b93b9" },
-  { slug: "next-js", color: "#3f3f46" },
-  { slug: "nextjs", color: "#3f3f46" },
-  { slug: "python", color: "#3572a5" },
-  { slug: "javascript", color: "#c9a227" },
-  { slug: "c", color: "#5f6b7a" },
-  { slug: "cpp", color: "#5b63c4" },
-];
-
-const LANGUAGE_BY_SLUG = new Map(LANGUAGES.map((l) => [l.slug, l]));
-
-/** Tags that count as part of the build stack ("Built with"), beyond languages. */
-const TECH_SLUGS = new Set([
-  "docker",
-  "npm",
-  "onnx",
-  "sdl2",
-  "emscripten",
-  "webassembly",
-  "webgpu",
-  "discord",
-  "mcp",
-  "duckdb",
-  "api",
-  "sqlite",
-  "postgres",
-  "postgresql",
-  "redis",
-  "wasm",
-]);
-
-/** The project's primary language (name + accent), or null if none is tagged. */
-export function detectLanguage(
-  project: DisplayProject,
-): { name: string; color: string } | null {
-  for (const { slug, color } of LANGUAGES) {
-    const tag = project.tags.find((t) => t.slug === slug);
-    if (tag) return { name: tag.name, color };
-  }
-  return null;
-}
-
-/** Language accent for covers/marks; falls back to neutral grey. */
-export function accentOf(project: DisplayProject): string {
-  return detectLanguage(project)?.color ?? NEUTRAL;
-}
 
 /** Normalize an admin-stored color (with or without leading `#`) to a CSS hex. */
 function normalizeColor(color: string | null | undefined): string | null {
@@ -82,19 +14,46 @@ function normalizeColor(color: string | null | undefined): string | null {
   return color.startsWith("#") ? color : `#${color}`;
 }
 
+/** The authored accent color, or neutral grey when unset. */
+export function resolveAccent(accentColor: string | null | undefined): string {
+  return normalizeColor(accentColor) ?? NEUTRAL;
+}
+
 /**
- * The dot/cue color for a tag. Languages carry their brand hue; other tags use
- * their admin-set color when present, otherwise neutral grey.
+ * Black or white ink that stays legible on a solid `hex` fill (e.g. the demo
+ * button painted with the author's accent). Uses WCAG relative luminance so a
+ * light accent gets dark text instead of unreadable white.
  */
+export function readableInk(hex: string): string {
+  const m = (normalizeColor(hex) ?? NEUTRAL).slice(1);
+  const v = (i: number) => parseInt(m.slice(i, i + 2), 16) / 255;
+  const lin = (c: number) =>
+    c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  const luminance =
+    0.2126 * lin(v(0)) + 0.7152 * lin(v(2)) + 0.0722 * lin(v(4));
+  return luminance > 0.4 ? "#18181b" : "#ffffff";
+}
+
+/** A tag's dot/cue color: its admin-set color, else neutral grey. */
 export function tagColor(tag: ApiTag): string {
-  const lang = LANGUAGE_BY_SLUG.get(tag.slug);
-  if (lang) return lang.color;
   return normalizeColor(tag.color) ?? NEUTRAL;
 }
 
-/** Whether a tag belongs in the "Built with" stack (a language or a known tech). */
-export function isStackTag(tag: ApiTag): boolean {
-  return LANGUAGE_BY_SLUG.has(tag.slug) || TECH_SLUGS.has(tag.slug);
+/** Shared view-model for the index card + row, so the two can't drift. */
+export function projectCardView(project: ApiAdminProject) {
+  return {
+    href: `/projects/${project.slug}`,
+    accent: resolveAccent(project.accentColor),
+    typeLabel: project.projectType ?? null,
+    tags: project.tags.slice(0, 3),
+  };
+}
+
+/** Minimal shape needed to rank for {@link featuredSlugs}. */
+interface RankableProject {
+  slug: string;
+  status: ProjectStatus;
+  lastActivity: string;
 }
 
 /**
@@ -102,7 +61,7 @@ export function isStackTag(tag: ApiTag): boolean {
  * layout's pair of large cover cards. Returns a Set of featured slugs.
  */
 export function featuredSlugs(
-  projects: DisplayProject[],
+  projects: RankableProject[],
   count = 2,
 ): Set<string> {
   const ranked = projects
@@ -133,10 +92,17 @@ export function statusMeta(status: ProjectStatus): {
   }
 }
 
-/** Relative age, e.g. "3m ago" / "23h ago" / "9d ago" / "2mo ago". */
-export function formatAge(dateString: string): string {
+/**
+ * Relative age, e.g. "3m ago" / "23h ago" / "9d ago" / "2mo ago". `now` is
+ * passed in (seeded once on the server) so SSR and hydration agree — calling
+ * `Date.now()` here would flip the bucket between render passes.
+ */
+export function formatAge(
+  dateString: string,
+  now: number = Date.now(),
+): string {
   const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
+  const diffMs = now - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));

@@ -2,6 +2,7 @@
   import { css, cx } from "styled-system/css";
   import type { ApiTag } from "$lib/bindings";
   import { tagColor } from "$lib/project-display";
+  import IconChevron from "~icons/lucide/chevron-down";
 
   interface Props {
     /** Every project's tags — used to compute facet frequency + colors. */
@@ -16,28 +17,41 @@
 
   let { projects, selected, matchCount, onToggle, onClear }: Props = $props();
 
-  // The six facets that always fill the bar (those that actually exist in data).
-  const PRIMARY = ["Rust", "TypeScript", "Go", "Svelte", "Web App", "CLI"];
+  // The facets pinned to the bar, by slug so an admin rename can't silently drop
+  // them. Resolved to display names below (facets are name-keyed throughout).
+  const PRIMARY_SLUGS = [
+    "rust",
+    "typescript",
+    "go",
+    "svelte",
+    "web-app",
+    "cli",
+  ];
 
-  // tag name → { count, color }, derived from the project set.
-  type TagInfo = { count: number; color: string };
+  // tag name → { count, color, slug }, derived from the project set.
+  type TagInfo = { count: number; color: string; slug: string };
   const tagInfo = $derived.by<Record<string, TagInfo>>(() => {
     const info: Record<string, TagInfo> = {};
     for (const p of projects) {
       for (const t of p.tags) {
         const existing = info[t.name];
         if (existing) existing.count += 1;
-        else info[t.name] = { count: 1, color: tagColor(t) };
+        else info[t.name] = { count: 1, color: tagColor(t), slug: t.slug };
       }
     }
     return info;
   });
 
-  const primaryFacets = $derived(PRIMARY.filter((name) => name in tagInfo));
+  const nameBySlug = $derived(
+    new Map(Object.entries(tagInfo).map(([name, i]) => [i.slug, name])),
+  );
+  const primaryFacets = $derived(
+    PRIMARY_SLUGS.map((s) => nameBySlug.get(s)).filter((n) => n !== undefined),
+  );
 
   const moreFacets = $derived(
     Object.keys(tagInfo)
-      .filter((name) => !PRIMARY.includes(name))
+      .filter((name) => !primaryFacets.includes(name))
       .sort((a, b) => {
         const fa = tagInfo[a].count;
         const fb = tagInfo[b].count;
@@ -47,7 +61,7 @@
 
   const totalTags = $derived(Object.keys(tagInfo).length);
   const overflowActive = $derived(
-    selected.filter((s) => !PRIMARY.includes(s)).length,
+    selected.filter((s) => !primaryFacets.includes(s)).length,
   );
 
   let open = $state(false);
@@ -159,7 +173,7 @@
           gap: "6px",
           cursor: "pointer",
           fontFamily: "geist",
-          fontSize: "11.5px",
+          fontSize: "metaLg",
           px: "10px",
           py: "4px",
           h: "full",
@@ -205,22 +219,11 @@
           {overflowActive}
         </span>
       {/if}
-      <svg
-        width="11"
-        height="11"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.4"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        style="transition: transform .18s ease; transform: {open
-          ? 'rotate(180deg)'
-          : 'none'}"
+      <IconChevron
+        class={css({ w: "11px", h: "11px", transition: "transform .18s ease" })}
+        style={open ? "transform: rotate(180deg)" : undefined}
         aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
+      />
     </button>
 
     <div
@@ -293,7 +296,7 @@
         <span
           class={css({
             fontFamily: "geist",
-            fontSize: "11px",
+            fontSize: "meta",
             color: "zinc.400",
           })}
         >
@@ -305,7 +308,7 @@
           class={css({
             cursor: "pointer",
             fontFamily: "geist",
-            fontSize: "11.5px",
+            fontSize: "metaLg",
             px: "10px",
             py: "4px",
             rounded: "4px",

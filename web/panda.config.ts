@@ -7,6 +7,24 @@ export default defineConfig({
 
   exclude: [],
 
+  // Runtime-dynamic theming color (author-set per project, unknown at build
+  // time, so not a token). Set via `style="--accent: …"` on a container and
+  // consumed with `var(--accent)` / `color-mix(… var(--accent) …)` in css().
+  // Registered as a typed custom property so it animates and autocompletes.
+  globalVars: {
+    "--accent": {
+      syntax: "<color>",
+      inherits: true,
+      initialValue: "#71717a",
+    },
+    // Legible black/white ink for text painted on top of a solid --accent fill.
+    "--accent-ink": {
+      syntax: "<color>",
+      inherits: true,
+      initialValue: "#ffffff",
+    },
+  },
+
   // Class-based dark mode using .dark on <html>
   conditions: {
     extend: {
@@ -20,6 +38,26 @@ export default defineConfig({
         colors: {
           // Extra zinc shade not in default palette
           "zinc.850": { value: "#1d1d20" },
+          // Controls layered over media (lightbox, gallery tiles). Theme-
+          // independent — they always sit on imagery, not the page surface.
+          overlay: {
+            scrim: { value: "rgba(9, 9, 11, 0.9)" },
+            control: { value: "rgba(255, 255, 255, 0.12)" },
+            controlHover: { value: "rgba(255, 255, 255, 0.22)" },
+            badge: { value: "rgba(255, 255, 255, 0.86)" },
+          },
+          // CLI-hero terminal palette. Always-dark (the cast doesn't follow the
+          // site theme), so these are flat values, not semantic light/dark pairs.
+          terminal: {
+            bg: { value: "#1b1a18" },
+            head: { value: "#211f1c" },
+            border: { value: "#2e2b27" },
+            dim: { value: "#6f6a62" },
+            text: { value: "#d8d4cc" },
+            cmd: { value: "#f2efe9" },
+            muted: { value: "#8a857c" },
+            err: { value: "#e0664f" },
+          },
         },
         fonts: {
           inter: { value: '"Inter Variable", sans-serif' },
@@ -29,6 +67,14 @@ export default defineConfig({
         },
         fontSizes: {
           "10xl": { value: "10rem" },
+          // Named ramp for the redesign's recurring (3+×) sizes. One-offs (the
+          // 38px hero h1, 28px mobile h1, 18.5px lede) stay arbitrary px.
+          meta: { value: "11px" }, // mono meta: ages, slugs, related type
+          metaLg: { value: "11.5px" }, // status label, mobile pill
+          caption: { value: "12.5px" }, // figcaptions, terminal body
+          bodySm: { value: "13.5px" }, // rail facts, card/row blurb, buttons
+          body: { value: "15.5px" }, // prose paragraph
+          title: { value: "16.5px" }, // card + row project title
         },
       },
       semanticTokens: {
@@ -55,6 +101,10 @@ export default defineConfig({
             },
             subtle: {
               value: { base: "#f4f4f5", _dark: "#18181b" },
+            },
+            // Faint divider/rule hairline (section underlines, rail edges).
+            hairline: {
+              value: { base: "#ececee", _dark: "#27272a" },
             },
           },
           text: {
@@ -106,6 +156,50 @@ export default defineConfig({
         },
       },
       textStyles: {
+        // Uppercase mono micro-label (rail fact labels, "Built with").
+        "label.micro": {
+          value: {
+            fontFamily: "geist",
+            fontSize: "10px",
+            fontWeight: "500",
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+            color: "zinc.400",
+          },
+        },
+        // Section heading (Gallery head + prose <h2>s).
+        "heading.section": {
+          value: {
+            fontSize: "19px",
+            fontWeight: "700",
+            letterSpacing: "-0.01em",
+            color: "zinc.900",
+            _dark: { color: "white" },
+          },
+        },
+        // Uppercase mono section eyebrow ("Related work").
+        "label.eyebrow": {
+          value: {
+            fontFamily: "geist",
+            fontSize: "13px",
+            fontWeight: "500",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "zinc.400",
+          },
+        },
+        // Uppercase mono status label (rail + mobile summary). Caller sets the
+        // color (status hue); the rest of the recipe is shared so the three
+        // former copies of this rule can't drift.
+        "label.status": {
+          value: {
+            fontFamily: "geist",
+            fontSize: "metaLg",
+            fontWeight: "500",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          },
+        },
         "admin.pageTitle": {
           value: {
             fontSize: "xl",
@@ -261,6 +355,155 @@ export default defineConfig({
           defaultVariants: {
             variant: "surface",
             size: "md",
+          },
+        }),
+        prose: defineRecipe({
+          className: "prose",
+          description:
+            "Long-form reading rhythm over sanitized TipTap HTML. §NN markers are CSS counters on <h2>; var(--accent) tints markers, list squares, inline code and the pull-quote rule. Reused by project detail + (future) blog.",
+          base: {
+            color: "zinc.700",
+            counterReset: "rd-section",
+            _dark: { color: "zinc.300" },
+            "& h2": {
+              textStyle: "heading.section",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              counterIncrement: "rd-section",
+              m: "30px 0 12px",
+            },
+            "& h2::before": {
+              content: '"\\00a7" counter(rd-section, decimal-leading-zero)',
+              fontFamily: "geist",
+              fontSize: "caption",
+              fontWeight: "600",
+              color: "var(--accent)",
+              flexShrink: "0",
+              whiteSpace: "nowrap",
+            },
+            "& h2::after": {
+              content: '""',
+              flex: "1",
+              h: "1px",
+              bg: "border.hairline",
+            },
+            "& h3": {
+              fontSize: "17px",
+              fontWeight: "700",
+              color: "zinc.900",
+              m: "24px 0 8px",
+              _dark: { color: "zinc.100" },
+            },
+            "& h4": {
+              fontSize: "15px",
+              fontWeight: "600",
+              color: "zinc.900",
+              m: "20px 0 6px",
+              _dark: { color: "zinc.100" },
+            },
+            "& p": {
+              fontSize: "body",
+              lineHeight: "1.72",
+              color: "zinc.700",
+              m: "0 0 14px",
+              textWrap: "pretty",
+              _dark: { color: "zinc.300" },
+            },
+            "& ul": {
+              listStyle: "none",
+              p: "0",
+              m: "0 0 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            },
+            "& ul > li": {
+              position: "relative",
+              pl: "20px",
+              fontSize: "15px",
+              lineHeight: "1.6",
+              color: "zinc.700",
+              _dark: { color: "zinc.300" },
+            },
+            "& ul > li::before": {
+              content: '""',
+              position: "absolute",
+              left: "2px",
+              top: "9px",
+              w: "5px",
+              h: "5px",
+              rounded: "1px",
+              bg: "var(--accent)",
+            },
+            "& ol": {
+              listStyle: "decimal",
+              pl: "22px",
+              m: "0 0 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            },
+            "& ol > li": {
+              fontSize: "15px",
+              lineHeight: "1.6",
+              color: "zinc.700",
+              _dark: { color: "zinc.300" },
+            },
+            "& a": {
+              color: "blue.600",
+              textDecoration: "underline",
+              _dark: { color: "blue.400" },
+            },
+            "& code": {
+              fontFamily: "geist",
+              fontSize: "0.86em",
+              bg: "zinc.100",
+              borderWidth: "1px",
+              borderColor: "zinc.200",
+              rounded: "4px",
+              px: "5px",
+              py: "1px",
+              color: "var(--accent)",
+              whiteSpace: "nowrap",
+              _dark: { bg: "zinc.800", borderColor: "zinc.700" },
+            },
+            "& kbd": {
+              fontFamily: "geist",
+              fontSize: "metaLg",
+              display: "inline-flex",
+              alignItems: "center",
+              minH: "18px",
+              px: "6px",
+              py: "1px",
+              borderWidth: "1px",
+              borderBottomWidth: "2px",
+              borderColor: "zinc.300",
+              rounded: "5px",
+              bg: "surface",
+              color: "zinc.700",
+              shadow: "0 1px 0 rgba(24,24,27,.04)",
+              whiteSpace: "nowrap",
+              _dark: { borderColor: "zinc.600", color: "zinc.300" },
+            },
+            "& blockquote": {
+              position: "relative",
+              m: "22px 0",
+              p: "2px 0 2px 22px",
+              borderLeftWidth: "3px",
+              borderColor: "var(--accent)",
+              fontSize: "17.5px",
+              lineHeight: "1.55",
+              color: "zinc.800",
+              textWrap: "pretty",
+              _dark: { color: "zinc.200" },
+            },
+            "& hr": {
+              borderColor: "zinc.200",
+              my: "6",
+              _dark: { borderColor: "zinc.700" },
+            },
+            "& img": { maxW: "full", rounded: "md", my: "4" },
           },
         }),
       },

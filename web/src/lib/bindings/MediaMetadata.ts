@@ -4,4 +4,17 @@ import type { FocalPoint } from "./FocalPoint";
 /**
  * Optional metadata stored with media
  */
-export type MediaMetadata = { focalPoint?: FocalPoint, altText?: string, duration?: number, };
+export type MediaMetadata = { focalPoint?: FocalPoint, 
+/**
+ * Accessibility text (the `alt` attribute) — distinct from the visible
+ * `label`/`caption` below.
+ */
+altText?: string, 
+/**
+ * Bold title shown under a gallery tile (e.g. "Interactive masking").
+ */
+label?: string, 
+/**
+ * Gray descriptive caption shown under the `label`.
+ */
+caption?: string, duration?: number, };
