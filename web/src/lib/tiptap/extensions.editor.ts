@@ -1,8 +1,9 @@
 import StarterKit from "@tiptap/starter-kit";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { UniqueID } from "@tiptap/extension-unique-id";
 import { createLowlight, common } from "lowlight";
 import type { Extensions } from "@tiptap/core";
-import { starterKitOptions } from "./extensions";
+import { starterKitOptions, uniqueIdOptions } from "./extensions";
 
 const lowlight = createLowlight(common);
 
@@ -19,4 +20,5 @@ const lowlight = createLowlight(common);
 export const editorExtensions: Extensions = [
   StarterKit.configure({ ...starterKitOptions, codeBlock: false }),
   CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+  UniqueID.configure(uniqueIdOptions),
 ];
