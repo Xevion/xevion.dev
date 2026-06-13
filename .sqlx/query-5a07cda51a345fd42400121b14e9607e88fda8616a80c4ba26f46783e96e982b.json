@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            detail_content,\n            project_type,\n            source_closed,\n            terminal_cast,\n            accent_color\n        FROM projects\n        WHERE status != 'hidden'\n        ORDER BY COALESCE(last_github_activity, created_at) DESC\n        ",
+  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.name,\n            p.short_description,\n            p.description, \n            p.status as \"status: super::ProjectStatus\", \n            p.github_repo, \n            p.demo_url, \n            p.last_github_activity,\n            p.created_at,\n            p.updated_at,\n            p.detail_content,\n            p.project_type,\n            p.source_closed,\n            p.terminal_cast,\n            p.accent_color\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY COALESCE(p.last_github_activity, p.created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "status: ProjectStatus",
+        "name": "status: super::ProjectStatus",
         "type_info": {
           "Custom": {
             "name": "project_status",
@@ -67,32 +67,39 @@
       },
       {
         "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
         "name": "detail_content",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "project_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "source_closed",
         "type_info": "Bool"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "terminal_cast",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "accent_color",
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -105,6 +112,7 @@
       true,
       true,
       false,
+      false,
       true,
       true,
       false,
@@ -112,5 +120,5 @@
       true
     ]
   },
-  "hash": "7b225562e346be809b61450685d579fbacc930a0cef5d5f6219f70a1015e02a5"
+  "hash": "5a07cda51a345fd42400121b14e9607e88fda8616a80c4ba26f46783e96e982b"
 }

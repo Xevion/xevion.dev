@@ -1,5 +1,6 @@
 use nu_ansi_term::{Color, Style};
 
+use crate::content::ContentDoc;
 use crate::db::{ApiAdminProject, ApiSiteSettings, ApiTag, ApiTagWithCount};
 
 /// Print a success message
@@ -108,6 +109,51 @@ pub fn print_projects_table(projects: &[ApiAdminProject]) {
 
     println!();
     info(&format!("{} project(s)", projects.len()));
+}
+
+/// Print a content document's blocks as a table (id, type, preview).
+pub fn print_blocks(doc: &ContentDoc) {
+    if doc.blocks.is_empty() {
+        info("No content blocks");
+        return;
+    }
+
+    let header = Style::new().bold().underline();
+    let dim = Style::new().dimmed();
+
+    let id_width = doc
+        .blocks
+        .iter()
+        .map(|b| b.id.len())
+        .max()
+        .unwrap_or(2)
+        .max(2);
+    let type_width = doc
+        .blocks
+        .iter()
+        .map(|b| b.r#type.len())
+        .max()
+        .unwrap_or(4)
+        .max(4);
+
+    println!(
+        "{:id_width$}  {:type_width$}  {}",
+        header.paint("ID"),
+        header.paint("TYPE"),
+        header.paint("PREVIEW"),
+    );
+
+    for block in &doc.blocks {
+        println!(
+            "{:id_width$}  {:type_width$}  {}",
+            dim.paint(&block.id),
+            block.r#type,
+            dim.paint(block.preview()),
+        );
+    }
+
+    println!();
+    info(&format!("{} block(s)", doc.blocks.len()));
 }
 
 /// Print a tag in formatted output

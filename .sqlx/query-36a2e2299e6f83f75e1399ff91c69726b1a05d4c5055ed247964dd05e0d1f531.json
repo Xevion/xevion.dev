@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4, description = $5,\n            status = $6, github_repo = $7, demo_url = $8, detail_content = $9,\n            project_type = $10, source_closed = $11, terminal_cast = $12, accent_color = $13\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color\n        ",
+  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4, description = $5,\n            status = $6, github_repo = $7, demo_url = $8, detail_content = $9,\n            project_type = $10, source_closed = $11, terminal_cast = $12, accent_color = $13\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color\n        ",
   "describe": {
     "columns": [
       {
@@ -67,26 +67,31 @@
       },
       {
         "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
         "name": "detail_content",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "project_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "source_closed",
         "type_info": "Bool"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "terminal_cast",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "accent_color",
         "type_info": "Text"
       }
@@ -131,6 +136,7 @@
       true,
       true,
       false,
+      false,
       true,
       true,
       false,
@@ -138,5 +144,5 @@
       true
     ]
   },
-  "hash": "aa655c73ee970c5b6e16a68ee8d03573912128d91807b4866a852f0349260fdb"
+  "hash": "36a2e2299e6f83f75e1399ff91c69726b1a05d4c5055ed247964dd05e0d1f531"
 }

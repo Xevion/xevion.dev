@@ -191,6 +191,30 @@ impl ApiClient {
         self.put(path, body).await
     }
 
+    /// Make a PATCH request with JSON body
+    pub async fn patch<T: Serialize>(&self, path: &str, body: &T) -> Result<Response, ApiError> {
+        let mut request = self.client.patch(self.url(path)).json(body);
+
+        if let Some(session) = &self.session {
+            request = request.header("Cookie", format!("admin_session={}", session.session_token));
+        }
+
+        let response = request.send().await?;
+        Ok(response)
+    }
+
+    /// Make an authenticated PATCH request
+    pub async fn patch_auth<T: Serialize>(
+        &self,
+        path: &str,
+        body: &T,
+    ) -> Result<Response, ApiError> {
+        if !self.is_authenticated() {
+            return Err(ApiError::Unauthorized);
+        }
+        self.patch(path, body).await
+    }
+
     /// Make a DELETE request
     pub async fn delete(&self, path: &str) -> Result<Response, ApiError> {
         let mut request = self.client.delete(self.url(path));

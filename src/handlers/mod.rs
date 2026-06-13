@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod auth;
+pub mod content;
 pub mod events;
 pub mod health;
 pub mod icons;
@@ -10,6 +11,7 @@ pub mod tags;
 
 pub use assets::*;
 pub use auth::*;
+pub use content::*;
 pub use events::*;
 pub use health::*;
 pub use icons::*;

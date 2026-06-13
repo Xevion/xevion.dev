@@ -16,6 +16,12 @@ import type { TerminalCast } from "./TerminalCast";
  */
 export type ApiProjectDetail = { 
 /**
+ * When an authored/editorial field last changed (RFC 3339). Surfaced so the
+ * admin authoring UI can show a "last edited" signal; background
+ * GitHub-activity syncs do not affect it.
+ */
+updatedAt: string, 
+/**
  * `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
  */
 detailContent?: unknown, 

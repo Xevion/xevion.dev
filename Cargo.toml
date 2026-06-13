@@ -79,3 +79,8 @@ too_many_lines = "allow"
 
 # Hurts locality for small helper types/functions tightly scoped to one call site.
 items_after_statements = "allow"
+
+# False positive for types carrying `serde_json::Value` (which has no `Eq`): the
+# lint suggests deriving `Eq` even where it cannot compile. Our content blocks
+# derive `PartialEq` for tests but hold opaque JSON `data`.
+derive_partial_eq_without_eq = "allow"

@@ -316,6 +316,7 @@ pub async fn get_projects_for_tag(
             p.demo_url, 
             p.last_github_activity,
             p.created_at,
+            p.updated_at,
             p.detail_content,
             p.project_type,
             p.source_closed,

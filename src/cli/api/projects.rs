@@ -72,6 +72,7 @@ pub async fn run(
             .await
         }
         ProjectsCommand::Delete { reference } => delete(client, &reference, json).await,
+        ProjectsCommand::Content(cmd) => super::content::run(client, cmd, json).await,
     }
 }
 

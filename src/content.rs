@@ -1,10 +1,8 @@
-//! Detail-page body model: an ordered list of addressable blocks.
+//! Detail-page body model: an ordered list of `{ id, type, data }` blocks.
 //!
-//! A block is `{ id, type, data }` where `data` is opaque to the backend — all
-//! type-specific meaning (rendering, validation, editing) lives in the frontend
-//! registry. The backend only enforces structural invariants (unique ids,
-//! non-empty types, resolvable anchors) and applies one mutation at a time, so
-//! clients never resend the whole document.
+//! `data` is opaque to the backend — type-specific meaning lives in the frontend
+//! registry. The backend enforces only structural invariants (unique ids,
+//! non-empty types, resolvable anchors) and applies one op at a time.
 
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +14,18 @@ pub struct Block {
     #[serde(rename = "type")]
     pub r#type: String,
     pub data: serde_json::Value,
+}
+
+impl Block {
+    /// A one-line, 60-char preview: prose markdown if present, else compact JSON.
+    pub fn preview(&self) -> String {
+        let text = self
+            .data
+            .get("md")
+            .and_then(|v| v.as_str())
+            .map_or_else(|| self.data.to_string(), str::to_string);
+        text.lines().next().unwrap_or("").chars().take(60).collect()
+    }
 }
 
 /// A new block's content for `insert`. The store owns the `id`, so it isn't
@@ -45,6 +55,27 @@ pub enum Anchor {
     End,
     After { id: String },
     Before { id: String },
+}
+
+impl Anchor {
+    /// Parse the CLI anchor syntax: `start`, `end`, `after:<id>`, `before:<id>`.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        if s == "start" {
+            return Ok(Self::Start);
+        }
+        if s == "end" {
+            return Ok(Self::End);
+        }
+        if let Some(id) = s.strip_prefix("after:").filter(|id| !id.is_empty()) {
+            return Ok(Self::After { id: id.to_string() });
+        }
+        if let Some(id) = s.strip_prefix("before:").filter(|id| !id.is_empty()) {
+            return Ok(Self::Before { id: id.to_string() });
+        }
+        Err(format!(
+            "invalid position \"{s}\"; use start, end, after:<id>, or before:<id>"
+        ))
+    }
 }
 
 /// The body document: an ordered list of blocks. Stored as the project's
@@ -97,24 +128,16 @@ pub fn generate_block_id() -> String {
 }
 
 impl ContentDoc {
-    /// An empty document.
-    pub fn new() -> Self {
-        Self { blocks: Vec::new() }
-    }
-
-    /// Parse a document out of a stored `detail_content` JSONB value. Missing
-    /// (`None`) or anything that isn't a valid block document (e.g. a legacy
-    /// TipTap doc) degrades to an empty document rather than failing — the page
-    /// renders its shell instead of erroring.
+    /// Parse a stored `detail_content` value. Anything invalid (missing, a legacy
+    /// `TipTap` doc, garbage) degrades to an empty document rather than failing.
     pub fn from_stored(value: Option<&serde_json::Value>) -> Self {
         value
             .and_then(|v| serde_json::from_value::<Self>(v.clone()).ok())
             .unwrap_or_default()
     }
 
-    /// Serialize for storage in the project's `detail_content` JSONB. An empty
-    /// document persists as `None` (SQL `NULL`) rather than `{"blocks":[]}`, so a
-    /// project with no body reads as having no detail content.
+    /// Serialize for storage; an empty document is `None` (SQL `NULL`), not
+    /// `{"blocks":[]}`, so a project with no body reads as having no content.
     pub fn to_stored(&self) -> Option<serde_json::Value> {
         if self.blocks.is_empty() {
             None
@@ -130,6 +153,19 @@ impl ContentDoc {
 
     fn index_of(&self, id: &str) -> Option<usize> {
         self.blocks.iter().position(|b| b.id == id)
+    }
+
+    /// The block occupying the slot an anchor points at: the first/last block for
+    /// `Start`/`End`, or the block immediately after/before a relative anchor.
+    /// `None` when the slot is past an edge or the referenced id is missing.
+    pub fn block_at_anchor(&self, anchor: &Anchor) -> Option<&Block> {
+        let idx = match anchor {
+            Anchor::Start => 0,
+            Anchor::End => self.blocks.len().checked_sub(1)?,
+            Anchor::After { id } => self.index_of(id)? + 1,
+            Anchor::Before { id } => self.index_of(id)?.checked_sub(1)?,
+        };
+        self.blocks.get(idx)
     }
 
     /// Resolve an anchor to an insertion index in the current list.
@@ -196,10 +232,10 @@ impl ContentDoc {
 
     /// Move an existing block to `anchor`.
     pub fn move_block(&mut self, id: &str, anchor: &Anchor) -> Result<(), ContentError> {
-        if let Anchor::After { id: target } | Anchor::Before { id: target } = anchor {
-            if target == id {
-                return Err(ContentError::SelfAnchor);
-            }
+        if let Anchor::After { id: target } | Anchor::Before { id: target } = anchor
+            && target == id
+        {
+            return Err(ContentError::SelfAnchor);
         }
         let from = self
             .index_of(id)
@@ -275,22 +311,25 @@ mod tests {
     }
 
     fn seed() -> ContentDoc {
-        let mut doc = ContentDoc::new();
+        let mut doc = ContentDoc::default();
         doc.insert(&Anchor::End, prose("one"), "a".into()).unwrap();
         doc.insert(&Anchor::End, prose("two"), "b".into()).unwrap();
-        doc.insert(&Anchor::End, prose("three"), "c".into()).unwrap();
+        doc.insert(&Anchor::End, prose("three"), "c".into())
+            .unwrap();
         doc
     }
 
     #[test]
     fn new_doc_is_empty() {
-        assert!(ContentDoc::new().blocks.is_empty());
+        assert!(ContentDoc::default().blocks.is_empty());
     }
 
     #[test]
     fn insert_into_empty_doc_adds_one_block() {
-        let mut doc = ContentDoc::new();
-        let created = doc.insert(&Anchor::End, prose("hello"), "x1".into()).unwrap();
+        let mut doc = ContentDoc::default();
+        let created = doc
+            .insert(&Anchor::End, prose("hello"), "x1".into())
+            .unwrap();
         assert_eq!(created.id, "x1");
         assert_eq!(created.r#type, "prose");
         assert_eq!(created.data, json!({ "md": "hello" }));
@@ -316,7 +355,8 @@ mod tests {
     #[test]
     fn insert_start_prepends() {
         let mut doc = seed();
-        doc.insert(&Anchor::Start, prose("first"), "z".into()).unwrap();
+        doc.insert(&Anchor::Start, prose("first"), "z".into())
+            .unwrap();
         assert_eq!(ids(&doc), vec!["z", "a", "b", "c"]);
     }
 
@@ -331,7 +371,7 @@ mod tests {
 
     #[test]
     fn insert_with_empty_type_is_rejected() {
-        let mut doc = ContentDoc::new();
+        let mut doc = ContentDoc::default();
         let input = BlockInput {
             r#type: "  ".into(),
             data: json!({}),
@@ -421,14 +461,16 @@ mod tests {
     #[test]
     fn move_after_reorders() {
         let mut doc = seed();
-        doc.move_block("a", &Anchor::After { id: "b".into() }).unwrap();
+        doc.move_block("a", &Anchor::After { id: "b".into() })
+            .unwrap();
         assert_eq!(ids(&doc), vec!["b", "a", "c"]);
     }
 
     #[test]
     fn move_before_reorders() {
         let mut doc = seed();
-        doc.move_block("c", &Anchor::Before { id: "a".into() }).unwrap();
+        doc.move_block("c", &Anchor::Before { id: "a".into() })
+            .unwrap();
         assert_eq!(ids(&doc), vec!["c", "a", "b"]);
     }
 
@@ -477,7 +519,7 @@ mod tests {
 
     #[test]
     fn apply_insert_uses_generated_id_and_returns_block() {
-        let mut doc = ContentDoc::new();
+        let mut doc = ContentDoc::default();
         let op = ContentOp::Insert {
             anchor: Anchor::End,
             block: prose("hi"),
@@ -497,7 +539,9 @@ mod tests {
                 data: json!({ "md": "changed" }),
             },
         };
-        let updated = doc.apply(op, || unreachable!("set must not generate an id")).unwrap();
+        let updated = doc
+            .apply(op, || unreachable!("set must not generate an id"))
+            .unwrap();
         assert_eq!(updated.id, "b");
         assert_eq!(updated.r#type, "prose");
         assert_eq!(updated.data, json!({ "md": "changed" }));
@@ -556,7 +600,9 @@ mod tests {
         let mut doc = seed(); // a, b, c
         let ops = vec![
             ContentOp::Delete { id: "a".into() },
-            ContentOp::Delete { id: "missing".into() }, // fails here
+            ContentOp::Delete {
+                id: "missing".into(),
+            }, // fails here
         ];
         let err = doc
             .apply_all(ops, || unreachable!("no inserts in this batch"))
@@ -576,7 +622,7 @@ mod tests {
 
     #[test]
     fn apply_all_can_reference_a_block_inserted_earlier_in_the_same_batch() {
-        let mut doc = ContentDoc::new();
+        let mut doc = ContentDoc::default();
         let mut n = 0;
         let next_id = || {
             n += 1;
@@ -602,7 +648,7 @@ mod tests {
 
     #[test]
     fn apply_all_assigns_distinct_ids_to_multiple_inserts() {
-        let mut doc = ContentDoc::new();
+        let mut doc = ContentDoc::default();
         let mut n = 0;
         let next_id = || {
             n += 1;
@@ -620,6 +666,97 @@ mod tests {
         ];
         doc.apply_all(ops, next_id).unwrap();
         assert_eq!(ids(&doc), vec!["g1", "g2"]);
+    }
+
+    #[test]
+    fn anchor_parse_keywords_and_relative() {
+        assert_eq!(Anchor::parse("start").unwrap(), Anchor::Start);
+        assert_eq!(Anchor::parse("end").unwrap(), Anchor::End);
+        assert_eq!(
+            Anchor::parse("after:b").unwrap(),
+            Anchor::After { id: "b".into() }
+        );
+        assert_eq!(
+            Anchor::parse("before:c").unwrap(),
+            Anchor::Before { id: "c".into() }
+        );
+    }
+
+    #[test]
+    fn anchor_parse_rejects_garbage_and_empty_ids() {
+        assert!(Anchor::parse("sideways").is_err());
+        assert!(Anchor::parse("after").is_err());
+        assert!(Anchor::parse("after:").is_err());
+        assert!(Anchor::parse("before:").is_err());
+    }
+
+    #[test]
+    fn block_at_anchor_resolves_positions() {
+        let doc = seed(); // a, b, c
+        assert_eq!(doc.block_at_anchor(&Anchor::Start).unwrap().id, "a");
+        assert_eq!(doc.block_at_anchor(&Anchor::End).unwrap().id, "c");
+        assert_eq!(
+            doc.block_at_anchor(&Anchor::After { id: "b".into() })
+                .unwrap()
+                .id,
+            "c"
+        );
+        assert_eq!(
+            doc.block_at_anchor(&Anchor::Before { id: "b".into() })
+                .unwrap()
+                .id,
+            "a"
+        );
+    }
+
+    #[test]
+    fn block_at_anchor_edges_and_misses_are_none() {
+        let doc = seed();
+        assert!(
+            doc.block_at_anchor(&Anchor::After { id: "c".into() })
+                .is_none()
+        );
+        assert!(
+            doc.block_at_anchor(&Anchor::Before { id: "a".into() })
+                .is_none()
+        );
+        assert!(
+            doc.block_at_anchor(&Anchor::After { id: "zzz".into() })
+                .is_none()
+        );
+        let empty = ContentDoc::default();
+        assert!(empty.block_at_anchor(&Anchor::Start).is_none());
+        assert!(empty.block_at_anchor(&Anchor::End).is_none());
+    }
+
+    #[test]
+    fn preview_uses_prose_markdown_first_line() {
+        let b = Block {
+            id: "x".into(),
+            r#type: "prose".into(),
+            data: json!({ "md": "first line\nsecond" }),
+        };
+        assert_eq!(b.preview(), "first line");
+    }
+
+    #[test]
+    fn preview_falls_back_to_compact_json_for_non_prose() {
+        let b = Block {
+            id: "x".into(),
+            r#type: "code".into(),
+            data: json!({ "lang": "rust" }),
+        };
+        assert_eq!(b.preview(), r#"{"lang":"rust"}"#);
+    }
+
+    #[test]
+    fn preview_caps_at_sixty_chars() {
+        let b = Block {
+            id: "x".into(),
+            r#type: "prose".into(),
+            data: json!({ "md": "a".repeat(100) }),
+        };
+        assert_eq!(b.preview().chars().count(), 60);
     }
 
     #[test]
@@ -723,7 +860,8 @@ mod tests {
         let id = generate_block_id();
         assert_eq!(id.len(), 8, "id was {id:?}");
         assert!(
-            id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
+            id.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
             "id {id:?} has out-of-alphabet chars"
         );
     }
@@ -737,7 +875,7 @@ mod tests {
 
     #[test]
     fn from_stored_none_is_empty() {
-        assert_eq!(ContentDoc::from_stored(None), ContentDoc::new());
+        assert_eq!(ContentDoc::from_stored(None), ContentDoc::default());
     }
 
     #[test]
@@ -753,14 +891,17 @@ mod tests {
             "type": "doc",
             "content": [{ "type": "paragraph", "content": [] }]
         });
-        assert_eq!(ContentDoc::from_stored(Some(&legacy)), ContentDoc::new());
+        assert_eq!(
+            ContentDoc::from_stored(Some(&legacy)),
+            ContentDoc::default()
+        );
     }
 
     #[test]
     fn from_stored_garbage_is_empty() {
         assert_eq!(
             ContentDoc::from_stored(Some(&json!("nonsense"))),
-            ContentDoc::new()
+            ContentDoc::default()
         );
     }
 
@@ -768,14 +909,19 @@ mod tests {
     fn to_stored_empty_doc_is_none() {
         // An empty document persists as SQL NULL, not `{"blocks":[]}`, so a
         // project with no body still reads as having no detail content.
-        assert_eq!(ContentDoc::new().to_stored(), None);
+        assert_eq!(ContentDoc::default().to_stored(), None);
     }
 
     #[test]
     fn to_stored_nonempty_doc_is_some_blocks() {
         let doc = seed();
-        let stored = doc.to_stored().expect("non-empty doc should persist a value");
-        assert_eq!(stored, json!({ "blocks": serde_json::to_value(&doc.blocks).unwrap() }));
+        let stored = doc
+            .to_stored()
+            .expect("non-empty doc should persist a value");
+        assert_eq!(
+            stored,
+            json!({ "blocks": serde_json::to_value(&doc.blocks).unwrap() })
+        );
     }
 
     #[test]

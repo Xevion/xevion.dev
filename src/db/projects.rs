@@ -26,6 +26,8 @@ pub struct DbProject {
     pub demo_url: Option<String>,
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
+    /// Last authored edit; the DB trigger excludes background GitHub syncs.
+    pub updated_at: OffsetDateTime,
     pub detail_content: Option<serde_json::Value>,
     /// Authored primary label ("CLI Tool", "Web App", …). Replaces the old
     /// tag-derived "Language" field.
@@ -132,6 +134,8 @@ pub struct ApiAdminProject {
 pub struct ApiProjectDetail {
     #[serde(flatten)]
     pub project: ApiAdminProject,
+    /// Last authored edit (RFC 3339), for a "last edited" signal in the editor.
+    pub updated_at: String,
     /// `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional, type = "unknown")]
@@ -210,6 +214,10 @@ impl DbProject {
     ) -> AppResult<ApiProjectDetail> {
         Ok(ApiProjectDetail {
             project: self.to_api_admin_project(tags, media)?,
+            updated_at: self
+                .updated_at
+                .format(&Rfc3339)
+                .map_err(|e| AppError::Internal(e.to_string()))?,
             detail_content: self.detail_content.clone(),
             terminal_cast: self
                 .terminal_cast
@@ -245,6 +253,7 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             demo_url,
             last_github_activity,
             created_at,
+            updated_at,
             detail_content,
             project_type,
             source_closed,
@@ -306,6 +315,7 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             demo_url,
             last_github_activity,
             created_at,
+            updated_at,
             detail_content,
             project_type,
             source_closed,
@@ -367,6 +377,7 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             demo_url,
             last_github_activity,
             created_at,
+            updated_at,
             detail_content,
             project_type,
             source_closed,
@@ -417,6 +428,7 @@ pub async fn get_project_by_slug(
             demo_url,
             last_github_activity,
             created_at,
+            updated_at,
             detail_content,
             project_type,
             source_closed,
@@ -493,7 +505,7 @@ pub async fn create_project(
         INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, detail_content,
+                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
                   project_type, source_closed, terminal_cast, accent_color
         "#,
         slug,
@@ -532,7 +544,7 @@ pub async fn update_project(
             project_type = $10, source_closed = $11, terminal_cast = $12, accent_color = $13
         WHERE id = $1
         RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, detail_content,
+                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
                   project_type, source_closed, terminal_cast, accent_color
         "#,
         id,
@@ -551,6 +563,25 @@ pub async fn update_project(
     )
     .fetch_one(pool)
     .await
+}
+
+/// Persist a project's detail-content document, replacing only the
+/// `detail_content` column. `content` is `None` for an empty document (see
+/// [`crate::content::ContentDoc::to_stored`]), which stores SQL `NULL` so the
+/// project reads as having no detail page.
+pub async fn update_project_content(
+    pool: &PgPool,
+    id: Uuid,
+    content: Option<&serde_json::Value>,
+) -> Result<(), sqlx::Error> {
+    query!(
+        "UPDATE projects SET detail_content = $1 WHERE id = $2",
+        content as Option<&serde_json::Value>,
+        id
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 /// Delete project (CASCADE will handle tags)
@@ -621,6 +652,7 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             demo_url,
             last_github_activity,
             created_at,
+            updated_at,
             detail_content,
             project_type,
             source_closed,

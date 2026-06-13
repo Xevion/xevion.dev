@@ -1,0 +1,89 @@
+use axum::{
+    Json,
+    extract::{Path, State},
+    response::IntoResponse,
+};
+use std::sync::Arc;
+
+use crate::{
+    auth,
+    content::{ContentDoc, ContentError, ContentOp, generate_block_id},
+    db,
+    events::{self, EventLevel, EventType},
+    state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt},
+};
+
+// Block-level failures are about the request payload, not the project resource
+// (which we've already resolved), so they map to 4xx, never 404.
+impl From<ContentError> for AppError {
+    fn from(err: ContentError) -> Self {
+        match err {
+            ContentError::NotFound(id) => {
+                Self::validation(format!("block \"{id}\" does not exist"))
+            }
+            ContentError::DuplicateId(id) => {
+                Self::Conflict(format!("block id \"{id}\" already exists"))
+            }
+            ContentError::SelfAnchor => Self::validation("a block cannot anchor to itself"),
+            ContentError::EmptyType => Self::field("type", "block type cannot be empty"),
+        }
+    }
+}
+
+/// GET the block document. Hidden projects 404 for non-admins.
+#[tracing::instrument(skip_all, fields(ref_str))]
+pub async fn get_project_content_handler(
+    State(state): State<Arc<AppState>>,
+    Path(ref_str): Path<String>,
+    jar: axum_extra::extract::CookieJar,
+) -> AppResult<impl IntoResponse> {
+    let is_admin = auth::check_session(&state, &jar).is_some();
+    let project = db::get_project_by_ref(&state.pool, &ref_str)
+        .await?
+        .or_not_found()?;
+
+    if project.status == db::ProjectStatus::Hidden && !is_admin {
+        return Err(AppError::NotFound);
+    }
+
+    Ok(Json(ContentDoc::from_stored(
+        project.detail_content.as_ref(),
+    )))
+}
+
+/// PATCH an atomic batch of block ops; returns the full updated document.
+#[tracing::instrument(skip_all, fields(ref_str))]
+pub async fn patch_project_content_handler(
+    State(state): State<Arc<AppState>>,
+    Path(ref_str): Path<String>,
+    session: AdminSession,
+    Json(ops): Json<Vec<ContentOp>>,
+) -> AppResult<impl IntoResponse> {
+    let project = db::get_project_by_ref(&state.pool, &ref_str)
+        .await?
+        .or_not_found()?;
+
+    let mut doc = ContentDoc::from_stored(project.detail_content.as_ref());
+    doc.apply_all(ops, generate_block_id)?;
+    db::update_project_content(&state.pool, project.id, doc.to_stored().as_ref()).await?;
+
+    tracing::info!(project_id = %project.id, "Project content updated");
+    events::log_event(
+        &state.event_sender,
+        EventType::ProjectUpdated,
+        EventLevel::Info,
+        Some("project"),
+        Some(project.id),
+        Some(&session.0.username),
+        format!("Project content updated: {}", project.name),
+        None,
+    );
+
+    state.isr_cache.invalidate("/").await;
+    state
+        .isr_cache
+        .invalidate(&format!("/projects/{}", project.slug))
+        .await;
+
+    Ok(Json(doc))
+}

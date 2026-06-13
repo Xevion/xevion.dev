@@ -31,6 +31,11 @@ pub fn api_routes() -> Router<Arc<AppState>> {
                 .delete(handlers::delete_project_handler),
         )
         .route(
+            "/projects/{ref}/content",
+            get(handlers::get_project_content_handler)
+                .patch(handlers::patch_project_content_handler),
+        )
+        .route(
             "/projects/{ref}/tags",
             get(handlers::get_project_tags_handler).post(handlers::add_project_tag_handler),
         )
