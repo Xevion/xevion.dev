@@ -6,7 +6,6 @@ mod auth;
 mod cache;
 mod cli;
 mod config;
-mod content;
 mod db;
 mod encoding;
 mod events;

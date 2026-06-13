@@ -6,6 +6,7 @@ use crate::{
     events::{self, EventLevel, EventType},
     github,
     handlers::{AddProjectTagRequest, CreateProjectRequest, UpdateProjectRequest},
+    pm::Doc,
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
 };
 
@@ -88,6 +89,16 @@ pub async fn create_project_handler(
         .transpose()
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+    // Validate the submitted detail document against the schema (rejecting it
+    // with a 400 if malformed) and store its canonical form — an empty body
+    // normalizes to NULL, exactly like the /content ops path.
+    let detail_content = payload
+        .detail_content
+        .as_ref()
+        .map(Doc::parse)
+        .transpose()?
+        .and_then(|doc| doc.to_stored());
+
     let project = db::create_project(
         &state.pool,
         db::ProjectInput {
@@ -98,7 +109,7 @@ pub async fn create_project_handler(
             status: payload.status,
             github_repo: payload.github_repo.as_deref(),
             demo_url: payload.demo_url.as_deref(),
-            detail_content: payload.detail_content.as_ref(),
+            detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
             source_closed: payload.source_closed,
             terminal_cast: terminal_cast.as_ref(),
@@ -191,6 +202,16 @@ pub async fn update_project_handler(
         .transpose()
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
+    // Validate the submitted detail document against the schema (rejecting it
+    // with a 400 if malformed) and store its canonical form — an empty body
+    // normalizes to NULL, exactly like the /content ops path.
+    let detail_content = payload
+        .detail_content
+        .as_ref()
+        .map(Doc::parse)
+        .transpose()?
+        .and_then(|doc| doc.to_stored());
+
     let project = db::update_project(
         &state.pool,
         project_id,
@@ -202,7 +223,7 @@ pub async fn update_project_handler(
             status: payload.status,
             github_repo: payload.github_repo.as_deref(),
             demo_url: payload.demo_url.as_deref(),
-            detail_content: payload.detail_content.as_ref(),
+            detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
             source_closed: payload.source_closed,
             terminal_cast: terminal_cast.as_ref(),

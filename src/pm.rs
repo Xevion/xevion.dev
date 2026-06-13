@@ -40,6 +40,10 @@ pub struct Node {
 /// Why a document failed validation. Each maps to a 4xx on the write path.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PmError {
+    /// The value isn't a well-formed `ProseMirror` node at all (it failed to
+    /// deserialize). Only the strict write path ([`Doc::parse`]) raises this;
+    /// reads ([`Doc::from_stored`]) degrade to an empty document instead.
+    Malformed(String),
     /// The root node is not a `doc`.
     NotADoc(String),
     /// A node type outside the schema.
@@ -65,6 +69,9 @@ pub enum PmError {
 impl std::fmt::Display for PmError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Malformed(detail) => {
+                write!(f, "detail content is not a valid document: {detail}")
+            }
             Self::NotADoc(found) => {
                 write!(f, "document root must be a \"doc\" node, found \"{found}\"")
             }
@@ -418,6 +425,17 @@ impl Doc {
             .and_then(|v| serde_json::from_value::<Node>(v.clone()).ok())
             .filter(|node| node.r#type == "doc")
             .map_or_else(Self::default, Self)
+    }
+
+    /// Strictly parse client-supplied detail content. Unlike [`Self::from_stored`]
+    /// — which tolerantly degrades anything invalid to an empty document for
+    /// trusted reads — this rejects malformed or schema-violating input, so the
+    /// write path surfaces a 4xx rather than silently dropping the body.
+    pub fn parse(value: &Value) -> Result<Self, PmError> {
+        let node: Node =
+            serde_json::from_value(value.clone()).map_err(|e| PmError::Malformed(e.to_string()))?;
+        node.validate_document()?;
+        Ok(Self(node))
     }
 
     /// Serialize for storage; an empty document is `None` (SQL `NULL`), so a
@@ -842,6 +860,58 @@ mod op_tests {
         let doc = Doc::default();
         assert!(doc.0.content.is_empty());
         assert_eq!(doc.0.r#type, "doc");
+    }
+
+    #[test]
+    fn parse_accepts_a_valid_document() {
+        let value = json!({
+            "type": "doc",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "hi" }] }]
+        });
+        let doc = Doc::parse(&value).expect("a valid document parses");
+        assert_eq!(doc.blocks().len(), 1);
+    }
+
+    #[test]
+    fn parse_rejects_a_non_doc_root() {
+        let value = json!({ "type": "paragraph" });
+        assert_eq!(
+            Doc::parse(&value),
+            Err(PmError::NotADoc("paragraph".into()))
+        );
+    }
+
+    #[test]
+    fn parse_rejects_a_schema_violation() {
+        let value = json!({ "type": "doc", "content": [{ "type": "bogus" }] });
+        assert_eq!(
+            Doc::parse(&value),
+            Err(PmError::UnknownNode("bogus".into()))
+        );
+    }
+
+    #[test]
+    fn parse_rejects_values_that_are_not_a_node() {
+        // `from_stored` degrades each of these to an empty doc; `parse` must
+        // reject them so a write can't silently store nothing.
+        for value in [
+            json!(42),
+            json!("nope"),
+            json!({}),
+            json!({ "content": [] }),
+        ] {
+            assert!(
+                matches!(Doc::parse(&value), Err(PmError::Malformed(_))),
+                "expected Malformed for {value}"
+            );
+        }
+    }
+
+    #[test]
+    fn parse_is_stricter_than_from_stored() {
+        let garbage = json!({ "not": "a node" });
+        assert!(Doc::from_stored(Some(&garbage)).blocks().is_empty());
+        assert!(Doc::parse(&garbage).is_err());
     }
 
     #[test]

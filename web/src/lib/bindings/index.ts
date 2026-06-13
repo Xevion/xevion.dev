@@ -1,7 +1,6 @@
 // Auto-generated barrel file — do not edit manually.
 // Regenerate with: just bindings
 export type { AdminStats } from "./AdminStats";
-export type { Anchor } from "./Anchor";
 export type { ApiAdminProject } from "./ApiAdminProject";
 export type { ApiEvent } from "./ApiEvent";
 export type { ApiMediaVariant } from "./ApiMediaVariant";
@@ -18,11 +17,6 @@ export type { ApiSocialLink } from "./ApiSocialLink";
 export type { ApiTag } from "./ApiTag";
 export type { ApiTagWithCount } from "./ApiTagWithCount";
 export type { ApiVideoOriginal } from "./ApiVideoOriginal";
-export type { Block } from "./Block";
-export type { BlockInput } from "./BlockInput";
-export type { BlockPatch } from "./BlockPatch";
-export type { ContentDoc } from "./ContentDoc";
-export type { ContentOp } from "./ContentOp";
 export type { EventLevel } from "./EventLevel";
 export type { EventType } from "./EventType";
 export type { FocalPoint } from "./FocalPoint";

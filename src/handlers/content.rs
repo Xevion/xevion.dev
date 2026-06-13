@@ -8,9 +8,17 @@ use std::sync::Arc;
 use crate::{
     auth, db,
     events::{self, EventLevel, EventType},
-    pm::{Doc, DocOp, OpError, generate_block_id},
+    pm::{Doc, DocOp, OpError, PmError, generate_block_id},
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt},
 };
+
+// A schema failure is about the submitted document, not the resolved project
+// resource, so it's a 400 — shared by the ops path and the create/update path.
+impl From<PmError> for AppError {
+    fn from(err: PmError) -> Self {
+        Self::validation(err.to_string())
+    }
+}
 
 // Block-level failures are about the request payload, not the project resource
 // (which we've already resolved), so they map to 4xx, never 404.
@@ -20,7 +28,7 @@ impl From<OpError> for AppError {
             OpError::NotFound(id) => Self::validation(format!("block \"{id}\" does not exist")),
             OpError::DuplicateId(id) => Self::Conflict(format!("block id \"{id}\" already exists")),
             OpError::SelfAnchor => Self::validation("a block cannot anchor to itself"),
-            OpError::Invalid(schema_err) => Self::validation(schema_err.to_string()),
+            OpError::Invalid(schema_err) => schema_err.into(),
         }
     }
 }

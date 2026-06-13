@@ -567,8 +567,8 @@ pub async fn update_project(
 
 /// Persist a project's detail-content document, replacing only the
 /// `detail_content` column. `content` is `None` for an empty document (see
-/// [`crate::content::ContentDoc::to_stored`]), which stores SQL `NULL` so the
-/// project reads as having no detail page.
+/// [`crate::pm::Doc::to_stored`]), which stores SQL `NULL` so the project reads
+/// as having no detail page.
 pub async fn update_project_content(
     pool: &PgPool,
     id: Uuid,
