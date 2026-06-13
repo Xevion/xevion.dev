@@ -15,6 +15,7 @@ mod handlers;
 mod health;
 mod http;
 mod icon_cache;
+mod markdown;
 mod media_processing;
 mod middleware;
 mod og;

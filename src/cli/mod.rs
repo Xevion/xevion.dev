@@ -205,7 +205,7 @@ pub enum ProjectContentCommand {
         locator: Option<String>,
     },
 
-    /// Insert a new block from a ProseMirror node
+    /// Insert new block(s), authored as Markdown (--md) or a raw node (--node)
     Insert {
         /// Project slug or UUID
         #[arg(name = "ref")]
@@ -213,21 +213,27 @@ pub enum ProjectContentCommand {
         /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long, default_value = "end")]
         at: String,
-        /// The block as a ProseMirror node, e.g. '{"type":"paragraph","content":[{"type":"text","text":"Hi"}]}'
-        #[arg(long)]
-        node: String,
+        /// Block(s) as Markdown, e.g. '## Heading' or 'A line with **bold**.'
+        #[arg(long, conflicts_with = "node")]
+        md: Option<String>,
+        /// Raw ProseMirror node JSON (escape hatch), e.g. '{"type":"paragraph",...}'
+        #[arg(long, required_unless_present = "md")]
+        node: Option<String>,
     },
 
-    /// Replace a block with a new ProseMirror node, keeping its position and id
+    /// Replace a block, authored as Markdown (--md) or a raw node (--node)
     Replace {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
         /// Block locator: a path like .3 or .3.0, or a block id
         locator: String,
-        /// The replacement block as a ProseMirror node JSON object
-        #[arg(long)]
-        node: String,
+        /// Replacement as Markdown; multiple blocks replace the target then follow it
+        #[arg(long, conflicts_with = "node")]
+        md: Option<String>,
+        /// Raw ProseMirror node JSON (escape hatch), keeps the target's position and id
+        #[arg(long, required_unless_present = "md")]
+        node: Option<String>,
     },
 
     /// Remove a block

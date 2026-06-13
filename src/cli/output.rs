@@ -132,7 +132,10 @@ pub fn print_blocks(doc: &Doc) {
         .iter()
         .map(|(path, node)| {
             let depth = path.indices().len().saturating_sub(1);
-            (path.to_string(), format!("{}{}", "  ".repeat(depth), node.r#type))
+            (
+                path.to_string(),
+                format!("{}{}", "  ".repeat(depth), node.r#type),
+            )
         })
         .collect();
 

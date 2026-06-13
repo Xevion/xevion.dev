@@ -224,6 +224,24 @@ impl Content {
 }
 
 impl Mark {
+    /// A mark of `kind` carrying no attributes (`bold`, `italic`, …).
+    pub fn new(kind: &str) -> Self {
+        Self {
+            r#type: kind.to_string(),
+            attrs: Map::new(),
+        }
+    }
+
+    /// A `link` mark pointing at `href`.
+    pub fn link(href: &str) -> Self {
+        let mut attrs = Map::new();
+        attrs.insert("href".to_string(), Value::String(href.to_string()));
+        Self {
+            r#type: "link".to_string(),
+            attrs,
+        }
+    }
+
     /// Validate this mark: its type must be in the allow-list, and a `link`'s
     /// href must use an allowed scheme.
     fn validate(&self) -> Result<(), PmError> {
@@ -319,6 +337,29 @@ pub fn generate_block_id() -> String {
 }
 
 impl Node {
+    /// An empty block node of `kind` — no attrs, children, marks, or text. The
+    /// caller fills in `attrs`/`content` as the node type requires.
+    pub fn element(kind: &str) -> Self {
+        Self {
+            r#type: kind.to_string(),
+            attrs: Map::new(),
+            content: Vec::new(),
+            marks: Vec::new(),
+            text: None,
+        }
+    }
+
+    /// A text node carrying `text` and the given inline `marks`.
+    pub fn text(text: impl Into<String>, marks: Vec<Mark>) -> Self {
+        Self {
+            r#type: "text".to_string(),
+            attrs: Map::new(),
+            content: Vec::new(),
+            marks,
+            text: Some(text.into()),
+        }
+    }
+
     /// This block's stable id, if it carries one.
     pub fn block_id(&self) -> Option<&str> {
         self.attrs.get(ID_ATTR).and_then(Value::as_str)
@@ -521,6 +562,22 @@ fn invalid_anchor(s: &str) -> String {
     )
 }
 
+impl Anchor {
+    /// Whether inserting several blocks one at a time at this anchor lands them
+    /// in reverse order — true when the anchor names a fixed slot that each
+    /// insert pushes the previous one away from (`start`, `prepend:` push from
+    /// the front; `after:` inserts between the target and the prior insert).
+    /// `end`/`append:` (slot grows) and `before:` (target drifts right) keep the
+    /// natural order. [`DocOp::insert_sequence`] uses this to reverse its input
+    /// only when needed, so a batch of single-node inserts reads forward.
+    const fn fills_in_reverse(&self) -> bool {
+        matches!(
+            self,
+            Self::Start | Self::PrependTo { .. } | Self::After { .. }
+        )
+    }
+}
+
 /// A single mutating operation over the document's blocks. The target and any
 /// anchor are [`Locator`]s — a block id or a positional path — so ops address
 /// blocks at any depth, with or without ids.
@@ -536,6 +593,45 @@ pub enum DocOp {
     Delete { id: Locator },
     /// Move the located block to `anchor`.
     Move { id: Locator, anchor: Anchor },
+}
+
+impl DocOp {
+    /// Ops to insert `nodes` as a sequence at `anchor`, landing them in document
+    /// order. Each becomes its own [`DocOp::Insert`] against the same anchor;
+    /// the input is reversed first for anchors that would otherwise stack the
+    /// blocks backwards (see [`Anchor::fills_in_reverse`]). Applied as one batch,
+    /// the inserts need no knowledge of the ids the server will mint.
+    pub fn insert_sequence(anchor: &Anchor, mut nodes: Vec<Node>) -> Vec<Self> {
+        if anchor.fills_in_reverse() {
+            nodes.reverse();
+        }
+        nodes
+            .into_iter()
+            .map(|node| Self::Insert {
+                anchor: anchor.clone(),
+                node,
+            })
+            .collect()
+    }
+
+    /// Ops to replace `target` with the first of `nodes`, inserting any rest
+    /// immediately after it in order. The first block keeps the target's slot
+    /// and id; an empty `nodes` yields no ops.
+    pub fn replace_sequence(target: Locator, nodes: Vec<Node>) -> Vec<Self> {
+        let mut nodes = nodes.into_iter();
+        let Some(first) = nodes.next() else {
+            return Vec::new();
+        };
+        let mut ops = vec![Self::Replace {
+            id: target.clone(),
+            node: first,
+        }];
+        let rest: Vec<Node> = nodes.collect();
+        if !rest.is_empty() {
+            ops.extend(Self::insert_sequence(&Anchor::After { id: target }, rest));
+        }
+        ops
+    }
 }
 
 /// Structural failures applying an op, plus a schema failure on the result.
@@ -801,7 +897,8 @@ impl Doc {
                 ins_index -= 1;
             }
         }
-        self.content_at_mut(&ins_parent).insert(ins_index, node.clone());
+        self.content_at_mut(&ins_parent)
+            .insert(ins_index, node.clone());
         Ok(node)
     }
 
@@ -1772,7 +1869,9 @@ mod path_tests {
     fn parse_accepts_jq_bracket_forms() {
         assert_eq!(BlockPath::parse("[3][0]").unwrap().indices(), &[3, 0]);
         assert_eq!(
-            BlockPath::parse(".content[3].content[0]").unwrap().indices(),
+            BlockPath::parse(".content[3].content[0]")
+                .unwrap()
+                .indices(),
             &[3, 0]
         );
     }
@@ -1798,11 +1897,15 @@ mod path_tests {
     fn at_path_resolves_top_level_and_nested() {
         let doc = doc();
         assert_eq!(
-            doc.at_path(&BlockPath::parse(".0").unwrap()).unwrap().r#type,
+            doc.at_path(&BlockPath::parse(".0").unwrap())
+                .unwrap()
+                .r#type,
             "paragraph"
         );
         assert_eq!(
-            doc.at_path(&BlockPath::parse(".1").unwrap()).unwrap().r#type,
+            doc.at_path(&BlockPath::parse(".1").unwrap())
+                .unwrap()
+                .r#type,
             "bulletList"
         );
         assert_eq!(
@@ -1913,7 +2016,10 @@ mod locator_tests {
 
     #[test]
     fn from_str_disambiguates_path_from_id() {
-        assert_eq!(loc(".3.0"), Locator::Path(BlockPath::parse(".3.0").unwrap()));
+        assert_eq!(
+            loc(".3.0"),
+            Locator::Path(BlockPath::parse(".3.0").unwrap())
+        );
         assert_eq!(loc("a1b2c3d4"), Locator::Id("a1b2c3d4".into()));
         assert!("".parse::<Locator>().is_err());
     }
@@ -1967,8 +2073,12 @@ mod locator_tests {
     #[test]
     fn append_to_container_adds_a_last_child() {
         let mut doc = idless();
-        doc.insert(&Anchor::AppendTo { id: loc(".1") }, list_item("three"), "x".into())
-            .unwrap();
+        doc.insert(
+            &Anchor::AppendTo { id: loc(".1") },
+            list_item("three"),
+            "x".into(),
+        )
+        .unwrap();
         assert_eq!(
             doc.at_path(&BlockPath::parse(".1.2.0").unwrap())
                 .unwrap()
@@ -1980,8 +2090,12 @@ mod locator_tests {
     #[test]
     fn prepend_to_container_adds_a_first_child() {
         let mut doc = idless();
-        doc.insert(&Anchor::PrependTo { id: loc(".1") }, list_item("zero"), "x".into())
-            .unwrap();
+        doc.insert(
+            &Anchor::PrependTo { id: loc(".1") },
+            list_item("zero"),
+            "x".into(),
+        )
+        .unwrap();
         assert_eq!(
             doc.at_path(&BlockPath::parse(".1.0.0").unwrap())
                 .unwrap()
@@ -2027,6 +2141,186 @@ mod locator_tests {
             Anchor::AppendTo { id: "abc".into() }
         );
         assert!(Anchor::parse("sideways:.1").is_err());
+    }
+}
+
+#[cfg(test)]
+mod sequence_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn para(text: &str) -> Node {
+        serde_json::from_value(
+            json!({ "type": "paragraph", "content": [{ "type": "text", "text": text }] }),
+        )
+        .unwrap()
+    }
+
+    fn list_item(text: &str) -> Node {
+        serde_json::from_value(json!({
+            "type": "listItem",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": text }] }]
+        }))
+        .unwrap()
+    }
+
+    /// Apply `ops` atomically with deterministic ids, then read every
+    /// paragraph's text in document order.
+    fn apply(doc: &mut Doc, ops: Vec<DocOp>) {
+        let mut n = 0;
+        doc.apply_all(ops, || {
+            n += 1;
+            format!("g{n}")
+        })
+        .expect("sequence applies cleanly");
+    }
+
+    fn para_texts(doc: &Doc) -> Vec<String> {
+        doc.outline()
+            .iter()
+            .filter(|(_, node)| node.r#type == "paragraph")
+            .map(|(_, node)| node.direct_text())
+            .collect()
+    }
+
+    fn seeded(texts: &[&str]) -> Doc {
+        let mut doc = Doc::default();
+        for text in texts {
+            doc.insert(&Anchor::End, para(text), (*text).into())
+                .unwrap();
+        }
+        doc
+    }
+
+    #[test]
+    fn insert_sequence_at_end_keeps_order() {
+        let mut doc = seeded(&["x"]);
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(&Anchor::End, vec![para("a"), para("b"), para("c")]),
+        );
+        assert_eq!(para_texts(&doc), vec!["x", "a", "b", "c"]);
+    }
+
+    #[test]
+    fn insert_sequence_at_start_keeps_order() {
+        let mut doc = seeded(&["x"]);
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(&Anchor::Start, vec![para("a"), para("b"), para("c")]),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "b", "c", "x"]);
+    }
+
+    #[test]
+    fn insert_sequence_after_keeps_order() {
+        let mut doc = seeded(&["x", "y"]);
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(
+                &Anchor::After { id: "x".into() },
+                vec![para("a"), para("b"), para("c")],
+            ),
+        );
+        assert_eq!(para_texts(&doc), vec!["x", "a", "b", "c", "y"]);
+    }
+
+    #[test]
+    fn insert_sequence_before_keeps_order() {
+        let mut doc = seeded(&["x", "y"]);
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(
+                &Anchor::Before { id: "y".into() },
+                vec![para("a"), para("b"), para("c")],
+            ),
+        );
+        assert_eq!(para_texts(&doc), vec!["x", "a", "b", "c", "y"]);
+    }
+
+    #[test]
+    fn insert_sequence_append_to_container_keeps_order() {
+        let mut doc = Doc::default();
+        doc.insert(
+            &Anchor::End,
+            serde_json::from_value(json!({ "type": "bulletList", "content": [] })).unwrap(),
+            "list".into(),
+        )
+        .unwrap();
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(
+                &Anchor::AppendTo { id: "list".into() },
+                vec![list_item("a"), list_item("b"), list_item("c")],
+            ),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn insert_sequence_prepend_to_container_keeps_order() {
+        let mut doc = Doc::default();
+        doc.insert(
+            &Anchor::End,
+            serde_json::from_value(json!({
+                "type": "bulletList",
+                "content": [{ "type": "listItem", "content": [
+                    { "type": "paragraph", "content": [{ "type": "text", "text": "z" }] }
+                ]}]
+            }))
+            .unwrap(),
+            "list".into(),
+        )
+        .unwrap();
+        apply(
+            &mut doc,
+            DocOp::insert_sequence(
+                &Anchor::PrependTo { id: "list".into() },
+                vec![list_item("a"), list_item("b"), list_item("c")],
+            ),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "b", "c", "z"]);
+    }
+
+    #[test]
+    fn insert_sequence_of_one_is_a_single_insert() {
+        let ops = DocOp::insert_sequence(&Anchor::End, vec![para("only")]);
+        assert_eq!(ops.len(), 1);
+        assert!(matches!(ops[0], DocOp::Insert { .. }));
+    }
+
+    #[test]
+    fn replace_sequence_single_block_just_replaces() {
+        let mut doc = seeded(&["x", "y"]);
+        apply(
+            &mut doc,
+            DocOp::replace_sequence("x".into(), vec![para("a")]),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "y"]);
+        // the replaced block keeps its id
+        assert_eq!(doc.block("x").map(Node::direct_text), Some("a".into()));
+    }
+
+    #[test]
+    fn replace_sequence_multi_block_replaces_then_inserts_rest_in_order() {
+        let mut doc = seeded(&["x", "y"]);
+        apply(
+            &mut doc,
+            DocOp::replace_sequence("x".into(), vec![para("a"), para("b"), para("c")]),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "b", "c", "y"]);
+        // the first block lands in the target's slot, keeping its id
+        assert_eq!(doc.block("x").map(Node::direct_text), Some("a".into()));
+    }
+
+    #[test]
+    fn replace_sequence_by_path_keeps_order() {
+        let mut doc = seeded(&["x", "y"]);
+        apply(
+            &mut doc,
+            DocOp::replace_sequence(".0".parse().unwrap(), vec![para("a"), para("b")]),
+        );
+        assert_eq!(para_texts(&doc), vec!["a", "b", "y"]);
     }
 }
 

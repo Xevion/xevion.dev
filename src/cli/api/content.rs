@@ -1,9 +1,11 @@
 use crate::cli::ProjectContentCommand;
 use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
-use crate::pm::{Anchor, BlockPath, Doc, DocOp, Node};
+use crate::markdown;
+use crate::pm::{Anchor, BlockPath, Doc, DocOp, Locator, Node};
 
 type CliResult = Result<(), Box<dyn std::error::Error>>;
+type CliError = Box<dyn std::error::Error>;
 
 /// Run a `projects content` subcommand.
 pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) -> CliResult {
@@ -15,13 +17,15 @@ pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) 
         ProjectContentCommand::Insert {
             reference,
             at,
+            md,
             node,
-        } => insert(&client, &reference, &at, &node, json).await,
+        } => insert(&client, &reference, &at, body_blocks(md, node)?, json).await,
         ProjectContentCommand::Replace {
             reference,
             locator,
+            md,
             node,
-        } => replace(&client, &reference, &locator, &node, json).await,
+        } => replace(&client, &reference, &locator, body_blocks(md, node)?, json).await,
         ProjectContentCommand::Rm { reference, locator } => {
             rm(&client, &reference, &locator, json).await
         }
@@ -30,6 +34,17 @@ pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) 
             locator,
             at,
         } => move_block(&client, &reference, &locator, &at, json).await,
+    }
+}
+
+/// Resolve the body of an insert/replace into one or more blocks. Exactly one
+/// of `md`/`node` is present (clap enforces it): `--md` runs Markdown through
+/// the converter, `--node` parses a single raw ProseMirror node.
+fn body_blocks(md: Option<String>, node: Option<String>) -> Result<Vec<Node>, CliError> {
+    match (md, node) {
+        (Some(md), _) => markdown::to_blocks(&md).map_err(|e| format!("--md: {e}").into()),
+        (None, Some(node)) => Ok(vec![parse_node(&node)?]),
+        (None, None) => unreachable!("clap requires one of --md or --node"),
     }
 }
 
@@ -71,28 +86,26 @@ async fn insert(
     client: &ApiClient,
     reference: &str,
     at: &str,
-    node_json: &str,
+    blocks: Vec<Node>,
     json: bool,
 ) -> CliResult {
     let anchor = Anchor::parse(at)?;
-    let node = parse_node(node_json)?;
-    let doc = apply_op(client, reference, DocOp::Insert { anchor, node }).await?;
-    report(&doc, json, "Inserted block")
+    let count = blocks.len();
+    let ops = DocOp::insert_sequence(&anchor, blocks);
+    let doc = apply_ops(client, reference, ops).await?;
+    report(&doc, json, &format!("Inserted {count} block(s)"))
 }
 
 async fn replace(
     client: &ApiClient,
     reference: &str,
     locator: &str,
-    node_json: &str,
+    blocks: Vec<Node>,
     json: bool,
 ) -> CliResult {
-    let node = parse_node(node_json)?;
-    let op = DocOp::Replace {
-        id: locator.parse()?,
-        node,
-    };
-    let doc = apply_op(client, reference, op).await?;
+    let target: Locator = locator.parse()?;
+    let ops = DocOp::replace_sequence(target, blocks);
+    let doc = apply_ops(client, reference, ops).await?;
     report(&doc, json, &format!("Replaced block {locator}"))
 }
 
@@ -100,7 +113,7 @@ async fn rm(client: &ApiClient, reference: &str, locator: &str, json: bool) -> C
     let op = DocOp::Delete {
         id: locator.parse()?,
     };
-    let doc = apply_op(client, reference, op).await?;
+    let doc = apply_ops(client, reference, vec![op]).await?;
     report(&doc, json, &format!("Removed block {locator}"))
 }
 
@@ -115,13 +128,13 @@ async fn move_block(
         id: locator.parse()?,
         anchor: Anchor::parse(at)?,
     };
-    let doc = apply_op(client, reference, op).await?;
+    let doc = apply_ops(client, reference, vec![op]).await?;
     report(&doc, json, &format!("Moved block {locator}"))
 }
 
-fn parse_node(node_json: &str) -> Result<Node, Box<dyn std::error::Error>> {
+fn parse_node(node_json: &str) -> Result<Node, CliError> {
     serde_json::from_str(node_json)
-        .map_err(|e| format!("--json is not a valid ProseMirror node: {e}").into())
+        .map_err(|e| format!("--node is not a valid ProseMirror node: {e}").into())
 }
 
 async fn fetch_doc(client: &ApiClient, reference: &str) -> Result<Doc, Box<dyn std::error::Error>> {
@@ -134,13 +147,9 @@ async fn fetch_doc(client: &ApiClient, reference: &str) -> Result<Doc, Box<dyn s
     Ok(Doc::from_stored(Some(&value)))
 }
 
-async fn apply_op(
-    client: &ApiClient,
-    reference: &str,
-    op: DocOp,
-) -> Result<Doc, Box<dyn std::error::Error>> {
+async fn apply_ops(client: &ApiClient, reference: &str, ops: Vec<DocOp>) -> Result<Doc, CliError> {
     let response = client
-        .patch_auth(&format!("/api/projects/{reference}/content"), &vec![op])
+        .patch_auth(&format!("/api/projects/{reference}/content"), &ops)
         .await?;
     let response = check_response(response).await?;
     let value: serde_json::Value = response.json().await?;
