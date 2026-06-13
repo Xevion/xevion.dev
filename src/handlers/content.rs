@@ -27,7 +27,9 @@ impl From<OpError> for AppError {
         match err {
             OpError::NotFound(id) => Self::validation(format!("block \"{id}\" does not exist")),
             OpError::DuplicateId(id) => Self::Conflict(format!("block id \"{id}\" already exists")),
-            OpError::SelfAnchor => Self::validation("a block cannot anchor to itself"),
+            OpError::SelfAnchor => {
+                Self::validation("a block cannot anchor to itself or its own descendant")
+            }
             OpError::Invalid(schema_err) => schema_err.into(),
         }
     }

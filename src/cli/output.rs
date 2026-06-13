@@ -1,7 +1,7 @@
 use nu_ansi_term::{Color, Style};
 
 use crate::db::{ApiAdminProject, ApiSiteSettings, ApiTag, ApiTagWithCount};
-use crate::pm::{Doc, Node};
+use crate::pm::Doc;
 
 /// Print a success message
 pub fn success(msg: &str) {
@@ -111,57 +111,65 @@ pub fn print_projects_table(projects: &[ApiAdminProject]) {
     info(&format!("{} project(s)", projects.len()));
 }
 
-/// Print a content document's blocks as a table (id, type, preview).
+/// Print a content document as an indented block outline: positional path,
+/// nested type, text preview, and stable id where one exists. The path is the
+/// handle edits address (`content replace <ref> .3.0 …`); the id is shown only
+/// when present, since seeded content carries none.
 pub fn print_blocks(doc: &Doc) {
-    let blocks = doc.blocks();
-    if blocks.is_empty() {
+    let outline = doc.outline();
+    if outline.is_empty() {
         info("No content blocks");
         return;
     }
 
     let header = Style::new().bold().underline();
     let dim = Style::new().dimmed();
+    let path_style = Color::Cyan;
 
-    let id_width = blocks
+    // The type column is indented by depth to draw the tree, so size it against
+    // the indented strings, not the bare type names.
+    let typed: Vec<(String, String)> = outline
         .iter()
-        .filter_map(Node::block_id)
-        .map(str::len)
-        .max()
-        .unwrap_or(2)
-        .max(2);
-    let type_width = blocks
-        .iter()
-        .map(|b| b.r#type.len())
-        .max()
-        .unwrap_or(4)
-        .max(4);
+        .map(|(path, node)| {
+            let depth = path.indices().len().saturating_sub(1);
+            (path.to_string(), format!("{}{}", "  ".repeat(depth), node.r#type))
+        })
+        .collect();
+
+    let path_width = typed.iter().map(|(p, _)| p.len()).max().unwrap_or(4).max(4);
+    let type_width = typed.iter().map(|(_, t)| t.len()).max().unwrap_or(4).max(4);
 
     println!(
-        "{:id_width$}  {:type_width$}  {}",
-        header.paint("ID"),
+        "{:path_width$}  {:type_width$}  {}",
+        header.paint("PATH"),
         header.paint("TYPE"),
         header.paint("PREVIEW"),
     );
 
-    for block in blocks {
-        let preview: String = block
-            .text_content()
+    for ((path, typed_label), (_, node)) in typed.iter().zip(outline.iter()) {
+        let preview: String = node
+            .direct_text()
             .lines()
             .next()
             .unwrap_or_default()
             .chars()
             .take(60)
             .collect();
+        let id = node
+            .block_id()
+            .map(|id| dim.paint(format!("  #{id}")).to_string())
+            .unwrap_or_default();
         println!(
-            "{:id_width$}  {:type_width$}  {}",
-            dim.paint(block.block_id().unwrap_or("—")),
-            block.r#type,
+            "{:path_width$}  {:type_width$}  {}{}",
+            path_style.paint(path),
+            typed_label,
             dim.paint(preview),
+            id,
         );
     }
 
     println!();
-    info(&format!("{} block(s)", blocks.len()));
+    info(&format!("{} block(s)", outline.len()));
 }
 
 /// Print a tag in formatted output

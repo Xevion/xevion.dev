@@ -3,8 +3,9 @@
 //! The detail-page body is a single `TipTap` document. [`Node`] is a faithful
 //! 1:1 mirror of its JSON — any node type round-trips untouched — and
 //! [`Node::validate_document`] bounds what may be stored against an allow-list
-//! schema. The [`Doc`] newtype hosts the top-level block ops (insert, replace,
-//! delete, move by id). The editor already guarantees well-formed structure;
+//! schema. The [`Doc`] newtype hosts the block ops (insert, replace, delete,
+//! move by id), addressing blocks at any depth. The editor already guarantees
+//! well-formed structure;
 //! validation here is the write-path safety net (defense-in-depth, the same
 //! posture as the SSR sanitizer).
 
@@ -323,35 +324,177 @@ impl Node {
         self.attrs.get(ID_ATTR).and_then(Value::as_str)
     }
 
+    /// The path of child indices from this node down to the descendant carrying
+    /// `id` (e.g. `[1, 0]` ⇒ `content[1].content[0]`), or `None` if no descendant
+    /// has it. Ids are unique within a document, so the first match is the only
+    /// one. The returned path is always non-empty (it never names `self`).
+    fn find_path(&self, id: &str) -> Option<Vec<usize>> {
+        self.content.iter().enumerate().find_map(|(i, child)| {
+            if child.block_id() == Some(id) {
+                return Some(vec![i]);
+            }
+            child.find_path(id).map(|mut sub| {
+                sub.insert(0, i);
+                sub
+            })
+        })
+    }
+
     /// Stamp `id` into this node's `attrs`, overwriting any id it arrived with.
     fn set_block_id(&mut self, id: &str) {
         self.attrs
             .insert(ID_ATTR.to_string(), Value::String(id.to_string()));
     }
 
-    /// All descendant text, concatenated in document order — a node's plain-text
-    /// projection, used for previews.
-    pub fn text_content(&self) -> String {
-        let mut out = self.text.clone().unwrap_or_default();
-        for child in &self.content {
-            out.push_str(&child.text_content());
-        }
-        out
+    /// This node's own first line of text, from its direct text children only —
+    /// the preview shown for a block in the outline. Container blocks (lists,
+    /// blockquotes) have no direct text and so preview as empty, rather than
+    /// echoing their descendants' text on every row.
+    pub fn direct_text(&self) -> String {
+        self.content
+            .iter()
+            .filter(|c| c.r#type == "text")
+            .filter_map(|c| c.text.as_deref())
+            .collect()
+    }
+
+    /// Whether this node belongs to the inline group (`text`, `hardBreak`).
+    /// Unknown node types count as block-level so they still surface in the
+    /// outline rather than vanishing.
+    fn is_inline(&self) -> bool {
+        matches!(
+            NodeSpec::lookup(&self.r#type).map(|spec| spec.group),
+            Some(Group::Inline)
+        )
     }
 }
 
-/// Where an insert or move lands, relative to the existing top-level blocks.
+/// A block's positional address: the child-index path from the document root,
+/// so `[3, 0]` is the first child of the fourth top-level block. Rendered
+/// jq-style with a leading dot and dotted indices — `.3.0` — which, unlike
+/// bracket syntax, carries no shell glob metacharacters and needs no quoting.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockPath(Vec<usize>);
+
+impl BlockPath {
+    /// The child indices, root-to-leaf.
+    pub fn indices(&self) -> &[usize] {
+        &self.0
+    }
+
+    /// Parse the dotted path syntax. A leading dot is optional; bracketed
+    /// (`[3][0]`) and explicit (`.content[3]`) jq forms are accepted too, so a
+    /// path lifted from a jq expression still resolves. Every segment must be a
+    /// non-negative integer index; anything else (e.g. a block id) is rejected,
+    /// which is how a caller tells a path apart from an id.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let cleaned = s.replace("content", " ");
+        let indices = cleaned
+            .split(|c: char| matches!(c, '.' | '[' | ']') || c.is_whitespace())
+            .filter(|seg| !seg.is_empty())
+            .map(|seg| {
+                seg.parse::<usize>()
+                    .map_err(|_| format!("invalid path segment \"{seg}\" in \"{s}\""))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if indices.is_empty() {
+            return Err(format!("empty path \"{s}\"; use indices like .3 or .3.0"));
+        }
+        Ok(Self(indices))
+    }
+}
+
+impl std::fmt::Display for BlockPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in &self.0 {
+            write!(f, ".{i}")?;
+        }
+        Ok(())
+    }
+}
+
+/// How an op names an existing block: by stable id, or by positional path. On
+/// the wire and the command line a locator is a single string — a leading dot
+/// marks a path (`.3.0`), anything else is a block id (`a1b2c3d4`) — so both
+/// address spaces share one surface. Paths work on any content (including
+/// seeded blocks that carry no id); ids are stable across reordering.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Locator {
+    Id(String),
+    Path(BlockPath),
+}
+
+impl std::fmt::Display for Locator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Id(id) => f.write_str(id),
+            Self::Path(path) => write!(f, "{path}"),
+        }
+    }
+}
+
+impl std::str::FromStr for Locator {
+    type Err = String;
+    /// Disambiguate a locator string: a leading `.` or `[` is a positional path,
+    /// anything else is a block id. (A bare `3` is therefore an id, not a path —
+    /// paths must lead with a dot, which is also what `list` prints.)
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err("empty locator; use a block id or a path like .3".to_string());
+        }
+        if s.starts_with('.') || s.starts_with('[') {
+            BlockPath::parse(s).map(Self::Path)
+        } else {
+            Ok(Self::Id(s.to_string()))
+        }
+    }
+}
+
+// Bare-string conversions always mean a block id — the unambiguous, common case
+// for internal construction. Path locators are built explicitly or parsed from a
+// locator string (`FromStr`), which is also what the wire format deserializes.
+impl From<&str> for Locator {
+    fn from(s: &str) -> Self {
+        Self::Id(s.to_string())
+    }
+}
+impl From<String> for Locator {
+    fn from(s: String) -> Self {
+        Self::Id(s)
+    }
+}
+
+impl Serialize for Locator {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+impl<'de> Deserialize<'de> for Locator {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+/// Where an insert or move lands. `Start`/`End` address the document's top-level
+/// block list. `Before`/`After` land beside a located block, within that block's
+/// own parent. `PrependTo`/`AppendTo` land inside a located container, as its
+/// first/last child — which is how you add to an empty list or push onto one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "at", rename_all = "snake_case")]
 pub enum Anchor {
     Start,
     End,
-    After { id: String },
-    Before { id: String },
+    After { id: Locator },
+    Before { id: Locator },
+    PrependTo { id: Locator },
+    AppendTo { id: Locator },
 }
 
 impl Anchor {
-    /// Parse the CLI anchor syntax: `start`, `end`, `after:<id>`, `before:<id>`.
+    /// Parse the CLI anchor syntax: `start`, `end`, or `<kind>:<locator>` where
+    /// kind is `before`/`after`/`prepend`/`append` and the locator is a path
+    /// (`.3`) or block id. `into` is an alias for `append`.
     pub fn parse(s: &str) -> Result<Self, String> {
         if s == "start" {
             return Ok(Self::Start);
@@ -359,30 +502,40 @@ impl Anchor {
         if s == "end" {
             return Ok(Self::End);
         }
-        if let Some(id) = s.strip_prefix("after:").filter(|id| !id.is_empty()) {
-            return Ok(Self::After { id: id.to_string() });
+        let (kind, rest) = s.split_once(':').ok_or_else(|| invalid_anchor(s))?;
+        let id: Locator = rest.parse()?;
+        match kind {
+            "after" => Ok(Self::After { id }),
+            "before" => Ok(Self::Before { id }),
+            "prepend" => Ok(Self::PrependTo { id }),
+            "append" | "into" => Ok(Self::AppendTo { id }),
+            _ => Err(invalid_anchor(s)),
         }
-        if let Some(id) = s.strip_prefix("before:").filter(|id| !id.is_empty()) {
-            return Ok(Self::Before { id: id.to_string() });
-        }
-        Err(format!(
-            "invalid position \"{s}\"; use start, end, after:<id>, or before:<id>"
-        ))
     }
 }
 
-/// A single mutating operation over the document's top-level blocks.
+fn invalid_anchor(s: &str) -> String {
+    format!(
+        "invalid position \"{s}\"; use start, end, before:<loc>, after:<loc>, \
+         prepend:<loc>, or append:<loc>"
+    )
+}
+
+/// A single mutating operation over the document's blocks. The target and any
+/// anchor are [`Locator`]s — a block id or a positional path — so ops address
+/// blocks at any depth, with or without ids.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum DocOp {
     /// Insert `node` as a new block at `anchor`; the server assigns its id.
     Insert { anchor: Anchor, node: Node },
-    /// Replace the block `id` with `node`, keeping the block's id and position.
-    Replace { id: String, node: Node },
-    /// Remove the block `id`.
-    Delete { id: String },
-    /// Move the block `id` to `anchor`.
-    Move { id: String, anchor: Anchor },
+    /// Replace the located block with `node`, keeping its position and (if it had
+    /// one) its id.
+    Replace { id: Locator, node: Node },
+    /// Remove the located block.
+    Delete { id: Locator },
+    /// Move the located block to `anchor`.
+    Move { id: Locator, anchor: Anchor },
 }
 
 /// Structural failures applying an op, plus a schema failure on the result.
@@ -392,7 +545,8 @@ pub enum OpError {
     NotFound(String),
     /// A freshly generated block id collided with an existing one.
     DuplicateId(String),
-    /// A move that references itself as its own anchor.
+    /// A move anchored to itself or to one of its own descendants — once the
+    /// block moves, that target no longer names a stable location.
     SelfAnchor,
     /// The document the batch produced failed schema validation.
     Invalid(PmError),
@@ -458,37 +612,104 @@ impl Doc {
         self.0
     }
 
-    /// The document's top-level blocks.
-    pub fn blocks(&self) -> &[Node] {
-        &self.0.content
-    }
-
     /// Validate the document against the schema.
     pub fn validate(&self) -> Result<(), PmError> {
         self.0.validate_document()
     }
 
-    /// Borrow a top-level block by id.
+    /// Borrow a block by id, searched at any depth.
     pub fn block(&self, id: &str) -> Option<&Node> {
-        self.0.content.iter().find(|n| n.block_id() == Some(id))
+        self.0.find_path(id).map(|path| self.node_at(&path))
     }
 
-    fn index_of(&self, id: &str) -> Option<usize> {
-        self.0.content.iter().position(|n| n.block_id() == Some(id))
+    /// Borrow the block at a positional path, or `None` if any index is out of
+    /// range (so a stale path fails cleanly rather than panicking).
+    pub fn at_path(&self, path: &BlockPath) -> Option<&Node> {
+        let mut node = &self.0;
+        for &i in path.indices() {
+            node = node.content.get(i)?;
+        }
+        Some(node)
     }
 
-    /// Resolve an anchor to an insertion index in the current block list.
-    fn resolve_anchor(&self, anchor: &Anchor) -> Result<usize, OpError> {
+    /// A pre-order walk of the document's block nodes (everything but inline
+    /// `text`/`hardBreak`), each paired with its positional path. This is the
+    /// outline the CLI renders, and the path is the stable handle edits address.
+    pub fn outline(&self) -> Vec<(BlockPath, &Node)> {
+        fn walk<'a>(parent: &[usize], nodes: &'a [Node], out: &mut Vec<(BlockPath, &'a Node)>) {
+            for (i, node) in nodes.iter().enumerate() {
+                if node.is_inline() {
+                    continue;
+                }
+                let mut path = parent.to_vec();
+                path.push(i);
+                out.push((BlockPath(path.clone()), node));
+                walk(&path, &node.content, out);
+            }
+        }
+        let mut out = Vec::new();
+        walk(&[], &self.0.content, &mut out);
+        out
+    }
+
+    /// Borrow the node at `path` — a sequence of child indices descending from
+    /// the doc root (so an empty path is the root itself).
+    fn node_at(&self, path: &[usize]) -> &Node {
+        let mut node = &self.0;
+        for &i in path {
+            node = &node.content[i];
+        }
+        node
+    }
+
+    /// Borrow, mutably, the content vector of the node at `parent_path` (the doc
+    /// root's own content when the path is empty).
+    fn content_at_mut(&mut self, parent_path: &[usize]) -> &mut Vec<Node> {
+        let mut node = &mut self.0;
+        for &i in parent_path {
+            node = &mut node.content[i];
+        }
+        &mut node.content
+    }
+
+    /// Resolve a locator to the path of the block it names, or `None` if it
+    /// names nothing — an unknown id, or a path that runs off the tree.
+    fn resolve_locator(&self, locator: &Locator) -> Option<Vec<usize>> {
+        match locator {
+            Locator::Id(id) => self.0.find_path(id),
+            Locator::Path(path) => self.at_path(path).map(|_| path.indices().to_vec()),
+        }
+    }
+
+    /// Resolve an anchor to an insertion point: the path of the parent whose
+    /// content receives the node, and the index within it. `Start`/`End` address
+    /// the document's top-level list; `Before`/`After` land beside the located
+    /// block within its own parent; `PrependTo`/`AppendTo` land inside the
+    /// located container as its first/last child.
+    fn resolve_anchor(&self, anchor: &Anchor) -> Result<(Vec<usize>, usize), OpError> {
+        let locate = |locator: &Locator| {
+            self.resolve_locator(locator)
+                .ok_or_else(|| OpError::NotFound(locator.to_string()))
+        };
         match anchor {
-            Anchor::Start => Ok(0),
-            Anchor::End => Ok(self.0.content.len()),
-            Anchor::After { id } => self
-                .index_of(id)
-                .map(|i| i + 1)
-                .ok_or_else(|| OpError::NotFound(id.clone())),
-            Anchor::Before { id } => self
-                .index_of(id)
-                .ok_or_else(|| OpError::NotFound(id.clone())),
+            Anchor::Start => Ok((Vec::new(), 0)),
+            Anchor::End => Ok((Vec::new(), self.0.content.len())),
+            Anchor::Before { id } => {
+                let path = locate(id)?;
+                let (&index, parent) = path.split_last().expect("a found path is non-empty");
+                Ok((parent.to_vec(), index))
+            }
+            Anchor::After { id } => {
+                let path = locate(id)?;
+                let (&index, parent) = path.split_last().expect("a found path is non-empty");
+                Ok((parent.to_vec(), index + 1))
+            }
+            Anchor::PrependTo { id } => Ok((locate(id)?, 0)),
+            Anchor::AppendTo { id } => {
+                let path = locate(id)?;
+                let len = self.node_at(&path).content.len();
+                Ok((path, len))
+            }
         }
     }
 
@@ -500,50 +721,88 @@ impl Doc {
         mut node: Node,
         new_id: String,
     ) -> Result<Node, OpError> {
-        if self.index_of(&new_id).is_some() {
+        if self.0.find_path(&new_id).is_some() {
             return Err(OpError::DuplicateId(new_id));
         }
-        let at = self.resolve_anchor(anchor)?;
+        let (parent_path, at) = self.resolve_anchor(anchor)?;
         node.set_block_id(&new_id);
-        self.0.content.insert(at, node.clone());
+        self.content_at_mut(&parent_path).insert(at, node.clone());
         Ok(node)
     }
 
-    /// Replace the block `id` with `node`, preserving the block's id and slot.
-    pub fn replace(&mut self, id: &str, mut node: Node) -> Result<Node, OpError> {
-        let i = self
-            .index_of(id)
-            .ok_or_else(|| OpError::NotFound(id.to_string()))?;
-        node.set_block_id(id);
-        self.0.content[i] = node.clone();
-        Ok(node)
-    }
-
-    /// Remove a block, returning it.
-    pub fn delete(&mut self, id: &str) -> Result<Node, OpError> {
-        let i = self
-            .index_of(id)
-            .ok_or_else(|| OpError::NotFound(id.to_string()))?;
-        Ok(self.0.content.remove(i))
-    }
-
-    /// Move an existing block to `anchor`.
-    pub fn move_block(&mut self, id: &str, anchor: &Anchor) -> Result<(), OpError> {
-        if let Anchor::After { id: target } | Anchor::Before { id: target } = anchor
-            && target == id
-        {
-            return Err(OpError::SelfAnchor);
+    /// Replace the located block with `node`, keeping its slot and — if the block
+    /// carried a stable id — that id. A path-located block may have none, in
+    /// which case the replacement keeps whatever id it arrived with (typically
+    /// none).
+    pub fn replace(&mut self, target: impl Into<Locator>, mut node: Node) -> Result<Node, OpError> {
+        let target = target.into();
+        let path = self
+            .resolve_locator(&target)
+            .ok_or_else(|| OpError::NotFound(target.to_string()))?;
+        let existing_id = self.node_at(&path).block_id().map(str::to_string);
+        if let Some(id) = existing_id {
+            node.set_block_id(&id);
         }
-        let from = self
-            .index_of(id)
-            .ok_or_else(|| OpError::NotFound(id.to_string()))?;
-        // Resolve against the current list, then account for the gap the removal
-        // leaves behind anything that sat after the moving block.
-        let to = self.resolve_anchor(anchor)?;
-        let node = self.0.content.remove(from);
-        let adjusted = if to > from { to - 1 } else { to };
-        self.0.content.insert(adjusted, node);
-        Ok(())
+        let (&index, parent) = path.split_last().expect("a found path is non-empty");
+        self.content_at_mut(parent)[index] = node.clone();
+        Ok(node)
+    }
+
+    /// Remove the located block, returning it.
+    pub fn delete(&mut self, target: impl Into<Locator>) -> Result<Node, OpError> {
+        let target = target.into();
+        let path = self
+            .resolve_locator(&target)
+            .ok_or_else(|| OpError::NotFound(target.to_string()))?;
+        let (&index, parent) = path.split_last().expect("a found path is non-empty");
+        Ok(self.content_at_mut(parent).remove(index))
+    }
+
+    /// Move the located block to `anchor`, returning the moved block.
+    pub fn move_block(
+        &mut self,
+        target: impl Into<Locator>,
+        anchor: &Anchor,
+    ) -> Result<Node, OpError> {
+        let target = target.into();
+        let src = self
+            .resolve_locator(&target)
+            .ok_or_else(|| OpError::NotFound(target.to_string()))?;
+        // The destination can't sit inside the moved subtree (anchored to the
+        // block itself or a descendant): once it moves, that target stops naming
+        // a stable location. The located anchor node being src-or-below covers
+        // every variant.
+        if let Anchor::After { id }
+        | Anchor::Before { id }
+        | Anchor::PrependTo { id }
+        | Anchor::AppendTo { id } = anchor
+        {
+            let anchor_path = self
+                .resolve_locator(id)
+                .ok_or_else(|| OpError::NotFound(id.to_string()))?;
+            if anchor_path.starts_with(&src) {
+                return Err(OpError::SelfAnchor);
+            }
+        }
+        // Resolve the destination against the original tree (so positional paths
+        // mean what the caller currently sees), detach the block, then shift the
+        // destination to account for the gap the removal left where it passes
+        // through the removed block's parent at a later index.
+        let (mut ins_parent, mut ins_index) = self.resolve_anchor(anchor)?;
+        let (&src_index, src_parent) = src.split_last().expect("a found path is non-empty");
+        let node = self.content_at_mut(src_parent).remove(src_index);
+        if ins_parent.starts_with(src_parent) {
+            let depth = src_parent.len();
+            if ins_parent.len() > depth {
+                if ins_parent[depth] > src_index {
+                    ins_parent[depth] -= 1;
+                }
+            } else if ins_index > src_index {
+                ins_index -= 1;
+            }
+        }
+        self.content_at_mut(&ins_parent).insert(ins_index, node.clone());
+        Ok(node)
     }
 
     /// Apply one operation, sourcing a fresh id from `gen_id` for inserts.
@@ -552,15 +811,9 @@ impl Doc {
     pub fn apply(&mut self, op: DocOp, gen_id: impl FnOnce() -> String) -> Result<Node, OpError> {
         match op {
             DocOp::Insert { anchor, node } => self.insert(&anchor, node, gen_id()),
-            DocOp::Replace { id, node } => self.replace(&id, node),
-            DocOp::Delete { id } => self.delete(&id),
-            DocOp::Move { id, anchor } => {
-                self.move_block(&id, &anchor)?;
-                Ok(self
-                    .block(&id)
-                    .expect("block exists immediately after a successful move")
-                    .clone())
-            }
+            DocOp::Replace { id, node } => self.replace(id, node),
+            DocOp::Delete { id } => self.delete(id),
+            DocOp::Move { id, anchor } => self.move_block(id, &anchor),
         }
     }
 
@@ -784,31 +1037,6 @@ mod tests {
     }
 
     #[test]
-    fn text_content_of_leaf_text_is_its_text() {
-        assert_eq!(
-            node(json!({ "type": "text", "text": "x" })).text_content(),
-            "x"
-        );
-    }
-
-    #[test]
-    fn text_content_concatenates_descendant_text() {
-        let n = node(json!({
-            "type": "paragraph",
-            "content": [
-                { "type": "text", "text": "Hello " },
-                { "type": "text", "text": "world", "marks": [{ "type": "bold" }] }
-            ]
-        }));
-        assert_eq!(n.text_content(), "Hello world");
-    }
-
-    #[test]
-    fn text_content_is_empty_for_a_textless_leaf() {
-        assert_eq!(node(json!({ "type": "horizontalRule" })).text_content(), "");
-    }
-
-    #[test]
     fn pm_error_messages_are_human_readable() {
         assert_eq!(
             PmError::UnknownNode("script".into()).to_string(),
@@ -869,7 +1097,7 @@ mod op_tests {
             "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "hi" }] }]
         });
         let doc = Doc::parse(&value).expect("a valid document parses");
-        assert_eq!(doc.blocks().len(), 1);
+        assert_eq!(doc.node().content.len(), 1);
     }
 
     #[test]
@@ -910,7 +1138,7 @@ mod op_tests {
     #[test]
     fn parse_is_stricter_than_from_stored() {
         let garbage = json!({ "not": "a node" });
-        assert!(Doc::from_stored(Some(&garbage)).blocks().is_empty());
+        assert!(Doc::from_stored(Some(&garbage)).node().content.is_empty());
         assert!(Doc::parse(&garbage).is_err());
     }
 
@@ -1353,6 +1581,452 @@ mod op_tests {
         };
         let back: DocOp = serde_json::from_value(serde_json::to_value(&op).unwrap()).unwrap();
         assert_eq!(op, back);
+    }
+
+    /// A nested document with ids at every depth:
+    /// ```text
+    /// doc
+    ///   paragraph#p
+    ///   bulletList#list
+    ///     listItem#item1 > paragraph#ip1
+    ///     listItem#item2 > paragraph#ip2
+    ///   blockquote#quote > paragraph#qp
+    /// ```
+    fn nested_doc() -> Doc {
+        Doc::parse(&json!({
+            "type": "doc",
+            "content": [
+                { "type": "paragraph", "attrs": { "id": "p" },
+                  "content": [{ "type": "text", "text": "top" }] },
+                { "type": "bulletList", "attrs": { "id": "list" }, "content": [
+                    { "type": "listItem", "attrs": { "id": "item1" }, "content": [
+                        { "type": "paragraph", "attrs": { "id": "ip1" },
+                          "content": [{ "type": "text", "text": "one" }] }
+                    ]},
+                    { "type": "listItem", "attrs": { "id": "item2" }, "content": [
+                        { "type": "paragraph", "attrs": { "id": "ip2" },
+                          "content": [{ "type": "text", "text": "two" }] }
+                    ]}
+                ]},
+                { "type": "blockquote", "attrs": { "id": "quote" }, "content": [
+                    { "type": "paragraph", "attrs": { "id": "qp" },
+                      "content": [{ "type": "text", "text": "q" }] }
+                ]}
+            ]
+        }))
+        .expect("nested fixture is a valid document")
+    }
+
+    /// Find a node by id anywhere in the tree (test-side, independent of the
+    /// addressing under test).
+    fn find<'a>(node: &'a Node, id: &str) -> Option<&'a Node> {
+        if node.block_id() == Some(id) {
+            return Some(node);
+        }
+        node.content.iter().find_map(|child| find(child, id))
+    }
+
+    /// The block ids directly inside the node identified by `parent_id`.
+    fn child_ids<'a>(doc: &'a Doc, parent_id: &str) -> Vec<&'a str> {
+        find(doc.node(), parent_id)
+            .map(|n| n.content.iter().filter_map(Node::block_id).collect())
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn delete_removes_a_nested_block() {
+        let mut doc = nested_doc();
+        let removed = doc.delete("item1").unwrap();
+        assert_eq!(removed.block_id(), Some("item1"));
+        assert_eq!(child_ids(&doc, "list"), vec!["item2"]);
+        assert_eq!(ids(&doc), vec!["p", "list", "quote"]); // top level untouched
+    }
+
+    #[test]
+    fn replace_swaps_a_nested_block_keeping_id() {
+        let mut doc = nested_doc();
+        let heading = node_json(json!({
+            "type": "heading", "attrs": { "level": 3 },
+            "content": [{ "type": "text", "text": "H" }]
+        }));
+        let replaced = doc.replace("ip1", heading).unwrap();
+        assert_eq!(replaced.block_id(), Some("ip1"));
+        assert_eq!(doc.block("ip1").unwrap().r#type, "heading");
+        assert_eq!(child_ids(&doc, "item1"), vec!["ip1"]); // still the only child
+    }
+
+    #[test]
+    fn insert_after_a_nested_block_lands_in_that_parent() {
+        let mut doc = nested_doc();
+        let item = node_json(json!({
+            "type": "listItem", "content": [
+                { "type": "paragraph", "content": [{ "type": "text", "text": "new" }] }
+            ]
+        }));
+        doc.insert(&Anchor::After { id: "item1".into() }, item, "item1b".into())
+            .unwrap();
+        assert_eq!(child_ids(&doc, "list"), vec!["item1", "item1b", "item2"]);
+    }
+
+    #[test]
+    fn move_relocates_a_block_across_parents() {
+        let mut doc = nested_doc();
+        // Move the top-level paragraph into the blockquote, after its paragraph.
+        doc.move_block("p", &Anchor::After { id: "qp".into() })
+            .unwrap();
+        assert_eq!(ids(&doc), vec!["list", "quote"]); // p left the top level
+        assert_eq!(child_ids(&doc, "quote"), vec!["qp", "p"]);
+    }
+
+    #[test]
+    fn move_lifts_a_deeply_nested_block_to_top_level() {
+        let mut doc = nested_doc();
+        doc.move_block("ip1", &Anchor::End).unwrap();
+        assert!(child_ids(&doc, "item1").is_empty()); // item1 emptied
+        assert_eq!(ids(&doc), vec!["p", "list", "quote", "ip1"]);
+    }
+
+    #[test]
+    fn move_into_own_subtree_is_rejected() {
+        let mut doc = nested_doc();
+        // The list cannot be anchored after one of its own descendants — once it
+        // moves, that descendant no longer names a stable location.
+        assert_eq!(
+            doc.move_block("list", &Anchor::After { id: "item1".into() })
+                .unwrap_err(),
+            OpError::SelfAnchor
+        );
+    }
+
+    #[test]
+    fn block_lookup_finds_a_nested_block() {
+        let doc = nested_doc();
+        assert_eq!(
+            doc.block("ip2").map(|n| n.r#type.as_str()),
+            Some("paragraph")
+        );
+    }
+
+    #[test]
+    fn apply_all_rejects_an_illegal_relocation() {
+        let mut doc = nested_doc();
+        // Moving a paragraph to be a direct child of the bulletList (listItem-only)
+        // must fail the whole-doc validation and leave the document untouched.
+        let err = doc
+            .apply_all(
+                vec![DocOp::Move {
+                    id: "p".into(),
+                    anchor: Anchor::After { id: "item2".into() },
+                }],
+                || unreachable!("a move generates no id"),
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            OpError::Invalid(PmError::DisallowedChild {
+                parent: "bulletList".into(),
+                child: "paragraph".into()
+            })
+        );
+        assert_eq!(ids(&doc), vec!["p", "list", "quote"]);
+        assert_eq!(child_ids(&doc, "list"), vec!["item1", "item2"]);
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// doc → paragraph#0, bulletList#1 [ listItem#1.0 > paragraph#1.0.0,
+    /// listItem#1.1 > paragraph#1.1.0 ], blockquote#2 > paragraph#2.0.
+    fn doc() -> Doc {
+        Doc::parse(&json!({
+            "type": "doc",
+            "content": [
+                { "type": "paragraph", "content": [{ "type": "text", "text": "intro" }] },
+                { "type": "bulletList", "content": [
+                    { "type": "listItem", "content": [
+                        { "type": "paragraph", "content": [{ "type": "text", "text": "one" }] }
+                    ]},
+                    { "type": "listItem", "content": [
+                        { "type": "paragraph", "content": [{ "type": "text", "text": "two" }] }
+                    ]}
+                ]},
+                { "type": "blockquote", "content": [
+                    { "type": "paragraph", "content": [{ "type": "text", "text": "quoted" }] }
+                ]}
+            ]
+        }))
+        .expect("valid fixture")
+    }
+
+    #[test]
+    fn parse_accepts_dotted_paths_with_or_without_leading_dot() {
+        assert_eq!(BlockPath::parse(".3").unwrap().indices(), &[3]);
+        assert_eq!(BlockPath::parse("3").unwrap().indices(), &[3]);
+        assert_eq!(BlockPath::parse(".3.0.1").unwrap().indices(), &[3, 0, 1]);
+    }
+
+    #[test]
+    fn parse_accepts_jq_bracket_forms() {
+        assert_eq!(BlockPath::parse("[3][0]").unwrap().indices(), &[3, 0]);
+        assert_eq!(
+            BlockPath::parse(".content[3].content[0]").unwrap().indices(),
+            &[3, 0]
+        );
+    }
+
+    #[test]
+    fn parse_rejects_non_numeric_segments_and_empty() {
+        assert!(BlockPath::parse("a1b2c3d4").is_err()); // looks like a block id
+        assert!(BlockPath::parse(".3.x").is_err());
+        assert!(BlockPath::parse(".").is_err());
+        assert!(BlockPath::parse("").is_err());
+    }
+
+    #[test]
+    fn display_round_trips_through_parse() {
+        for s in [".0", ".3", ".3.0.1"] {
+            let path = BlockPath::parse(s).unwrap();
+            assert_eq!(path.to_string(), s);
+            assert_eq!(BlockPath::parse(&path.to_string()).unwrap(), path);
+        }
+    }
+
+    #[test]
+    fn at_path_resolves_top_level_and_nested() {
+        let doc = doc();
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".0").unwrap()).unwrap().r#type,
+            "paragraph"
+        );
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".1").unwrap()).unwrap().r#type,
+            "bulletList"
+        );
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".1.1.0").unwrap())
+                .unwrap()
+                .direct_text(),
+            "two"
+        );
+    }
+
+    #[test]
+    fn at_path_out_of_range_is_none() {
+        let doc = doc();
+        assert!(doc.at_path(&BlockPath::parse(".9").unwrap()).is_none());
+        assert!(doc.at_path(&BlockPath::parse(".1.0.5").unwrap()).is_none());
+    }
+
+    #[test]
+    fn outline_walks_every_block_in_preorder_with_paths() {
+        let doc = doc();
+        let outline: Vec<(String, &str)> = doc
+            .outline()
+            .iter()
+            .map(|(path, node)| (path.to_string(), node.r#type.as_str()))
+            .collect();
+        assert_eq!(
+            outline,
+            vec![
+                (".0".into(), "paragraph"),
+                (".1".into(), "bulletList"),
+                (".1.0".into(), "listItem"),
+                (".1.0.0".into(), "paragraph"),
+                (".1.1".into(), "listItem"),
+                (".1.1.0".into(), "paragraph"),
+                (".2".into(), "blockquote"),
+                (".2.0".into(), "paragraph"),
+            ]
+        );
+    }
+
+    #[test]
+    fn outline_omits_inline_text_nodes() {
+        let doc = doc();
+        assert!(
+            doc.outline().iter().all(|(_, node)| node.r#type != "text"),
+            "text nodes must not appear in the block outline"
+        );
+    }
+
+    #[test]
+    fn direct_text_is_own_line_not_descendants() {
+        let doc = doc();
+        // The bulletList has no direct text children, only nested blocks.
+        let list = doc.at_path(&BlockPath::parse(".1").unwrap()).unwrap();
+        assert_eq!(list.direct_text(), "");
+        // Its inner paragraph carries the actual text.
+        let para = doc.at_path(&BlockPath::parse(".1.0.0").unwrap()).unwrap();
+        assert_eq!(para.direct_text(), "one");
+    }
+}
+
+#[cfg(test)]
+mod locator_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn para(text: &str) -> Node {
+        serde_json::from_value(
+            json!({ "type": "paragraph", "content": [{ "type": "text", "text": text }] }),
+        )
+        .unwrap()
+    }
+
+    fn list_item(text: &str) -> Node {
+        serde_json::from_value(json!({
+            "type": "listItem",
+            "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": text }] }]
+        }))
+        .unwrap()
+    }
+
+    /// An id-less seeded-style doc: a paragraph and a two-item bullet list.
+    fn idless() -> Doc {
+        Doc::parse(&json!({
+            "type": "doc",
+            "content": [
+                { "type": "paragraph", "content": [{ "type": "text", "text": "intro" }] },
+                { "type": "bulletList", "content": [
+                    list_item("one"),
+                    list_item("two")
+                ]}
+            ]
+        }))
+        .expect("valid fixture")
+    }
+
+    fn loc(s: &str) -> Locator {
+        s.parse().expect("valid locator")
+    }
+
+    fn para_texts(doc: &Doc) -> Vec<String> {
+        doc.outline()
+            .iter()
+            .filter(|(_, n)| n.r#type == "paragraph")
+            .map(|(_, n)| n.direct_text())
+            .collect()
+    }
+
+    #[test]
+    fn from_str_disambiguates_path_from_id() {
+        assert_eq!(loc(".3.0"), Locator::Path(BlockPath::parse(".3.0").unwrap()));
+        assert_eq!(loc("a1b2c3d4"), Locator::Id("a1b2c3d4".into()));
+        assert!("".parse::<Locator>().is_err());
+    }
+
+    #[test]
+    fn round_trips_through_json_as_a_bare_string() {
+        assert_eq!(
+            serde_json::to_value(Locator::Id("abc".into())).unwrap(),
+            json!("abc")
+        );
+        assert_eq!(serde_json::to_value(loc(".3.0")).unwrap(), json!(".3.0"));
+        for value in [json!("abc"), json!(".3.0")] {
+            let parsed: Locator = serde_json::from_value(value.clone()).unwrap();
+            assert_eq!(serde_json::to_value(parsed).unwrap(), value);
+        }
+    }
+
+    #[test]
+    fn replace_by_path_edits_idless_content() {
+        let mut doc = idless();
+        doc.replace(loc(".0"), para("changed")).unwrap();
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".0").unwrap())
+                .unwrap()
+                .direct_text(),
+            "changed"
+        );
+    }
+
+    #[test]
+    fn replace_by_path_keeps_an_existing_id() {
+        let mut doc = Doc::default();
+        doc.insert(&Anchor::End, para("first"), "keep".into())
+            .unwrap();
+        doc.replace(loc(".0"), para("edited")).unwrap();
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".0").unwrap())
+                .unwrap()
+                .block_id(),
+            Some("keep")
+        );
+    }
+
+    #[test]
+    fn delete_by_nested_path() {
+        let mut doc = idless();
+        doc.delete(loc(".1.0")).unwrap(); // first list item
+        assert_eq!(para_texts(&doc), vec!["intro", "two"]);
+    }
+
+    #[test]
+    fn append_to_container_adds_a_last_child() {
+        let mut doc = idless();
+        doc.insert(&Anchor::AppendTo { id: loc(".1") }, list_item("three"), "x".into())
+            .unwrap();
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".1.2.0").unwrap())
+                .unwrap()
+                .direct_text(),
+            "three"
+        );
+    }
+
+    #[test]
+    fn prepend_to_container_adds_a_first_child() {
+        let mut doc = idless();
+        doc.insert(&Anchor::PrependTo { id: loc(".1") }, list_item("zero"), "x".into())
+            .unwrap();
+        assert_eq!(
+            doc.at_path(&BlockPath::parse(".1.0.0").unwrap())
+                .unwrap()
+                .direct_text(),
+            "zero"
+        );
+    }
+
+    #[test]
+    fn move_by_path_addresses_the_pre_move_tree() {
+        let mut doc = Doc::default();
+        for (text, id) in [("a", "a"), ("b", "b"), ("c", "c")] {
+            doc.insert(&Anchor::End, para(text), id.into()).unwrap();
+        }
+        // "move .0 to after:.2" means after the block currently at .2.
+        doc.move_block(loc(".0"), &Anchor::After { id: loc(".2") })
+            .unwrap();
+        assert_eq!(para_texts(&doc), vec!["b", "c", "a"]);
+    }
+
+    #[test]
+    fn append_into_own_subtree_is_rejected() {
+        let mut doc = idless();
+        assert_eq!(
+            doc.move_block(loc(".1"), &Anchor::AppendTo { id: loc(".1") })
+                .unwrap_err(),
+            OpError::SelfAnchor
+        );
+    }
+
+    #[test]
+    fn anchor_parse_handles_prepend_append_and_into() {
+        assert_eq!(
+            Anchor::parse("prepend:.1").unwrap(),
+            Anchor::PrependTo { id: loc(".1") }
+        );
+        assert_eq!(
+            Anchor::parse("append:.1").unwrap(),
+            Anchor::AppendTo { id: loc(".1") }
+        );
+        assert_eq!(
+            Anchor::parse("into:abc").unwrap(),
+            Anchor::AppendTo { id: "abc".into() }
+        );
+        assert!(Anchor::parse("sideways:.1").is_err());
     }
 }
 

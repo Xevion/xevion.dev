@@ -196,13 +196,13 @@ pub enum ProjectContentCommand {
         reference: String,
     },
 
-    /// Print the document as JSON, or a single block by id
+    /// Print the document as JSON, or a single block by locator
     Get {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Block id; omit for the whole document
-        block_id: Option<String>,
+        /// Block locator: a path like .3 or .3.0, or a block id; omit for the whole document
+        locator: Option<String>,
     },
 
     /// Insert a new block from a ProseMirror node
@@ -210,24 +210,24 @@ pub enum ProjectContentCommand {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Position: start | end | after:<id> | before:<id>
+        /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long, default_value = "end")]
         at: String,
         /// The block as a ProseMirror node, e.g. '{"type":"paragraph","content":[{"type":"text","text":"Hi"}]}'
         #[arg(long)]
-        json: String,
+        node: String,
     },
 
-    /// Replace a block with a new ProseMirror node, keeping its id and position
+    /// Replace a block with a new ProseMirror node, keeping its position and id
     Replace {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Block id
-        block_id: String,
+        /// Block locator: a path like .3 or .3.0, or a block id
+        locator: String,
         /// The replacement block as a ProseMirror node JSON object
         #[arg(long)]
-        json: String,
+        node: String,
     },
 
     /// Remove a block
@@ -235,8 +235,8 @@ pub enum ProjectContentCommand {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Block id
-        block_id: String,
+        /// Block locator: a path like .3 or .3.0, or a block id
+        locator: String,
     },
 
     /// Move a block to a new position
@@ -244,9 +244,9 @@ pub enum ProjectContentCommand {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Block id
-        block_id: String,
-        /// Position: start | end | after:<id> | before:<id>
+        /// Block locator: a path like .3 or .3.0, or a block id
+        locator: String,
+        /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long)]
         at: String,
     },

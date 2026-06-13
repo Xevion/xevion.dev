@@ -1,7 +1,7 @@
 use crate::cli::ProjectContentCommand;
 use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
-use crate::pm::{Anchor, Doc, DocOp, Node};
+use crate::pm::{Anchor, BlockPath, Doc, DocOp, Node};
 
 type CliResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -9,49 +9,62 @@ type CliResult = Result<(), Box<dyn std::error::Error>>;
 pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) -> CliResult {
     match command {
         ProjectContentCommand::List { reference } => list(&client, &reference, json).await,
-        ProjectContentCommand::Get {
-            reference,
-            block_id,
-        } => get(&client, &reference, block_id.as_deref(), json).await,
+        ProjectContentCommand::Get { reference, locator } => {
+            get(&client, &reference, locator.as_deref(), json).await
+        }
         ProjectContentCommand::Insert {
             reference,
             at,
-            json: node,
+            node,
         } => insert(&client, &reference, &at, &node, json).await,
         ProjectContentCommand::Replace {
             reference,
-            block_id,
-            json: node,
-        } => replace(&client, &reference, &block_id, &node, json).await,
-        ProjectContentCommand::Rm {
-            reference,
-            block_id,
-        } => rm(&client, &reference, &block_id, json).await,
+            locator,
+            node,
+        } => replace(&client, &reference, &locator, &node, json).await,
+        ProjectContentCommand::Rm { reference, locator } => {
+            rm(&client, &reference, &locator, json).await
+        }
         ProjectContentCommand::Move {
             reference,
-            block_id,
+            locator,
             at,
-        } => move_block(&client, &reference, &block_id, &at, json).await,
+        } => move_block(&client, &reference, &locator, &at, json).await,
     }
 }
 
 async fn list(client: &ApiClient, reference: &str, json: bool) -> CliResult {
     let doc = fetch_doc(client, reference).await?;
-    print_doc(&doc, json)
+    if json {
+        println!("{}", serde_json::to_string_pretty(doc.node())?);
+    } else {
+        output::print_blocks(&doc);
+    }
+    Ok(())
 }
 
-async fn get(client: &ApiClient, reference: &str, block_id: Option<&str>, json: bool) -> CliResult {
+/// Always emits JSON — the raw inspector, distinct from `list`'s outline. With a
+/// locator it prints just that block; otherwise the whole document.
+async fn get(client: &ApiClient, reference: &str, locator: Option<&str>, _json: bool) -> CliResult {
     let doc = fetch_doc(client, reference).await?;
-    match block_id {
-        Some(id) => {
-            let block = doc
-                .block(id)
-                .ok_or_else(|| format!("block \"{id}\" not found"))?;
-            println!("{}", serde_json::to_string_pretty(block)?);
-            Ok(())
-        }
-        None => print_doc(&doc, json),
-    }
+    let node = match locator {
+        Some(loc) => resolve_block(&doc, loc)?,
+        None => doc.node(),
+    };
+    println!("{}", serde_json::to_string_pretty(node)?);
+    Ok(())
+}
+
+/// Resolve a block by locator: a leading `.` means a positional path
+/// (`.3`, `.3.0`), anything else is a stable block id.
+fn resolve_block<'a>(doc: &'a Doc, locator: &str) -> Result<&'a Node, Box<dyn std::error::Error>> {
+    let found = if locator.starts_with('.') {
+        let path = BlockPath::parse(locator)?;
+        doc.at_path(&path)
+    } else {
+        doc.block(locator)
+    };
+    found.ok_or_else(|| format!("no block at \"{locator}\"").into())
 }
 
 async fn insert(
@@ -70,40 +83,40 @@ async fn insert(
 async fn replace(
     client: &ApiClient,
     reference: &str,
-    block_id: &str,
+    locator: &str,
     node_json: &str,
     json: bool,
 ) -> CliResult {
     let node = parse_node(node_json)?;
     let op = DocOp::Replace {
-        id: block_id.to_string(),
+        id: locator.parse()?,
         node,
     };
     let doc = apply_op(client, reference, op).await?;
-    report(&doc, json, &format!("Replaced block {block_id}"))
+    report(&doc, json, &format!("Replaced block {locator}"))
 }
 
-async fn rm(client: &ApiClient, reference: &str, block_id: &str, json: bool) -> CliResult {
+async fn rm(client: &ApiClient, reference: &str, locator: &str, json: bool) -> CliResult {
     let op = DocOp::Delete {
-        id: block_id.to_string(),
+        id: locator.parse()?,
     };
     let doc = apply_op(client, reference, op).await?;
-    report(&doc, json, &format!("Removed block {block_id}"))
+    report(&doc, json, &format!("Removed block {locator}"))
 }
 
 async fn move_block(
     client: &ApiClient,
     reference: &str,
-    block_id: &str,
+    locator: &str,
     at: &str,
     json: bool,
 ) -> CliResult {
     let op = DocOp::Move {
-        id: block_id.to_string(),
+        id: locator.parse()?,
         anchor: Anchor::parse(at)?,
     };
     let doc = apply_op(client, reference, op).await?;
-    report(&doc, json, &format!("Moved block {block_id}"))
+    report(&doc, json, &format!("Moved block {locator}"))
 }
 
 fn parse_node(node_json: &str) -> Result<Node, Box<dyn std::error::Error>> {
@@ -139,15 +152,6 @@ fn report(doc: &Doc, json: bool, msg: &str) -> CliResult {
         println!("{}", serde_json::to_string_pretty(doc.node())?);
     } else {
         output::success(msg);
-        output::print_blocks(doc);
-    }
-    Ok(())
-}
-
-fn print_doc(doc: &Doc, json: bool) -> CliResult {
-    if json {
-        println!("{}", serde_json::to_string_pretty(doc.node())?);
-    } else {
         output::print_blocks(doc);
     }
     Ok(())
