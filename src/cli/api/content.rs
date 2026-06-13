@@ -2,7 +2,7 @@ use crate::cli::ProjectContentCommand;
 use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
 use crate::markdown;
-use crate::pm::{Anchor, BlockPath, Doc, DocOp, Locator, Node};
+use crate::pm::{Anchor, Doc, DocOp, Locator, Node};
 
 type CliResult = Result<(), Box<dyn std::error::Error>>;
 type CliError = Box<dyn std::error::Error>;
@@ -70,16 +70,13 @@ async fn get(client: &ApiClient, reference: &str, locator: Option<&str>, _json: 
     Ok(())
 }
 
-/// Resolve a block by locator: a leading `.` means a positional path
-/// (`.3`, `.3.0`), anything else is a stable block id.
-fn resolve_block<'a>(doc: &'a Doc, locator: &str) -> Result<&'a Node, Box<dyn std::error::Error>> {
-    let found = if locator.starts_with('.') {
-        let path = BlockPath::parse(locator)?;
-        doc.at_path(&path)
-    } else {
-        doc.block(locator)
-    };
-    found.ok_or_else(|| format!("no block at \"{locator}\"").into())
+/// Resolve a block by locator through the same `Locator` parsing the mutating
+/// commands use — a leading `.` is a positional path (`.3`, `.3.0`), anything
+/// else a stable block id (with or without the `#` that `list` prints).
+fn resolve_block<'a>(doc: &'a Doc, locator: &str) -> Result<&'a Node, CliError> {
+    let loc: Locator = locator.parse()?;
+    doc.at(&loc)
+        .ok_or_else(|| format!("no block at \"{locator}\"").into())
 }
 
 async fn insert(

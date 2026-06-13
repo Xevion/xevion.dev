@@ -522,7 +522,9 @@ impl std::str::FromStr for Locator {
     type Err = String;
     /// Disambiguate a locator string: a leading `.` or `[` is a positional path,
     /// anything else is a block id. (A bare `3` is therefore an id, not a path —
-    /// paths must lead with a dot, which is also what `list` prints.)
+    /// paths must lead with a dot, which is also what `list` prints.) A leading
+    /// `#` on an id is stripped, so the `#abc12345` form `list` prints pastes
+    /// back in unchanged.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
             return Err("empty locator; use a block id or a path like .3".to_string());
@@ -530,7 +532,13 @@ impl std::str::FromStr for Locator {
         if s.starts_with('.') || s.starts_with('[') {
             BlockPath::parse(s).map(Self::Path)
         } else {
-            Ok(Self::Id(s.to_string()))
+            // `list` prints ids with a leading `#`; accept that form so a copied
+            // id resolves without the caller stripping the sigil first.
+            let id = s.strip_prefix('#').unwrap_or(s);
+            if id.is_empty() {
+                return Err("empty locator; use a block id or a path like .3".to_string());
+            }
+            Ok(Self::Id(id.to_string()))
         }
     }
 }
@@ -757,11 +765,6 @@ impl Doc {
         self.0.validate_document()
     }
 
-    /// Borrow a block by id, searched at any depth.
-    pub fn block(&self, id: &str) -> Option<&Node> {
-        self.0.find_path(id).map(|path| self.node_at(&path))
-    }
-
     /// Borrow the block at a positional path, or `None` if any index is out of
     /// range (so a stale path fails cleanly rather than panicking).
     pub fn at_path(&self, path: &BlockPath) -> Option<&Node> {
@@ -810,6 +813,15 @@ impl Doc {
             node = &mut node.content[i];
         }
         &mut node.content
+    }
+
+    /// Borrow the block a locator names — by stable id or positional path — or
+    /// `None` if it names nothing. The single read-side resolver every command
+    /// shares, so id/`#id`/path handling can't drift between `get`, `replace`,
+    /// `rm`, and `move`.
+    pub fn at(&self, locator: &Locator) -> Option<&Node> {
+        self.resolve_locator(locator)
+            .map(|path| self.node_at(&path))
     }
 
     /// Resolve a locator to the path of the block it names, or `None` if it
@@ -1367,7 +1379,7 @@ mod op_tests {
         let replaced = doc.replace("b", heading).unwrap();
         assert_eq!(replaced.block_id(), Some("b"));
         assert_eq!(ids(&doc), vec!["a", "b", "c"]);
-        let b = doc.block("b").unwrap();
+        let b = doc.at(&"b".into()).unwrap();
         assert_eq!(b.r#type, "heading");
     }
 
@@ -1378,7 +1390,7 @@ mod op_tests {
         incoming.set_block_id("wrong");
         doc.replace("b", incoming).unwrap();
         assert_eq!(ids(&doc), vec!["a", "b", "c"]);
-        assert!(doc.block("wrong").is_none());
+        assert!(doc.at(&"wrong".into()).is_none());
     }
 
     #[test]
@@ -1805,7 +1817,7 @@ mod op_tests {
         }));
         let replaced = doc.replace("ip1", heading).unwrap();
         assert_eq!(replaced.block_id(), Some("ip1"));
-        assert_eq!(doc.block("ip1").unwrap().r#type, "heading");
+        assert_eq!(doc.at(&"ip1".into()).unwrap().r#type, "heading");
         assert_eq!(child_ids(&doc, "item1"), vec!["ip1"]); // still the only child
     }
 
@@ -1856,7 +1868,7 @@ mod op_tests {
     fn block_lookup_finds_a_nested_block() {
         let doc = nested_doc();
         assert_eq!(
-            doc.block("ip2").map(|n| n.r#type.as_str()),
+            doc.at(&"ip2".into()).map(|n| n.r#type.as_str()),
             Some("paragraph")
         );
     }
@@ -2079,6 +2091,29 @@ mod locator_tests {
         );
         assert_eq!(loc("a1b2c3d4"), Locator::Id("a1b2c3d4".into()));
         assert!("".parse::<Locator>().is_err());
+    }
+
+    #[test]
+    fn from_str_accepts_the_hash_prefixed_id_that_list_prints() {
+        // `content list` prints ids as `#abc12345`; pasting that form verbatim
+        // must resolve to the same block as the bare id.
+        assert_eq!(loc("#a1b2c3d4"), Locator::Id("a1b2c3d4".into()));
+        assert_eq!(loc("a1b2c3d4"), Locator::Id("a1b2c3d4".into()));
+        // A lone `#` names nothing.
+        assert!("#".parse::<Locator>().is_err());
+    }
+
+    #[test]
+    fn at_resolves_both_locator_forms() {
+        let mut doc = Doc::default();
+        doc.insert(&Anchor::End, para("hello"), "keepid12".into())
+            .unwrap();
+        assert_eq!(doc.at(&loc(".0")).unwrap().direct_text(), "hello");
+        assert_eq!(doc.at(&loc("keepid12")).unwrap().direct_text(), "hello");
+        // The `#abc` form `list` prints resolves to the same block.
+        assert_eq!(doc.at(&loc("#keepid12")).unwrap().direct_text(), "hello");
+        assert!(doc.at(&loc("nope0000")).is_none());
+        assert!(doc.at(&loc(".9")).is_none());
     }
 
     #[test]
@@ -2355,7 +2390,7 @@ mod sequence_tests {
         );
         assert_eq!(para_texts(&doc), vec!["a", "y"]);
         // the replaced block keeps its id
-        assert_eq!(doc.block("x").map(Node::direct_text), Some("a".into()));
+        assert_eq!(doc.at(&"x".into()).map(Node::direct_text), Some("a".into()));
     }
 
     #[test]
@@ -2367,7 +2402,7 @@ mod sequence_tests {
         );
         assert_eq!(para_texts(&doc), vec!["a", "b", "c", "y"]);
         // the first block lands in the target's slot, keeping its id
-        assert_eq!(doc.block("x").map(Node::direct_text), Some("a".into()));
+        assert_eq!(doc.at(&"x".into()).map(Node::direct_text), Some("a".into()));
     }
 
     #[test]
@@ -2386,8 +2421,8 @@ mod block_id_tests {
     use super::*;
     use serde_json::json;
 
-    fn doc(value: Value) -> Doc {
-        Doc::parse(&value).expect("valid fixture")
+    fn doc(value: &Value) -> Doc {
+        Doc::parse(value).expect("valid fixture")
     }
 
     /// Every block id present in the subtree, in pre-order.
@@ -2415,7 +2450,7 @@ mod block_id_tests {
 
     #[test]
     fn ensure_block_ids_stamps_every_block_node_missing_one() {
-        let mut doc = doc(json!({ "type": "doc", "content": [
+        let mut doc = doc(&json!({ "type": "doc", "content": [
             { "type": "paragraph", "content": [{ "type": "text", "text": "p" }] },
             { "type": "bulletList", "content": [
                 { "type": "listItem", "content": [
@@ -2437,7 +2472,7 @@ mod block_id_tests {
 
     #[test]
     fn ensure_block_ids_preserves_existing_ids() {
-        let mut doc = doc(json!({ "type": "doc", "content": [
+        let mut doc = doc(&json!({ "type": "doc", "content": [
             { "type": "paragraph", "attrs": { "id": "keep" },
               "content": [{ "type": "text", "text": "a" }] },
             { "type": "paragraph", "content": [{ "type": "text", "text": "b" }] }
@@ -2451,7 +2486,7 @@ mod block_id_tests {
     fn ensure_block_ids_does_not_collide_with_an_existing_id() {
         // The generator's first output (`g1`) already exists, so the unstamped
         // block must skip to the next free id rather than duplicate it.
-        let mut doc = doc(json!({ "type": "doc", "content": [
+        let mut doc = doc(&json!({ "type": "doc", "content": [
             { "type": "paragraph", "attrs": { "id": "g1" },
               "content": [{ "type": "text", "text": "a" }] },
             { "type": "paragraph", "content": [{ "type": "text", "text": "b" }] }
@@ -2463,7 +2498,7 @@ mod block_id_tests {
     #[test]
     fn apply_all_backfills_ids_across_the_whole_document() {
         // A seeded-style document with no ids anywhere.
-        let mut doc = doc(json!({ "type": "doc", "content": [
+        let mut doc = doc(&json!({ "type": "doc", "content": [
             { "type": "paragraph", "content": [{ "type": "text", "text": "seed" }] }
         ]}));
         assert!(doc.node().content[0].block_id().is_none());
