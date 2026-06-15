@@ -7,6 +7,7 @@
   import ProjectMetaRail from "$lib/components/project/ProjectMetaRail.svelte";
   import ProjectGallery from "$lib/components/project/ProjectGallery.svelte";
   import ProjectToc from "$lib/components/project/ProjectToc.svelte";
+  import ProjectTocOverlay from "$lib/components/project/ProjectTocOverlay.svelte";
   import RelatedProjects from "$lib/components/project/RelatedProjects.svelte";
   import Breadcrumb from "$lib/components/project/Breadcrumb.svelte";
   import ProjectDetailHeader from "$lib/components/project/ProjectDetailHeader.svelte";
@@ -55,6 +56,26 @@
       },
     });
   }
+
+  // Reading column + meta rail. On mobile the rail collapses above the prose
+  // (order: -1) so the actions/stack lead; the in-rail TOC self-hides there and
+  // is replaced by the floating overlay.
+  const detailGrid = css({
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 244px",
+    gap: "48px",
+    mt: "26px",
+    alignItems: "start",
+    "@media (max-width: 760px)": { gridTemplateColumns: "1fr", gap: "26px" },
+  });
+  const railCol = css({
+    position: "sticky",
+    top: "28px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "22px",
+    "@media (max-width: 760px)": { position: "static", order: "-1" },
+  });
 </script>
 
 <svelte:head>
@@ -80,11 +101,11 @@
     >
       <Breadcrumb slug={project.slug} />
 
-      <ProjectDetailHeader {project} />
+      <ProjectDetailHeader {project} now={data.now} />
 
       <ProjectHero {project} />
 
-      <div class="rd-detail-grid">
+      <div class={detailGrid}>
         <div class={css({ minW: "0" })}>
           {#if data.html}
             <div class={cx("project-detail", prose())}>
@@ -98,60 +119,26 @@
           {/if}
         </div>
 
-        <div class="rd-rail-col">
+        <div class={railCol}>
+          <ProjectMetaRail {project} onLink={trackLink} />
           {#if data.toc.length > 1}
             <ProjectToc toc={data.toc} />
           {/if}
-          <ProjectMetaRail {project} now={data.now} onLink={trackLink} />
         </div>
       </div>
 
       {#if project.related.length > 0}
         <RelatedProjects related={project.related} onOpen={openRelated} />
       {/if}
+
+      {#if data.toc.length > 1}
+        <ProjectTocOverlay toc={data.toc} />
+      {/if}
     </div>
   </div>
 </main>
 
 <style>
-  /* Two-column reading layout with a sticky meta rail. */
-  :global(.rd-detail-grid) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 244px;
-    gap: 48px;
-    margin-top: 26px;
-    align-items: start;
-  }
-  /* The whole right column sticks as one unit, so the TOC and meta card scroll
-     together instead of fighting over the same sticky offset. */
-  :global(.rd-rail-col) {
-    position: sticky;
-    top: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
-  :global(.rd-rail) {
-    padding: 18px 20px;
-    border: 1px solid var(--colors-border-hairline);
-    border-radius: 12px;
-    background: var(--colors-surface);
-  }
-
-  @media (max-width: 760px) {
-    :global(.rd-detail-grid) {
-      grid-template-columns: 1fr;
-      gap: 26px;
-    }
-    :global(.rd-rail-col) {
-      position: static;
-    }
-    /* Scroll-spy nav is a desktop affordance; the rail stacks below the prose. */
-    :global(.rd-toc) {
-      display: none;
-    }
-  }
-
   /* Code block: bordered wrapper + optional language header. Shiki paints the
      body; its own canvas/border are neutralized so the wrapper owns the chrome. */
   :global(.project-detail .rd-codeblock) {

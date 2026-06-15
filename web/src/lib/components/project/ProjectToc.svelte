@@ -60,7 +60,10 @@
   });
 </script>
 
-<nav class="rd-toc" aria-label="On this page">
+<nav
+  class={css({ "@media (max-width: 760px)": { display: "none" } })}
+  aria-label="On this page"
+>
   <span class={css({ textStyle: "label.micro" })}>On this page</span>
   <ul
     class={css({

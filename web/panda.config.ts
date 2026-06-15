@@ -433,12 +433,19 @@ export default defineConfig({
             // text reads as plain text (overriding the blue prose-link style) and
             // only tints to accent on hover.
             "& .rd-heading": { scrollMarginTop: "80px" },
+            // _dark mirrors the base so the `.dark` boost matches the prose
+            // link rule's specificity (`.dark .prose a`) — without it, dark mode
+            // lets the blue link color win and tints every heading.
             "& .rd-anchor": {
               color: "inherit",
               textDecoration: "none",
               transition: "color .12s",
+              _dark: { color: "inherit" },
             },
-            "& .rd-anchor:hover": { color: "var(--accent)" },
+            "& .rd-anchor:hover": {
+              color: "var(--accent)",
+              _dark: { color: "var(--accent)" },
+            },
             "& p": {
               fontSize: "body",
               lineHeight: "1.72",
@@ -745,12 +752,18 @@ export default defineConfig({
   globalCss: {
     "html, body": {
       fontFamily: "inter",
-      overflowX: "hidden",
       color: "text.primary",
     },
     body: {
       height: "100%",
       backgroundColor: "bg.primary",
+      // overflow-x clipping lives on <html> only (see the `html` rule below).
+      // `overflow-x: hidden` here would force <body>'s computed overflow-y to
+      // `auto`, making <body> a scroll container that never actually scrolls
+      // (the document scrolls on <html>) — which silently breaks `position:
+      // sticky` for descendants like the project-detail rail. `clip` still
+      // clips horizontal overflow without establishing a scroll container.
+      overflowX: "clip",
     },
     // OverlayScrollbars theming
     "html:not(.dark) .os-scrollbar": {
@@ -829,6 +842,10 @@ export default defineConfig({
     // projects/[slug]). Token colors are NOT shared — the editor approximates via
     // local `--cb-*` vars; the public page uses Shiki's inline per-token colors.
     html: {
+      // Clips horizontal overflow site-wide and (via the forced overflow-y:
+      // auto) makes <html> the document scroller. Kept off <body> so sticky
+      // descendants resolve against this scroller — see the `body` rule above.
+      overflowX: "hidden",
       "--code-canvas": "#f6f8fa",
       "--code-scrollbar": "#afb8c1",
     },

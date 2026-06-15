@@ -1,12 +1,37 @@
 <script lang="ts">
   import { css } from "styled-system/css";
+  import { statusMeta, formatAge } from "$lib/project-display";
   import type { ApiProjectDetail } from "$lib/bindings";
 
   interface Props {
     project: ApiProjectDetail;
+    /** Server-seeded clock so relative ages match across SSR/hydration. */
+    now?: number;
   }
 
-  let { project }: Props = $props();
+  let { project, now }: Props = $props();
+
+  const status = $derived(statusMeta(project.status));
+
+  // At-a-glance identity under the description: type · status · updated. Replaces
+  // the old rail facts grid and the mobile-only badge with one line that works at
+  // every width. Children are separated by middots inserted via CSS.
+  const metaLine = css({
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    mt: "14px",
+    fontFamily: "geist",
+    fontSize: "metaLg",
+    color: "zinc.500",
+    _dark: { color: "zinc.400" },
+    "& > * + *::before": {
+      content: '"\\00b7"',
+      mx: "9px",
+      color: "zinc.400",
+      _dark: { color: "zinc.500" },
+    },
+  });
 </script>
 
 <header>
@@ -31,11 +56,27 @@
       lineHeight: "1.5",
       color: "zinc.600",
       maxW: "640px",
-      textWrap: "pretty",
+      textWrap: "balance",
       "@media (max-width: 760px)": { fontSize: "16px" },
       _dark: { color: "zinc.400" },
     })}
   >
     {project.shortDescription}
   </p>
+
+  <div class={metaLine}>
+    {#if project.projectType}
+      <span>{project.projectType}</span>
+    {/if}
+    <span
+      class={css({ display: "inline-flex", alignItems: "center", gap: "6px" })}
+    >
+      <span
+        class={css({ w: "6px", h: "6px", rounded: "full", flexShrink: "0" })}
+        style="background: {status.color}"
+      ></span>
+      {status.label}
+    </span>
+    <span>Updated {formatAge(project.lastActivity, now)}</span>
+  </div>
 </header>
