@@ -40,6 +40,7 @@
     "@xevion/satori-html": "^0.4.1",
     "blurhash": "^2.0.5",
     "cookie": "^1.1.1",
+    "github-slugger": "^2.0.0",
     "lowlight": "^3.3.0",
     "nanoid": "^5.1.11",
     "overlayscrollbars": "^2.13.0",

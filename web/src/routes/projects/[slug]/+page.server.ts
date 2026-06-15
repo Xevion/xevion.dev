@@ -17,14 +17,16 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 
   // Every project has a detail page. Prose is optional — projects without
   // authored content render the hero/meta/links/related shell with no body.
-  const html = project.detailContent
+  const rendered = project.detailContent
     ? await renderDetailContent(project.detailContent as JSONContent)
     : null;
+  const html = rendered?.html ?? null;
+  const toc = rendered?.toc ?? [];
 
   // The §NN section markers continue across the prose into the Gallery heading.
   // The prose h2s are numbered via CSS counters; the Gallery heading needs to
-  // know how many preceded it, so count them here from the rendered HTML.
-  const sectionCount = html ? (html.match(/<h2/g) ?? []).length : 0;
+  // know how many preceded it, so count the h2s the renderer collected.
+  const sectionCount = toc.filter((item) => item.level === 2).length;
 
-  return { project, html, sectionCount };
+  return { project, html, toc, sectionCount };
 };

@@ -1,8 +1,16 @@
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import sanitizeHtml from "sanitize-html";
+import GithubSlugger from "github-slugger";
 import type { JSONContent } from "@tiptap/core";
 import { tiptapExtensions } from "./extensions";
 import { getHighlighter } from "./shiki.server";
+
+/** A heading entry for the on-page table of contents (h2/h3). */
+export interface TocItem {
+  level: number;
+  text: string;
+  id: string;
+}
 
 /**
  * Allowlist for the rendered detail HTML. The content is already constrained by
@@ -43,6 +51,9 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
     video: ["src", "autoplay", "loop", "muted", "playsinline", "poster"],
     aside: ["data-variant"],
     details: ["open"],
+    h2: ["id"],
+    h3: ["id"],
+    h4: ["id"],
   },
   allowedStyles: {
     "*": { color: [/.*/], "--shiki-dark": [/.*/] },
@@ -76,18 +87,42 @@ function applyKeycaps(html: string): string {
     .join("");
 }
 
-/** Render TipTap/ProseMirror document JSON to sanitized HTML. Server-only. */
+/**
+ * Render TipTap/ProseMirror document JSON to sanitized HTML plus a table of
+ * contents. Server-only.
+ *
+ * Headings get text-derived slug `id`s (deduped by github-slugger, matching the
+ * GitHub/remark convention) so they double as shareable anchor targets, and each
+ * carries a hover-revealed permalink. The same pass collects the `toc` the page
+ * renders into the rail for scroll-spy nav.
+ */
 export async function renderDetailContent(
   content: JSONContent,
-): Promise<string> {
+): Promise<{ html: string; toc: TocItem[] }> {
   const highlighter = await getHighlighter();
   const loadedLangs = new Set(highlighter.getLoadedLanguages());
 
-  const html = renderToHTMLString({
+  const slugger = new GithubSlugger();
+  const toc: TocItem[] = [];
+
+  const rendered = renderToHTMLString({
     extensions: tiptapExtensions,
     content,
     options: {
       nodeMapping: {
+        heading: ({ node, children }) => {
+          const level = (node.attrs.level as number | null) ?? 2;
+          const text = node.textContent;
+          const id = slugger.slug(text);
+          const inner = Array.isArray(children)
+            ? children.join("")
+            : (children ?? "");
+          toc.push({ level, text, id });
+          // The heading text itself is the permalink (the slug id is the anchor
+          // target); it reads as plain heading text and only tints on hover, so
+          // it doesn't compete with the §NN section counter.
+          return `<h${level} id="${id}" class="rd-heading"><a class="rd-anchor" href="#${id}">${inner}</a></h${level}>`;
+        },
         codeBlock: ({ node }) => {
           const requested = (node.attrs.language as string | null) ?? "text";
           const lang = loadedLangs.has(requested) ? requested : "text";
@@ -125,5 +160,6 @@ export async function renderDetailContent(
     },
   });
 
-  return sanitizeHtml(applyKeycaps(html), sanitizeOptions);
+  const html = sanitizeHtml(applyKeycaps(rendered), sanitizeOptions);
+  return { html, toc };
 }

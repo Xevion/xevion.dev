@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { telemetry } from "$lib/telemetry";
   import { morph } from "$lib/stores/morph.svelte";
   import { resolveAccent, readableInk } from "$lib/project-display";
   import ProjectHero from "$lib/components/project/ProjectHero.svelte";
   import ProjectMetaRail from "$lib/components/project/ProjectMetaRail.svelte";
   import ProjectGallery from "$lib/components/project/ProjectGallery.svelte";
+  import ProjectToc from "$lib/components/project/ProjectToc.svelte";
   import RelatedProjects from "$lib/components/project/RelatedProjects.svelte";
   import Breadcrumb from "$lib/components/project/Breadcrumb.svelte";
   import ProjectDetailHeader from "$lib/components/project/ProjectDetailHeader.svelte";
@@ -26,6 +28,18 @@
   // Mark this project as the morph target so back-navigation reverses into its card.
   $effect(() => {
     morph.slug = project.slug;
+  });
+
+  // Honor a #heading fragment on initial load. SvelteKit's own fragment scroll
+  // is unreliable here — the body is wrapped by OverlayScrollbars — so scroll the
+  // target into view ourselves once the prose is in the DOM. scroll-margin-top on
+  // the heading keeps it clear of the viewport top.
+  onMount(() => {
+    const hash = location.hash.slice(1);
+    if (!hash) return;
+    requestAnimationFrame(() => {
+      document.getElementById(decodeURIComponent(hash))?.scrollIntoView();
+    });
   });
 
   function trackLink(url: string) {
@@ -51,7 +65,7 @@
 <main
   class={cx(
     "page-main",
-    css({ overflowX: "hidden", fontFamily: "schibsted", pb: "20" }),
+    css({ overflowX: "clip", fontFamily: "schibsted", pb: "20" }),
   )}
 >
   <div class={css({ display: "flex", justifyContent: "center", pt: "14" })}>
@@ -66,7 +80,7 @@
     >
       <Breadcrumb slug={project.slug} />
 
-      <ProjectDetailHeader {project} now={data.now} />
+      <ProjectDetailHeader {project} />
 
       <ProjectHero {project} />
 
@@ -84,7 +98,12 @@
           {/if}
         </div>
 
-        <ProjectMetaRail {project} now={data.now} onLink={trackLink} />
+        <div class="rd-rail-col">
+          {#if data.toc.length > 1}
+            <ProjectToc toc={data.toc} />
+          {/if}
+          <ProjectMetaRail {project} now={data.now} onLink={trackLink} />
+        </div>
       </div>
 
       {#if project.related.length > 0}
@@ -103,9 +122,16 @@
     margin-top: 26px;
     align-items: start;
   }
-  :global(.rd-rail) {
+  /* The whole right column sticks as one unit, so the TOC and meta card scroll
+     together instead of fighting over the same sticky offset. */
+  :global(.rd-rail-col) {
     position: sticky;
     top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  :global(.rd-rail) {
     padding: 18px 20px;
     border: 1px solid var(--colors-border-hairline);
     border-radius: 12px;
@@ -117,8 +143,12 @@
       grid-template-columns: 1fr;
       gap: 26px;
     }
-    :global(.rd-rail) {
+    :global(.rd-rail-col) {
       position: static;
+    }
+    /* Scroll-spy nav is a desktop affordance; the rail stacks below the prose. */
+    :global(.rd-toc) {
+      display: none;
     }
   }
 

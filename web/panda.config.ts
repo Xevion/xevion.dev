@@ -428,6 +428,17 @@ export default defineConfig({
               m: "20px 0 6px",
               _dark: { color: "zinc.100" },
             },
+            // Each heading is its own permalink. scroll-margin keeps a jumped-to
+            // heading clear of the viewport top. The link wrapping the heading
+            // text reads as plain text (overriding the blue prose-link style) and
+            // only tints to accent on hover.
+            "& .rd-heading": { scrollMarginTop: "80px" },
+            "& .rd-anchor": {
+              color: "inherit",
+              textDecoration: "none",
+              transition: "color .12s",
+            },
+            "& .rd-anchor:hover": { color: "var(--accent)" },
             "& p": {
               fontSize: "body",
               lineHeight: "1.72",
@@ -435,6 +446,23 @@ export default defineConfig({
               m: "0 0 14px",
               textWrap: "pretty",
               _dark: { color: "zinc.300" },
+            },
+            // Lead paragraph: larger, slightly louder than body, with a drop cap
+            // to open the read. Only the opening paragraph of the prose.
+            "& > p:first-of-type": {
+              fontSize: "17px",
+              lineHeight: "1.7",
+              color: "zinc.800",
+              _dark: { color: "zinc.200" },
+            },
+            "& > p:first-of-type::first-letter": {
+              float: "left",
+              fontSize: "3.1em",
+              lineHeight: "0.82",
+              fontWeight: "700",
+              pr: "10px",
+              mt: "3px",
+              color: "var(--accent)",
             },
             "& ul": {
               listStyle: "none",
