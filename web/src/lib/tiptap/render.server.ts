@@ -29,6 +29,8 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
     "img",
     "video",
     "aside",
+    "details",
+    "summary",
   ],
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
@@ -39,6 +41,8 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
     pre: ["style", "tabindex"],
     img: ["src", "alt", "loading"],
     video: ["src", "autoplay", "loop", "muted", "playsinline", "poster"],
+    aside: ["data-variant"],
+    details: ["open"],
   },
   allowedStyles: {
     "*": { color: [/.*/], "--shiki-dark": [/.*/] },

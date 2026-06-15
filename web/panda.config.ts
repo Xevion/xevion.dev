@@ -1,5 +1,31 @@
 import { defineConfig, defineRecipe } from "@pandacss/dev";
 
+/**
+ * Encode an inline SVG as a `mask-image` url, evaluated at config-build time. The
+ * masked element's `background-color` tints it, so one icon serves light/dark and
+ * any variant color. Used by the typed callout admonitions. Stroke is a literal
+ * color (mask only reads alpha).
+ */
+const maskIcon = (svg: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+const lucide = (paths: string) =>
+  maskIcon(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>${paths}</svg>`,
+  );
+
+const CALLOUT_ICON = {
+  note: lucide(
+    "<circle cx='12' cy='12' r='10'/><path d='M12 16v-4'/><path d='M12 8h.01'/>",
+  ),
+  tip: lucide(
+    "<path d='M15 14c.2-1 .7-1.7 1.5-2.5C17.7 10.2 18 9 18 8a6 6 0 0 0-12 0c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/><path d='M9 18h6'/><path d='M10 22h4'/>",
+  ),
+  warning: lucide(
+    "<path d='m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><path d='M12 9v4'/><path d='M12 17h.01'/>",
+  ),
+};
+
 export default defineConfig({
   preflight: true,
 
@@ -584,6 +610,88 @@ export default defineConfig({
                 ml: "26px",
                 my: "6px",
               },
+            },
+            "& .rd-callout": {
+              position: "relative",
+              m: "20px 0",
+              pl: "44px",
+              pr: "16px",
+              py: "12px",
+              rounded: "8px",
+              borderWidth: "1px",
+              "& > :last-child": { mb: "0" },
+              "& p": { m: "0 0 8px", fontSize: "bodySm", lineHeight: "1.6" },
+            },
+            "& .rd-callout::before": {
+              content: '""',
+              position: "absolute",
+              left: "14px",
+              top: "13px",
+              w: "18px",
+              h: "18px",
+              backgroundColor: "currentColor",
+              maskSize: "contain",
+              maskRepeat: "no-repeat",
+              maskPosition: "center",
+            },
+            "& .rd-callout[data-variant='note']": {
+              borderColor: "color-mix(in srgb, #3b82f6 30%, transparent)",
+              bg: "color-mix(in srgb, #3b82f6 7%, transparent)",
+              color: "#2563eb",
+            },
+            "& .rd-callout[data-variant='note']::before": {
+              maskImage: CALLOUT_ICON.note,
+            },
+            "& .rd-callout[data-variant='tip']": {
+              borderColor: "color-mix(in srgb, #10b981 30%, transparent)",
+              bg: "color-mix(in srgb, #10b981 7%, transparent)",
+              color: "#059669",
+            },
+            "& .rd-callout[data-variant='tip']::before": {
+              maskImage: CALLOUT_ICON.tip,
+            },
+            "& .rd-callout[data-variant='warning']": {
+              borderColor: "color-mix(in srgb, #f59e0b 35%, transparent)",
+              bg: "color-mix(in srgb, #f59e0b 8%, transparent)",
+              color: "#d97706",
+            },
+            "& .rd-callout[data-variant='warning']::before": {
+              maskImage: CALLOUT_ICON.warning,
+            },
+            "& .rd-details": {
+              m: "20px 0",
+              borderWidth: "1px",
+              borderColor: "border.hairline",
+              rounded: "8px",
+              overflow: "hidden",
+              "& > summary": {
+                cursor: "pointer",
+                listStyle: "none",
+                userSelect: "none",
+                p: "10px 14px",
+                fontSize: "bodySm",
+                fontWeight: "500",
+                color: "zinc.700",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                _dark: { color: "zinc.200" },
+              },
+              "& > summary::-webkit-details-marker": { display: "none" },
+              "& > summary::before": {
+                content: '"\\203A"',
+                display: "inline-block",
+                color: "var(--accent)",
+                fontWeight: "700",
+                transition: "transform .15s",
+              },
+              "&[open] > summary::before": { transform: "rotate(90deg)" },
+              "&[open] > summary": {
+                borderBottomWidth: "1px",
+                borderColor: "border.hairline",
+              },
+              "& .rd-details-body": { p: "12px 14px" },
+              "& .rd-details-body > :last-child": { mb: "0" },
             },
           },
         }),

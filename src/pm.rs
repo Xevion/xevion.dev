@@ -165,6 +165,19 @@ const NODES: &[NodeSpec] = &[
         content: Content::Block,
     },
     NodeSpec {
+        // A typed admonition (note/tip/warning) carried in a `variant` attr.
+        name: "callout",
+        group: Group::Block,
+        content: Content::Block,
+    },
+    NodeSpec {
+        // A collapsible disclosure: the `summary` attr is the toggle label and
+        // the block content is the body revealed when open.
+        name: "details",
+        group: Group::Block,
+        content: Content::Block,
+    },
+    NodeSpec {
         name: "bulletList",
         group: Group::Block,
         content: Content::Only(&["listItem"]),

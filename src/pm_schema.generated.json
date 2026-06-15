@@ -2,7 +2,9 @@
   "nodes": [
     "blockquote",
     "bulletList",
+    "callout",
     "codeBlock",
+    "details",
     "doc",
     "figure",
     "hardBreak",
@@ -26,7 +28,9 @@
   "idTypes": [
     "blockquote",
     "bulletList",
+    "callout",
     "codeBlock",
+    "details",
     "figure",
     "heading",
     "horizontalRule",

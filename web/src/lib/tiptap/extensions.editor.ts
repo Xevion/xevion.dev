@@ -4,6 +4,8 @@ import { UniqueID } from "@tiptap/extension-unique-id";
 import { createLowlight, common } from "lowlight";
 import type { Extensions } from "@tiptap/core";
 import {
+  Callout,
+  Details,
   Figure,
   Gloss,
   Sidenote,
@@ -30,4 +32,6 @@ export const editorExtensions: Extensions = [
   Figure,
   Gloss,
   Sidenote,
+  Callout,
+  Details,
 ];

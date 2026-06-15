@@ -50,6 +50,8 @@ export const uniqueIdOptions: UniqueIdOptions = {
     "listItem",
     "figure",
     "sidenote",
+    "callout",
+    "details",
   ],
   generateID: () => generateBlockId(),
 };
@@ -142,6 +144,85 @@ export const Sidenote = Node.create({
 });
 
 /**
+ * Typed admonition (note / tip / warning). Block content with a `variant` attr;
+ * the prose CSS draws the per-variant color and a masked icon off
+ * `[data-variant]`, so the rendered HTML carries no inline SVG.
+ */
+export const Callout = Node.create({
+  name: "callout",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return {
+      variant: {
+        default: "note",
+        parseHTML: (el: HTMLElement) =>
+          el.getAttribute("data-variant") ?? "note",
+        renderHTML: (attrs: Record<string, unknown>) => ({
+          "data-variant": String(attrs.variant ?? "note"),
+        }),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "aside[data-callout]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "aside",
+      { "data-callout": "", class: "rd-callout", ...HTMLAttributes },
+      0,
+    ];
+  },
+});
+
+/**
+ * Collapsible disclosure. `summary` is the always-visible toggle label (rendered
+ * as a static `<summary>` alongside the body content hole), `open` controls the
+ * default state. Authored via the CLI `--node`; a GUI node-view is deferred.
+ */
+export const Details = Node.create({
+  name: "details",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return {
+      summary: { default: "Details", renderHTML: () => ({}) },
+      open: {
+        default: false,
+        parseHTML: (el: HTMLElement) => el.hasAttribute("open"),
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.open ? { open: "" } : {},
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: "details",
+        getAttrs: (el: HTMLElement) => ({
+          summary: el.querySelector("summary")?.textContent ?? "Details",
+          open: el.hasAttribute("open"),
+        }),
+      },
+    ];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    // The content hole (0) must be the sole child of its element — both the
+    // static renderer and ProseMirror reject a bare `0` beside a static
+    // <summary> sibling — so the body lives in its own wrapper div.
+    return [
+      "details",
+      { class: "rd-details", ...HTMLAttributes },
+      ["summary", {}, (node.attrs.summary as string | null) ?? "Details"],
+      ["div", { class: "rd-details-body" }, 0],
+    ];
+  },
+});
+
+/**
  * Canonical schema used by the server-side renderer (render.server.ts). The
  * single source of truth for what nodes/attrs a detail document may contain.
  * StarterKit's default `codeBlock` supplies the `codeBlock` node (with a
@@ -158,4 +239,6 @@ export const tiptapExtensions: Extensions = [
   Figure,
   Gloss,
   Sidenote,
+  Callout,
+  Details,
 ];
