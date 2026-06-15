@@ -47,6 +47,13 @@ uuid = { version = "1", features = ["serde", "v4"] }
 opendal = { version = "0.55.0", features = ["services-s3"] }
 nanoid = "0.5.0"
 pulldown-cmark = { version = "0.13.4", default-features = false }
+toml = "1.1.2"
+directories = "6.0.0"
+sha2 = "0.11.0"
+open = "5.3.5"
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+gethostname = "1.1.0"
+hex = "0.4.3"
 
 [profile.dev]
 debug = "line-tables-only"

@@ -1,29 +1,10 @@
 use reqwest::{Client, Response, StatusCode};
-use serde::{Deserialize, Serialize};
-use std::path::Path;
-use time::OffsetDateTime;
+use serde::Serialize;
 
-/// Session data stored in the session file.
-///
-/// Field names are part of the on-disk `.xevion-session` format; don't rename
-/// them without a migration (hence the `struct_field_names` allow).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_field_names)]
-pub struct Session {
-    pub api_url: String,
-    pub session_token: String,
-    pub username: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub expires_at: OffsetDateTime,
-}
-
-/// API client with session management
+/// API client that authenticates with a long-lived CLI bearer token.
 pub struct ApiClient {
     pub api_url: String,
-    session_path: String,
-    session: Option<Session>,
+    token: Option<String>,
     client: Client,
 }
 
@@ -33,8 +14,6 @@ pub enum ApiError {
     Request(reqwest::Error),
     /// Server returned an error response
     Http { status: StatusCode, body: String },
-    /// Session file error
-    Session(String),
     /// Not authenticated
     Unauthorized,
 }
@@ -46,7 +25,6 @@ impl std::fmt::Display for ApiError {
             Self::Http { status, body } => {
                 write!(f, "HTTP {status}: {body}")
             }
-            Self::Session(msg) => write!(f, "Session error: {msg}"),
             Self::Unauthorized => write!(f, "Not authenticated. Run 'xevion api login' first."),
         }
     }
@@ -61,65 +39,20 @@ impl From<reqwest::Error> for ApiError {
 }
 
 impl ApiClient {
-    /// Create a new API client
-    pub fn new(api_url: String, session_path: String) -> Self {
-        let session = Self::load_session_from_path(&session_path);
+    /// Create a new API client for `api_url`, optionally authenticated by `token`.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn new(api_url: String, token: Option<String>) -> Self {
         Self {
-            api_url,
-            session_path,
-            session,
+            // Normalize away a trailing slash so `url()` joins cleanly.
+            api_url: api_url.trim_end_matches('/').to_string(),
+            token,
             client: Client::new(),
         }
     }
 
-    fn load_session_from_path(path: &str) -> Option<Session> {
-        let path = Path::new(path);
-        if !path.exists() {
-            return None;
-        }
-
-        let content = std::fs::read_to_string(path).ok()?;
-        let session: Session = serde_json::from_str(&content).ok()?;
-
-        // Check if session is expired
-        if session.expires_at < OffsetDateTime::now_utc() {
-            return None;
-        }
-
-        Some(session)
-    }
-
-    /// Save session to file
-    pub fn save_session(&mut self, session: Session) -> Result<(), ApiError> {
-        let content = serde_json::to_string_pretty(&session)
-            .map_err(|e| ApiError::Session(format!("Failed to serialize session: {e}")))?;
-
-        std::fs::write(&self.session_path, content)
-            .map_err(|e| ApiError::Session(format!("Failed to write session file: {e}")))?;
-
-        self.session = Some(session);
-        Ok(())
-    }
-
-    /// Clear the session
-    pub fn clear_session(&mut self) -> Result<(), ApiError> {
-        let path = Path::new(&self.session_path);
-        if path.exists() {
-            std::fs::remove_file(path)
-                .map_err(|e| ApiError::Session(format!("Failed to remove session file: {e}")))?;
-        }
-        self.session = None;
-        Ok(())
-    }
-
-    /// Get current session if valid
-    pub const fn session(&self) -> Option<&Session> {
-        self.session.as_ref()
-    }
-
-    /// Check if we have a valid session
+    /// Check if we have a token to authenticate with.
     pub const fn is_authenticated(&self) -> bool {
-        self.session.is_some()
+        self.token.is_some()
     }
 
     /// Build the full URL for an endpoint
@@ -127,15 +60,18 @@ impl ApiClient {
         format!("{}{}", self.api_url, path)
     }
 
+    /// Attach the bearer token to a request if we have one.
+    fn authed(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        if let Some(token) = &self.token {
+            request.bearer_auth(token)
+        } else {
+            request
+        }
+    }
+
     /// Make a GET request
     pub async fn get(&self, path: &str) -> Result<Response, ApiError> {
-        let mut request = self.client.get(self.url(path));
-
-        if let Some(session) = &self.session {
-            request = request.header("Cookie", format!("admin_session={}", session.session_token));
-        }
-
-        let response = request.send().await?;
+        let response = self.authed(self.client.get(self.url(path))).send().await?;
         Ok(response)
     }
 
@@ -149,13 +85,10 @@ impl ApiClient {
 
     /// Make a POST request with JSON body
     pub async fn post<T: Serialize>(&self, path: &str, body: &T) -> Result<Response, ApiError> {
-        let mut request = self.client.post(self.url(path)).json(body);
-
-        if let Some(session) = &self.session {
-            request = request.header("Cookie", format!("admin_session={}", session.session_token));
-        }
-
-        let response = request.send().await?;
+        let response = self
+            .authed(self.client.post(self.url(path)).json(body))
+            .send()
+            .await?;
         Ok(response)
     }
 
@@ -173,13 +106,10 @@ impl ApiClient {
 
     /// Make a PUT request with JSON body
     pub async fn put<T: Serialize>(&self, path: &str, body: &T) -> Result<Response, ApiError> {
-        let mut request = self.client.put(self.url(path)).json(body);
-
-        if let Some(session) = &self.session {
-            request = request.header("Cookie", format!("admin_session={}", session.session_token));
-        }
-
-        let response = request.send().await?;
+        let response = self
+            .authed(self.client.put(self.url(path)).json(body))
+            .send()
+            .await?;
         Ok(response)
     }
 
@@ -193,13 +123,10 @@ impl ApiClient {
 
     /// Make a PATCH request with JSON body
     pub async fn patch<T: Serialize>(&self, path: &str, body: &T) -> Result<Response, ApiError> {
-        let mut request = self.client.patch(self.url(path)).json(body);
-
-        if let Some(session) = &self.session {
-            request = request.header("Cookie", format!("admin_session={}", session.session_token));
-        }
-
-        let response = request.send().await?;
+        let response = self
+            .authed(self.client.patch(self.url(path)).json(body))
+            .send()
+            .await?;
         Ok(response)
     }
 
@@ -217,13 +144,10 @@ impl ApiClient {
 
     /// Make a DELETE request
     pub async fn delete(&self, path: &str) -> Result<Response, ApiError> {
-        let mut request = self.client.delete(self.url(path));
-
-        if let Some(session) = &self.session {
-            request = request.header("Cookie", format!("admin_session={}", session.session_token));
-        }
-
-        let response = request.send().await?;
+        let response = self
+            .authed(self.client.delete(self.url(path)))
+            .send()
+            .await?;
         Ok(response)
     }
 

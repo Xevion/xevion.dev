@@ -13,9 +13,9 @@ use crate::{
 #[tracing::instrument(skip_all)]
 pub async fn projects_handler(
     State(state): State<Arc<AppState>>,
-    jar: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
 ) -> AppResult<impl IntoResponse> {
-    let is_admin = auth::check_session(&state, &jar).is_some();
+    let is_admin = auth::authenticate(&state, &headers).await.is_some();
 
     let projects_with_tags = if is_admin {
         db::get_all_projects_with_tags_admin(&state.pool).await?
@@ -35,9 +35,9 @@ pub async fn projects_handler(
 pub async fn get_project_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(ref_str): axum::extract::Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
 ) -> AppResult<impl IntoResponse> {
-    let is_admin = auth::check_session(&state, &jar).is_some();
+    let is_admin = auth::authenticate(&state, &headers).await.is_some();
     let (project, tags, media) = db::get_project_by_ref_with_tags(&state.pool, &ref_str)
         .await?
         .or_not_found()?;

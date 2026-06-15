@@ -128,6 +128,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
                     {
                         forward_headers.insert("x-session-user", username_value);
                         is_authenticated = true;
+                        state.session_manager.touch_session(session_id).await;
                     }
                 }
                 break;

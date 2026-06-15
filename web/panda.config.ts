@@ -259,11 +259,17 @@ export default defineConfig({
         button: defineRecipe({
           className: "button",
           description: "Admin button with multiple variants and sizes",
+          // Consumed only through Button.svelte, which calls button({ variant, size })
+          // with dynamic props. Panda can't see those values statically, so without
+          // this it emits only the default variant — every danger/secondary/ghost/sized
+          // button silently falls back to base styles. Force-generate the full matrix.
+          staticCss: [{ variant: ["*"], size: ["*"] }],
           base: {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
             fontWeight: "medium",
+            cursor: "pointer",
             transition: "all",
             _focusVisible: {
               outline: "none",
@@ -322,6 +328,9 @@ export default defineConfig({
         badge: defineRecipe({
           className: "badge",
           description: "Status badge for projects and events",
+          // Consumed through Badge.svelte with a dynamic variant (project status /
+          // event level), so Panda can't extract the values — emit them all.
+          staticCss: [{ variant: ["*"] }],
           base: {
             display: "inline-flex",
             alignItems: "center",

@@ -3,7 +3,8 @@
   import TagChip from "./TagChip.svelte";
   import ProjectCover from "./ProjectCover.svelte";
   import { morph } from "$lib/stores/morph.svelte";
-  import { projectCardView, tagColor, formatAge } from "$lib/project-display";
+  import { projectCardView, tagColor } from "$lib/project-display";
+  import { timeAgo } from "$lib/time";
   import { navigateToProject } from "$lib/project-nav";
   import type { ApiAdminProject } from "$lib/bindings";
 
@@ -102,7 +103,7 @@
           <span>{view.typeLabel}</span>
           <span class={css({ color: "zinc.300" })}>·</span>
         {/if}
-        {formatAge(project.lastActivity, now)}
+        {timeAgo(project.lastActivity, now)}
       </span>
     </div>
     <p

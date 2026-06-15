@@ -159,6 +159,7 @@ pub async fn run(
         isr_cache,
         icon_cache,
         event_sender,
+        cli_auth: crate::cli_auth::CliAuthRegistry::new(),
     });
 
     // Regenerate common OGP images on startup
@@ -193,7 +194,10 @@ pub async fn run(
             .and(NotForContentType::new("video/"))
             .and(NotForContentType::new("audio/"))
             .and(NotForContentType::new("font/woff"))
-            .and(NotForContentType::new("application/octet-stream"));
+            .and(NotForContentType::new("application/octet-stream"))
+            // SSE must stream unbuffered (CLI device-auth waits on it); compressing
+            // a Content-Length-less stream would buffer it and stall delivery.
+            .and(NotForContentType::new("text/event-stream"));
 
         // Compression layer with all algorithms at fastest levels
         // This handles runtime compression for all responses (API, SSR pages, etc.)

@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::{
-    auth::SessionManager, cache::IsrCache, events::EventSender, health::HealthChecker,
-    http::HttpClient, icon_cache::IconCache, tarpit::TarpitState,
+    auth::SessionManager, cache::IsrCache, cli_auth::CliAuthRegistry, events::EventSender,
+    health::HealthChecker, http::HttpClient, icon_cache::IconCache, tarpit::TarpitState,
 };
 
 /// Application state shared across all handlers
@@ -17,6 +17,7 @@ pub struct AppState {
     pub isr_cache: Arc<IsrCache>,
     pub icon_cache: Arc<IconCache>,
     pub event_sender: EventSender,
+    pub cli_auth: CliAuthRegistry,
 }
 
 /// Errors that can occur during proxying to Bun
@@ -215,8 +216,9 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
     }
 }
 
-/// Auth extractor — validates the admin session from cookies.
-/// Use in handler signatures to require authentication.
+/// Auth extractor — validates the admin session from either the browser cookie
+/// or a CLI `Authorization: Bearer` token. Use in handler signatures to require
+/// authentication.
 #[derive(Debug)]
 pub struct AdminSession(pub crate::auth::Session);
 
@@ -227,8 +229,9 @@ impl axum::extract::FromRequestParts<Arc<AppState>> for AdminSession {
         parts: &mut axum::http::request::Parts,
         state: &Arc<AppState>,
     ) -> Result<Self, Self::Rejection> {
-        let jar = axum_extra::extract::CookieJar::from_headers(&parts.headers);
-        let session = crate::auth::check_session(state, &jar).ok_or(AppError::Unauthorized)?;
+        let session = crate::auth::authenticate(state, &parts.headers)
+            .await
+            .ok_or(AppError::Unauthorized)?;
         Ok(Self(session))
     }
 }

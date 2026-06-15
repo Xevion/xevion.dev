@@ -13,6 +13,7 @@
     pageDescriptionClass,
     iconSm,
   } from "$lib/styles/admin";
+  import { timeAgo, formatDateTime } from "$lib/time";
 
   // Status display configuration (colors match Badge component)
   const STATUS_CONFIG: Record<ProjectStatus, { color: string; label: string }> =
@@ -24,45 +25,6 @@
     };
 
   let { data }: { data: PageData } = $props();
-
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    const timeStr = date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-    // Recent: relative timestamps
-    if (diffMins < 1) return "just now";
-    if (diffMins === 1) return "1 minute ago";
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours === 1) return "1 hour ago";
-    if (diffHours < 24) return `${diffHours} hours ago`;
-
-    // Yesterday: relative with time
-    if (diffDays === 1 || (diffHours >= 24 && diffHours < 48)) {
-      return `Yesterday at ${timeStr}`;
-    }
-
-    // Older: absolute timestamp with time
-    const dateOptions: Intl.DateTimeFormatOptions = {
-      month: "short",
-      day: "numeric",
-    };
-    // Only show year if different from current year
-    if (date.getFullYear() !== now.getFullYear()) {
-      dateOptions.year = "numeric";
-    }
-    const datePartStr = date.toLocaleDateString("en-US", dateOptions);
-    return `${datePartStr} at ${timeStr}`;
-  }
 
   const thClass = css({
     px: "4",
@@ -186,8 +148,9 @@
                 color: "admin.textSecondary",
                 fontSize: "sm",
               })}
+              title={formatDateTime(project.lastActivity)}
             >
-              {formatDate(project.lastActivity)}
+              {timeAgo(project.lastActivity)}
             </td>
           </tr>
         {/each}

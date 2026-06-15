@@ -2,6 +2,7 @@
   import { css, cx } from "styled-system/css";
   import { hstack } from "styled-system/patterns";
   import type { ApiEvent } from "$lib/bindings";
+  import { timeAgo, formatDateTime } from "$lib/time";
   import { OverlayScrollbarsComponent } from "overlayscrollbars-svelte";
   import "overlayscrollbars/overlayscrollbars.css";
 
@@ -14,20 +15,6 @@
   let { events, maxHeight = "400px", showMetadata = false }: Props = $props();
 
   let expandedEventId = $state<string | null>(null);
-
-  function formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  }
 
   function toggleMetadata(eventId: string) {
     expandedEventId = expandedEventId === eventId ? null : eventId;
@@ -141,8 +128,9 @@
                   fontSize: "11px",
                   fontVariantNumeric: "tabular-nums",
                 })}
+                title={formatDateTime(event.createdAt)}
               >
-                {formatTimestamp(event.createdAt)}
+                {timeAgo(event.createdAt)}
               </span>
             </div>
           </div>

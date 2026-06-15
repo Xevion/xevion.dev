@@ -1,22 +1,26 @@
 pub mod assets;
 pub mod auth;
+pub mod cli_auth;
 pub mod content;
 pub mod events;
 pub mod health;
 pub mod icons;
 pub mod media;
 pub mod projects;
+pub mod sessions;
 pub mod settings;
 pub mod tags;
 
 pub use assets::*;
 pub use auth::*;
+pub use cli_auth::*;
 pub use content::*;
 pub use events::*;
 pub use health::*;
 pub use icons::*;
 pub use media::*;
 pub use projects::*;
+pub use sessions::*;
 pub use settings::*;
 pub use tags::*;
 

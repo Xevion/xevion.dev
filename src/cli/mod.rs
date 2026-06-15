@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod client;
+pub mod config;
 pub mod output;
 pub mod seed;
 pub mod serve;
@@ -45,13 +46,13 @@ pub enum Command {
 
 #[derive(Parser, Debug)]
 pub struct ApiArgs {
-    /// API base URL
-    #[arg(long, env = "API_BASE_URL", default_value = "http://localhost:10237")]
-    pub api_url: String,
+    /// Named API target from the config (defaults to the config's `default`)
+    #[arg(long, env = "XEVION_API", global = true)]
+    pub api: Option<String>,
 
-    /// Session file path
-    #[arg(long, env = "XEVION_SESSION", default_value = ".xevion-session")]
-    pub session: String,
+    /// Path to the config file (defaults to the platform config dir)
+    #[arg(long, env = "XEVION_CONFIG", global = true)]
+    pub config: Option<String>,
 
     /// Output raw JSON instead of formatted text
     #[arg(long, global = true)]
@@ -63,19 +64,29 @@ pub struct ApiArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum ApiCommand {
-    /// Login and save session
+    /// Authorize this CLI via the browser and save a long-lived token
     Login {
-        /// Username
-        username: String,
-        /// Password
-        password: String,
+        /// API base URL (required when first authorizing a new target)
+        #[arg(long)]
+        url: Option<String>,
+
+        /// Device label shown in the approval dialog (defaults to hostname)
+        #[arg(long)]
+        label: Option<String>,
+
+        /// Print the approval URL instead of opening a browser
+        #[arg(long)]
+        no_browser: bool,
     },
 
-    /// Clear saved session
+    /// Revoke and clear the saved token for the selected target
     Logout,
 
     /// Check current session status
     Session,
+
+    /// List configured API targets
+    Targets,
 
     /// Project management
     #[command(subcommand)]

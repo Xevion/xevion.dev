@@ -5,6 +5,7 @@ mod assets;
 mod auth;
 mod cache;
 mod cli;
+mod cli_auth;
 mod config;
 mod db;
 mod encoding;

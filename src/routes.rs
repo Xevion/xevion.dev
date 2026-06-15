@@ -20,6 +20,22 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         .route("/login", post(handlers::api_login_handler))
         .route("/logout", post(handlers::api_logout_handler))
         .route("/session", get(handlers::api_session_handler))
+        .route("/sessions", get(handlers::list_sessions_handler))
+        .route("/sessions/{id}", delete(handlers::revoke_session_handler))
+        .route("/auth/device/start", post(handlers::cli_auth_start_handler))
+        .route(
+            "/auth/device/events/{id}",
+            get(handlers::cli_auth_events_handler),
+        )
+        .route(
+            "/auth/device/info/{id}",
+            get(handlers::cli_auth_info_handler),
+        )
+        .route(
+            "/auth/device/approve",
+            post(handlers::cli_auth_approve_handler),
+        )
+        .route("/auth/device/deny", post(handlers::cli_auth_deny_handler))
         .route(
             "/projects",
             get(handlers::projects_handler).post(handlers::create_project_handler),

@@ -6,6 +6,7 @@ import type {
   AdminStats,
   ApiSiteSettings,
   ApiProjectMedia,
+  ApiSession,
   EventLevel,
 } from "$lib/bindings";
 import type {
@@ -259,5 +260,49 @@ export async function updateSettings(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
+  });
+}
+
+export async function getSessions(): Promise<Result<ApiSession[], ApiError>> {
+  return clientApiFetch<ApiSession[]>("/api/sessions");
+}
+
+export async function revokeSession(
+  id: string,
+): Promise<Result<void, ApiError>> {
+  return clientApiFetch<void>(`/api/sessions/${id}`, { method: "DELETE" });
+}
+
+/** Details of a pending device-authorization request, for the approval page. */
+export interface DeviceAuthInfo {
+  userCode: string;
+  label?: string | null;
+  expiresAt: string;
+}
+
+export async function getDeviceAuthInfo(
+  requestId: string,
+): Promise<Result<DeviceAuthInfo, ApiError>> {
+  return clientApiFetch<DeviceAuthInfo>(`/api/auth/device/info/${requestId}`);
+}
+
+export async function approveDeviceAuth(
+  requestId: string,
+  userCode: string,
+): Promise<Result<{ success: boolean }, ApiError>> {
+  return clientApiFetch<{ success: boolean }>("/api/auth/device/approve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requestId, userCode }),
+  });
+}
+
+export async function denyDeviceAuth(
+  requestId: string,
+): Promise<Result<{ success: boolean }, ApiError>> {
+  return clientApiFetch<{ success: boolean }>("/api/auth/device/deny", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requestId }),
   });
 }

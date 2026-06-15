@@ -40,9 +40,9 @@ impl From<OpError> for AppError {
 pub async fn get_project_content_handler(
     State(state): State<Arc<AppState>>,
     Path(ref_str): Path<String>,
-    jar: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
 ) -> AppResult<impl IntoResponse> {
-    let is_admin = auth::check_session(&state, &jar).is_some();
+    let is_admin = auth::authenticate(&state, &headers).await.is_some();
     let project = db::get_project_by_ref(&state.pool, &ref_str)
         .await?
         .or_not_found()?;

@@ -8,6 +8,7 @@
   import IconFolder from "~icons/lucide/folder";
   import IconTags from "~icons/lucide/tags";
   import IconList from "~icons/lucide/list";
+  import IconKey from "~icons/lucide/key-round";
   import IconSettings from "~icons/lucide/settings";
   import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconLogOut from "~icons/lucide/log-out";
@@ -41,6 +42,7 @@
     },
     { href: "/admin/tags", label: "Tags", icon: IconTags, badge: tagCount },
     { href: "/admin/events", label: "Events", icon: IconList },
+    { href: "/admin/sessions", label: "Sessions", icon: IconKey },
     { href: "/admin/settings", label: "Settings", icon: IconSettings },
   ]);
 

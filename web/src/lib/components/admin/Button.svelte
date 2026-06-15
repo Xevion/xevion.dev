@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { css, cx } from "styled-system/css";
+  import { cx } from "styled-system/css";
   import { button } from "styled-system/recipes";
 
   interface Props {
@@ -28,7 +28,7 @@
 {#if href}
   <a
     {href}
-    class={cx(button({ variant, size }), css({ cursor: "pointer" }), className)}
+    class={cx(button({ variant, size }), className)}
     aria-disabled={disabled}
   >
     {@render children?.()}

@@ -25,6 +25,9 @@ pub struct LoginResponse {
 pub struct SessionResponse {
     pub authenticated: bool,
     pub username: String,
+    /// "browser" or "cli".
+    pub session_type: String,
+    pub expires_at: String,
 }
 
 #[tracing::instrument(skip_all)]
@@ -68,15 +71,16 @@ pub async fn api_login_handler(
     ))
 }
 
-/// Logout handler - deletes the session
+/// Logout handler - revokes the session that authenticated the request, whether
+/// that's a browser cookie or a CLI bearer token.
 #[tracing::instrument(skip_all)]
 pub async fn api_logout_handler(
     State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
     jar: axum_extra::extract::CookieJar,
 ) -> (axum_extra::extract::CookieJar, StatusCode) {
-    if let Some(cookie) = jar.get("admin_session")
-        && let Ok(session_id) = ulid::Ulid::from_string(cookie.value())
-        && let Err(e) = state.session_manager.delete_session(session_id).await
+    if let Some(session) = auth::authenticate(&state, &headers).await
+        && let Err(e) = state.session_manager.delete_session(session.id).await
     {
         tracing::error!(error = %e, "Failed to delete session during logout");
     }
@@ -95,5 +99,15 @@ pub async fn api_session_handler(session: AdminSession) -> Json<SessionResponse>
     Json(SessionResponse {
         authenticated: true,
         username: session.0.username,
+        session_type: match session.0.session_type {
+            crate::auth::SessionType::Browser => "browser",
+            crate::auth::SessionType::Cli => "cli",
+        }
+        .to_string(),
+        expires_at: session
+            .0
+            .expires_at
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_default(),
     })
 }

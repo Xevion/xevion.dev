@@ -92,30 +92,6 @@ export function statusMeta(status: ProjectStatus): {
   }
 }
 
-/**
- * Relative age, e.g. "3m ago" / "23h ago" / "9d ago" / "2mo ago". `now` is
- * passed in (seeded once on the server) so SSR and hydration agree — calling
- * `Date.now()` here would flip the bucket between render passes.
- */
-export function formatAge(
-  dateString: string,
-  now: number = Date.now(),
-): string {
-  const date = new Date(dateString);
-  const diffMs = now - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffHours <= 48) return "yesterday";
-  if (diffDays < 30) return `${diffDays}d ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
-  return `${Math.floor(diffDays / 365)}y ago`;
-}
-
 /** Created month, e.g. "Mar 2026". */
 export function formatCreated(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {

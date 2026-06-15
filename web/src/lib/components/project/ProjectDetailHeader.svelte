@@ -1,6 +1,7 @@
 <script lang="ts">
   import { css } from "styled-system/css";
-  import { statusMeta, formatAge } from "$lib/project-display";
+  import { statusMeta } from "$lib/project-display";
+  import { timeAgo } from "$lib/time";
   import type { ApiProjectDetail } from "$lib/bindings";
 
   interface Props {
@@ -77,6 +78,6 @@
       ></span>
       {status.label}
     </span>
-    <span>Updated {formatAge(project.lastActivity, now)}</span>
+    <span>Updated {timeAgo(project.lastActivity, now)}</span>
   </div>
 </header>
