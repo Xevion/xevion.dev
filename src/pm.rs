@@ -184,6 +184,13 @@ const NODES: &[NodeSpec] = &[
         content: Content::Empty,
     },
     NodeSpec {
+        // An atom block carrying media in attrs (src/alt/caption/kind); the Bun
+        // renderer turns it into <figure> with an <img>/<video> + <figcaption>.
+        name: "figure",
+        group: Group::Block,
+        content: Content::Empty,
+    },
+    NodeSpec {
         name: "hardBreak",
         group: Group::Inline,
         content: Content::Empty,

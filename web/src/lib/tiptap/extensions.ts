@@ -1,5 +1,6 @@
 import StarterKit from "@tiptap/starter-kit";
 import { UniqueID } from "@tiptap/extension-unique-id";
+import { Node } from "@tiptap/core";
 import { customAlphabet } from "nanoid";
 import type { Extensions } from "@tiptap/core";
 
@@ -47,9 +48,52 @@ export const uniqueIdOptions: UniqueIdOptions = {
     "bulletList",
     "orderedList",
     "listItem",
+    "figure",
   ],
   generateID: () => generateBlockId(),
 };
+
+/**
+ * String attr that round-trips through a `data-*` HTML attribute, so a node with
+ * no editor node-view still preserves its data when the admin editor re-saves
+ * the document (TipTap serializes via `renderHTML`, re-parses via `parseHTML`).
+ */
+function dataAttr(name: string, fallback: string | null = null) {
+  return {
+    default: fallback,
+    parseHTML: (el: HTMLElement) => el.getAttribute(`data-${name}`) ?? fallback,
+    renderHTML: (attrs: Record<string, unknown>) =>
+      attrs[name] == null ? {} : { [`data-${name}`]: String(attrs[name]) },
+  };
+}
+
+/**
+ * Inline media block. An atom carrying `src`/`alt`/`caption`/`kind` in attrs; the
+ * server renderer ({@link file://./render.server.ts}) emits the real
+ * `<figure><img|video><figcaption>` markup via `nodeMapping`. The editor keeps
+ * the data on a `<figure data-figure>` shell so it survives a GUI round-trip even
+ * before a dedicated node-view exists. Authored via the CLI's `content` `--node`.
+ */
+export const Figure = Node.create({
+  name: "figure",
+  group: "block",
+  atom: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      src: dataAttr("src"),
+      alt: dataAttr("alt"),
+      caption: dataAttr("caption"),
+      kind: dataAttr("kind", "image"),
+    };
+  },
+  parseHTML() {
+    return [{ tag: "figure[data-figure]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["figure", { "data-figure": "", ...HTMLAttributes }];
+  },
+});
 
 /**
  * Canonical schema used by the server-side renderer (render.server.ts). The
@@ -65,4 +109,5 @@ export const uniqueIdOptions: UniqueIdOptions = {
 export const tiptapExtensions: Extensions = [
   StarterKit.configure(starterKitOptions),
   UniqueID.configure(uniqueIdOptions),
+  Figure,
 ];

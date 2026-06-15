@@ -24,6 +24,10 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: [
     ...sanitizeHtml.defaults.allowedTags.filter((tag) => tag !== "h1"),
     "kbd",
+    "figure",
+    "figcaption",
+    "img",
+    "video",
   ],
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
@@ -32,6 +36,8 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
     span: ["style"],
     code: ["style"],
     pre: ["style", "tabindex"],
+    img: ["src", "alt", "loading"],
+    video: ["src", "autoplay", "loop", "muted", "playsinline", "poster"],
   },
   allowedStyles: {
     "*": { color: [/.*/], "--shiki-dark": [/.*/] },
@@ -94,6 +100,21 @@ export async function renderDetailContent(
             ? `<div class="rd-codeblock-head">${escapeHtml(requested)}</div>`
             : "";
           return `<div class="rd-codeblock">${head}<div class="rd-codeblock-body">${shiki}</div></div>`;
+        },
+        figure: ({ node }) => {
+          const src = (node.attrs.src as string | null) ?? "";
+          if (!src) return "";
+          const alt = (node.attrs.alt as string | null) ?? "";
+          const caption = (node.attrs.caption as string | null) ?? "";
+          const kind = (node.attrs.kind as string | null) ?? "image";
+          const media =
+            kind === "video"
+              ? `<video class="rd-figure-media" src="${escapeHtml(src)}" autoplay loop muted playsinline></video>`
+              : `<img class="rd-figure-media" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" />`;
+          const cap = caption
+            ? `<figcaption class="rd-figure-cap">${escapeHtml(caption)}</figcaption>`
+            : "";
+          return `<figure class="rd-figure">${media}${cap}</figure>`;
         },
       },
     },
