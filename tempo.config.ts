@@ -261,9 +261,24 @@ export default defineConfig({
           extraPaths: ["Cargo.lock", ".env"],
           debounce: 300,
         },
-        build: { cmd: "cargo build --bin xevion --quiet", verbose: false },
+        build: {
+          cmd: ["cargo", "build", "--bin", "xevion", "--quiet"],
+          verbose: false,
+        },
+        // Array form (not a string) so tempo execs the binary directly rather
+        // than via `sh -c`. dash forks and does not forward SIGTERM to its child,
+        // so a string cmd orphans the server on restart and the next bind hits
+        // AddrInUse on the still-held port.
         run: {
-          cmd: `./target/debug/xevion --listen localhost:${port} --listen /tmp/xevion-api.sock --downstream http://localhost:${frontendPort}`,
+          cmd: [
+            "./target/debug/xevion",
+            "--listen",
+            `localhost:${port}`,
+            "--listen",
+            "/tmp/xevion-api.sock",
+            "--downstream",
+            `http://localhost:${frontendPort}`,
+          ],
           passthrough: true,
         },
         interrupt: true,
