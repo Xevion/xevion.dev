@@ -45,6 +45,26 @@ pub async fn serve_pgp_key() -> impl IntoResponse {
     }
 }
 
+/// Serve Keybase identity proof (keybase.txt) at /keybase.txt and
+/// /.well-known/keybase.txt. The file is authored in `web/static/keybase.txt`
+/// and embedded into the binary at build time.
+pub async fn serve_keybase() -> impl IntoResponse {
+    if let Some(content) = assets::get_static_file("keybase.txt") {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/plain; charset=utf-8"),
+        );
+        headers.insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("public, max-age=3600"),
+        );
+        (StatusCode::OK, headers, content).into_response()
+    } else {
+        (StatusCode::NOT_FOUND, "Keybase proof not found").into_response()
+    }
+}
+
 /// Redirect /keys to /pgp
 pub async fn redirect_to_pgp() -> impl IntoResponse {
     axum::response::Redirect::permanent("/pgp")

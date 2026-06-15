@@ -1,0 +1,88 @@
+==================================================================
+https://keybase.io/xevion
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://xevion.dev
+  * I am xevion (https://keybase.io/xevion) on keybase.
+  * I have a public key with fingerprint 04EE F43A E775 B57F 5029  572E 1EF2 4DA2 70E7 9ECD
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "012026f3d2df48d71d6ca5a33418101c284f7a73aac8944dc52edbfef17bb92369600a",
+      "fingerprint": "04eef43ae775b57f5029572e1ef24da270e79ecd",
+      "host": "keybase.io",
+      "key_id": "1ef24da270e79ecd",
+      "kid": "010167e9d3b055e24b9e6b83ec0e59f3e8daf5a5cbfe4f3f7edb7e1aa1e6a1f1dfd00a",
+      "uid": "120150a540a9487c406e6cf5e0423419",
+      "username": "xevion"
+    },
+    "merkle_root": {
+      "ctime": 1781551807,
+      "hash_meta": "f5e20c44aabaa917be21174177ae56f1631e686d40f16559b3345755c8cc00e6",
+      "seqno": 27632736
+    },
+    "revoke": {
+      "sig_ids": [
+        "50b223231d96d06e2459fe261f75aacfd63ec05ce38e89448c3ff3bb19b182e10f"
+      ]
+    },
+    "service": {
+      "hostname": "xevion.dev",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 1
+  },
+  "ctime": 1781551853,
+  "expire_in": 157680000,
+  "prev": "c543970c6965e158f4cc892cc6c8e45a7133a8ee3873c5fd7a45660d2aea4180",
+  "seqno": 47,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+Version: Keybase OpenPGP v2.1.17
+Comment: https://keybase.io/crypto
+
+yMP8AnicbVNrbBVFGO2llD6IEVAIBay44VEClpndmZ3dCxGrYhXkYf9AC3qdnZ0t
+l9veLXdvL61QICDGgCAtL0sBAbHSglYMNm1KiCUYUt5UKMijFSlcHoGKEsBibpwF
+idG4f3Z3cr7zne+cbw48FR+X4kn7bdK2wujmo57D+52iuNkg+9Y8ybDNEsk7Twrw
+Ry+eb3In7Av4TckrASgDWbUUUzYtpJkEmiqjmCoKghoEkMkasgglCqVM0xEyGZa5
+aVjcgsQwdFlRdRUAKo2SLH8wj4cKQ/5g2KVFnFtIoZwQbGBiYSDrmMgccktGJpUJ
+4ETnzBSFs2zHrRDiDOrwDL8tzsSP75G8/8E/0Q2gSrhuKgbAmMvI0LlqaApngGPd
+UrhmUgtTzIRWZCkWEaoJh5RCrlJoQdMyH+suetxHBhADihGgOtIIQ0DlKrMwB0gW
+Vugu0OGhIC3gAl3MI347KJWOkgp4KJDPfSHbDrvWsrDfBUCiQYyhBogYjzqzfAU8
+TEWd4JMBQ4hSg1JdOMhlCAmChFCOVQuqilCnqSYC4htj3RAxYIIx0xgDgKtChcPn
+BG3JKxNVkYmiCgkhHrED3O3u+POEa47knSFhYMiyIivQ1FVTzCIjYQqXVWgRLKK0
+TNV1CjOuaNzNVWOKZSmGAXUDaiImYEnvlLrdQhE/e0TuxvSv8TNMHhGCCkN22GZ2
+vjifFQ4XOl7XlnBJoQucyw3f3xQ+wx80xYqIiggPOa59XiiQ/3EMK6MkXlzoD3Gf
+30VgompAPG4f0c4rMYwUnQAm9g5ziDULMbGYMmMq0zjClEBFoRoXcxGFYcskFGFV
+BaZMORUrDf6xEIlwwjRPcArfgjRcFOJS6f6mmd3jPClxPRK6uXcnLiW515Mb9WH6
+07HBi26/kHUl4cbHuVlFS4Z+v3bDuHM7JnSN8fc7Pzjt67UXVjctR86mYG30pa07
+//w23R/Za0Qf9oxtalEXZ28tPh2rXnC3z3FP8k9lO+dPXHr8/dKfFyYGPm3runzx
+8Kqu8011B8e9tSjx0gHao/ZBTuzQCKnr2p3WkdmV371w/dixtJZf8rUE4Dldu2J+
+c+vkrgVNNccajiStGH+0elLZugdbGgamRt/cscsaL8e/seqaVLnw+nB7S+aB9pYB
+lY3fjG1Tey9duGN5Qw3/Kvrcq6+P5t3WdDTXp1za3Jk7Jqmg88jqGRN/SJ1/ZvH0
+ltvvJVYeXYcbr26cllU3uvj3lbhz/c2bdc2Tz91MHecZ0pER80UbFUcaNmAqTQVD
+Tm4rbYt8WbDsg0lk++zIvszdd7a8e7Ci9kpnLBooPzyz8Y+KZWXnkgdfqNuT0292
+7omVL5alrT/Td9jpq7n5mVUdE06otzq89fbEs6fmbsJX+sfSN8YnbS9/vm/e1mWf
+nyj3sLzdKfXpmYcu1vdsrkEjasCG1ldKzPbIZ07fHi0jUu6OzGmuCHSnc3ifhjXj
+X65JTphalZN9/2RV73tzaodntZV4slvJ9Gs/orH40M6qaWeHVt/PnzGlYN0n+9rB
+wJbRAxN33YcfPcxofOaLy2c3DCree/XXfvcqpiin2l8zypP2lC7ttcQObj/yduaz
+N+71r94fP+hi1V8BCA1V
+=jjU3
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/xevion
+
+==================================================================

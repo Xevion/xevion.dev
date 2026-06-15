@@ -113,6 +113,8 @@ pub fn build_base_router() -> Router<Arc<AppState>> {
         .route("/publickey.asc", get(handlers::serve_pgp_key))
         .route("/pgp.asc", get(handlers::serve_pgp_key))
         .route("/.well-known/pgpkey.asc", get(handlers::serve_pgp_key))
+        .route("/keybase.txt", get(handlers::serve_keybase))
+        .route("/.well-known/keybase.txt", get(handlers::serve_keybase))
         .route("/keys", get(handlers::redirect_to_pgp))
 }
 
