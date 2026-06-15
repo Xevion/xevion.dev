@@ -11,11 +11,13 @@
     "listItem",
     "orderedList",
     "paragraph",
+    "sidenote",
     "text"
   ],
   "marks": [
     "bold",
     "code",
+    "gloss",
     "italic",
     "link",
     "strike",
@@ -30,6 +32,7 @@
     "horizontalRule",
     "listItem",
     "orderedList",
-    "paragraph"
+    "paragraph",
+    "sidenote"
   ]
 }

@@ -159,6 +159,12 @@ const NODES: &[NodeSpec] = &[
         content: Content::Block,
     },
     NodeSpec {
+        // A margin/side note: block content set apart from the main column.
+        name: "sidenote",
+        group: Group::Block,
+        content: Content::Block,
+    },
+    NodeSpec {
         name: "bulletList",
         group: Group::Block,
         content: Content::Only(&["listItem"]),
@@ -204,7 +210,15 @@ const NODES: &[NodeSpec] = &[
 
 /// Marks the editor may emit. `code` here is the inline-code mark, distinct from
 /// the `codeBlock` node.
-const MARKS: &[&str] = &["bold", "italic", "strike", "code", "link", "underline"];
+const MARKS: &[&str] = &[
+    "bold",
+    "italic",
+    "strike",
+    "code",
+    "link",
+    "underline",
+    "gloss",
+];
 
 /// Schemes a `link` href may use — mirrors the editor's own input guard and the
 /// SSR sanitizer's `allowedSchemes`.

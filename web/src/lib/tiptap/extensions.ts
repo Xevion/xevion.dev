@@ -1,6 +1,6 @@
 import StarterKit from "@tiptap/starter-kit";
 import { UniqueID } from "@tiptap/extension-unique-id";
-import { Node } from "@tiptap/core";
+import { Node, Mark } from "@tiptap/core";
 import { customAlphabet } from "nanoid";
 import type { Extensions } from "@tiptap/core";
 
@@ -49,6 +49,7 @@ export const uniqueIdOptions: UniqueIdOptions = {
     "orderedList",
     "listItem",
     "figure",
+    "sidenote",
   ],
   generateID: () => generateBlockId(),
 };
@@ -96,6 +97,51 @@ export const Figure = Node.create({
 });
 
 /**
+ * Inline gloss: a dotted-underlined span whose `note` shows as a small popover on
+ * hover/focus (the "what is a transpose pass?" annotation). A mark, like `link`,
+ * carrying its text in a `data-note` attribute that the prose CSS reads via
+ * `attr()`. Both contexts render through this same `renderHTML`.
+ */
+export const Gloss = Mark.create({
+  name: "gloss",
+  inclusive: false,
+  addAttributes() {
+    return {
+      note: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute("data-note"),
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.note == null ? {} : { "data-note": String(attrs.note) },
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-note]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", { class: "gloss", tabindex: "0", ...HTMLAttributes }, 0];
+  },
+});
+
+/**
+ * Margin/side note: block content set apart from the main reading column (floated
+ * aside on wide screens, a quiet full-width note on mobile). Distinct from the
+ * louder typed callouts. Renders as `<aside data-sidenote>` in both contexts.
+ */
+export const Sidenote = Node.create({
+  name: "sidenote",
+  group: "block",
+  content: "block+",
+  defining: true,
+  parseHTML() {
+    return [{ tag: "aside[data-sidenote]" }];
+  },
+  renderHTML() {
+    return ["aside", { "data-sidenote": "", class: "rd-sidenote" }, 0];
+  },
+});
+
+/**
  * Canonical schema used by the server-side renderer (render.server.ts). The
  * single source of truth for what nodes/attrs a detail document may contain.
  * StarterKit's default `codeBlock` supplies the `codeBlock` node (with a
@@ -110,4 +156,6 @@ export const tiptapExtensions: Extensions = [
   StarterKit.configure(starterKitOptions),
   UniqueID.configure(uniqueIdOptions),
   Figure,
+  Gloss,
+  Sidenote,
 ];
