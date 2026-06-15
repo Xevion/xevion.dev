@@ -416,7 +416,7 @@ export default defineConfig({
               m: "0 0 16px",
               display: "flex",
               flexDirection: "column",
-              gap: "8px",
+              gap: "5px",
             },
             "& ul > li": {
               position: "relative",
@@ -442,7 +442,7 @@ export default defineConfig({
               m: "0 0 16px",
               display: "flex",
               flexDirection: "column",
-              gap: "8px",
+              gap: "5px",
             },
             "& ol > li": {
               fontSize: "15px",

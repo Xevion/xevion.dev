@@ -134,6 +134,22 @@ pub enum ProjectsCommand {
         /// Tags to add (comma-separated, + prefix optional)
         #[arg(short = 't', long)]
         tags: Option<String>,
+
+        /// Accent color hex, e.g. "6366F1" or "#6366F1"
+        #[arg(long)]
+        accent: Option<String>,
+
+        /// Primary type label, e.g. "Web App"
+        #[arg(long = "project-type")]
+        project_type: Option<String>,
+
+        /// Path to a JSON file holding the terminal-cast transcript
+        #[arg(long)]
+        terminal_cast: Option<String>,
+
+        /// Related project slugs/ids, comma-separated
+        #[arg(long)]
+        related: Option<String>,
     },
 
     /// Update an existing project
@@ -173,6 +189,22 @@ pub enum ProjectsCommand {
         /// Tag changes: +tag to add, -tag to remove (comma-separated)
         #[arg(short = 't', long)]
         tags: Option<String>,
+
+        /// Accent color hex, e.g. "6366F1" or "#6366F1" (use "" to clear)
+        #[arg(long)]
+        accent: Option<String>,
+
+        /// Primary type label, e.g. "Web App" (use "" to clear)
+        #[arg(long = "project-type")]
+        project_type: Option<String>,
+
+        /// Path to a JSON file with the terminal-cast transcript ("" to clear)
+        #[arg(long)]
+        terminal_cast: Option<String>,
+
+        /// Related project slugs/ids, comma-separated; full replace ("" to clear)
+        #[arg(long)]
+        related: Option<String>,
     },
 
     /// Delete a project

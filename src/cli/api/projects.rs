@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::cli::client::{ApiClient, check_response};
 use crate::cli::output;
 use crate::cli::{ProjectsCommand, TagOp, parse_create_tags, parse_update_tags};
-use crate::db::{ApiAdminProject, ApiProjectDetail, ApiTag, ProjectStatus};
+use crate::db::{ApiAdminProject, ApiProjectDetail, ApiTag, ProjectStatus, TerminalCast};
 use crate::handlers::{CreateProjectRequest, UpdateProjectRequest};
 
 /// Run a projects subcommand
@@ -25,6 +25,10 @@ pub async fn run(
             github_repo,
             demo_url,
             tags,
+            accent,
+            project_type,
+            terminal_cast,
+            related,
         } => {
             let tag_slugs = tags.map(|s| parse_create_tags(&s)).unwrap_or_default();
             create(
@@ -37,6 +41,10 @@ pub async fn run(
                 github_repo,
                 demo_url,
                 tag_slugs,
+                accent,
+                project_type,
+                terminal_cast,
+                related,
                 json,
             )
             .await
@@ -51,6 +59,10 @@ pub async fn run(
             github_repo,
             demo_url,
             tags,
+            accent,
+            project_type,
+            terminal_cast,
+            related,
         } => {
             let tag_ops = match tags {
                 Some(s) => parse_update_tags(&s)?,
@@ -67,6 +79,10 @@ pub async fn run(
                 github_repo,
                 demo_url,
                 tag_ops,
+                accent,
+                project_type,
+                terminal_cast,
+                related,
                 json,
             )
             .await
@@ -120,10 +136,15 @@ async fn create(
     github_repo: Option<String>,
     demo_url: Option<String>,
     tag_slugs: Vec<String>,
+    accent: Option<String>,
+    project_type: Option<String>,
+    terminal_cast: Option<String>,
+    related: Option<String>,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Resolve tag slugs to IDs
     let tag_ids = resolve_tag_ids(&client, &tag_slugs).await?;
+    let related_ids = resolve_related(&client, related).await?;
 
     let status = parse_status(status)?;
 
@@ -137,12 +158,14 @@ async fn create(
         demo_url: demo_url.filter(|s| !s.is_empty()),
         tag_ids,
         detail_content: None,
-        // Authored via the admin editor, not the CLI.
-        project_type: None,
+        project_type: project_type.filter(|s| !s.is_empty()),
         source_closed: false,
-        terminal_cast: None,
-        accent_color: None,
-        related_ids: vec![],
+        terminal_cast: terminal_cast
+            .filter(|s| !s.is_empty())
+            .map(|p| read_cast(&p))
+            .transpose()?,
+        accent_color: accent.filter(|s| !s.is_empty()),
+        related_ids,
     };
 
     let response = client.post_auth("/api/projects", &request).await?;
@@ -172,15 +195,20 @@ async fn update(
     github_repo: Option<String>,
     demo_url: Option<String>,
     tag_ops: Vec<TagOp>,
+    accent: Option<String>,
+    project_type: Option<String>,
+    terminal_cast: Option<String>,
+    related: Option<String>,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // First fetch the current project
     let current = resolve_project(&client, reference).await?;
-    // PUT is a full replace, so carry the v2 detail fields through unchanged
-    // (the CLI never edits them — that's the web editor's job).
+    // PUT is a full replace, so carry the detail body through unchanged (it has
+    // its own `content` commands); the v2 fields below are preserved unless a
+    // flag overrides them.
     let detail_content = current.detail_content.clone();
-    let terminal_cast = current.terminal_cast.clone();
-    let related_ids: Vec<String> = current.related.iter().map(|r| r.id.clone()).collect();
+    let current_terminal_cast = current.terminal_cast.clone();
+    let current_related_ids: Vec<String> = current.related.iter().map(|r| r.id.clone()).collect();
     let current = current.project;
 
     // Apply tag operations
@@ -226,11 +254,27 @@ async fn update(
         },
         tag_ids: current_tag_ids,
         detail_content,
-        project_type: current.project_type,
+        project_type: match project_type {
+            Some(s) if s.is_empty() => None,
+            Some(s) => Some(s),
+            None => current.project_type,
+        },
         source_closed: current.source_closed,
-        terminal_cast,
-        accent_color: current.accent_color,
-        related_ids,
+        terminal_cast: match terminal_cast {
+            Some(s) if s.is_empty() => None,
+            Some(p) => Some(read_cast(&p)?),
+            None => current_terminal_cast,
+        },
+        accent_color: match accent {
+            Some(s) if s.is_empty() => None,
+            Some(s) => Some(s),
+            None => current.accent_color,
+        },
+        related_ids: match related {
+            Some(s) if s.trim().is_empty() => vec![],
+            Some(s) => resolve_related(&client, Some(s)).await?,
+            None => current_related_ids,
+        },
     };
 
     let response = client
@@ -285,6 +329,37 @@ async fn resolve_project(
         .await?;
     let response = check_response(response).await?;
     Ok(response.json().await?)
+}
+
+/// Read a terminal-cast transcript from a JSON file.
+fn read_cast(path: &str) -> Result<TerminalCast, Box<dyn std::error::Error>> {
+    let raw = std::fs::read_to_string(path).map_err(|e| format!("reading {path}: {e}"))?;
+    serde_json::from_str(&raw)
+        .map_err(|e| format!("{path} is not a valid terminal cast: {e}").into())
+}
+
+/// Resolve a comma-separated list of related project refs (slug or UUID) to IDs,
+/// preserving authored order. Empty/absent yields no related projects.
+async fn resolve_related(
+    client: &ApiClient,
+    related: Option<String>,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let Some(list) = related else {
+        return Ok(vec![]);
+    };
+    let mut ids = Vec::new();
+    for reference in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        ids.push(resolve_project_id(client, reference).await?);
+    }
+    Ok(ids)
+}
+
+/// Resolve a single project reference (slug or UUID) to its UUID.
+async fn resolve_project_id(
+    client: &ApiClient,
+    reference: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(resolve_project(client, reference).await?.project.project.id)
 }
 
 /// Resolve tag slugs to IDs
