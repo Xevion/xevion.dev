@@ -1,14 +1,11 @@
 use crate::cli::SettingsCommand;
-use crate::cli::client::{ApiClient, check_response};
+use crate::cli::client::{ApiClient, check_response, json as decode_json};
+use crate::cli::error::CliError;
 use crate::cli::output;
 use crate::db::{ApiSiteSettings, UpdateSiteIdentityRequest, UpdateSiteSettingsRequest};
 
 /// Run a settings subcommand
-pub async fn run(
-    client: ApiClient,
-    command: SettingsCommand,
-    json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(client: ApiClient, command: SettingsCommand, json: bool) -> Result<(), CliError> {
     match command {
         SettingsCommand::Get => get(client, json).await,
         SettingsCommand::Update {
@@ -21,13 +18,12 @@ pub async fn run(
 }
 
 /// Get current site settings
-async fn get(client: ApiClient, json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let response = client.get("/api/settings").await?;
-    let response = check_response(response).await?;
-    let settings: ApiSiteSettings = response.json().await?;
+async fn get(client: ApiClient, json: bool) -> Result<(), CliError> {
+    let settings: ApiSiteSettings =
+        decode_json(check_response(client.get("/api/settings").await?).await?).await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&settings)?);
+        output::print_json(&settings)?;
     } else {
         output::print_settings(&settings);
     }
@@ -43,11 +39,10 @@ async fn update(
     bio: Option<String>,
     site_title: Option<String>,
     json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), CliError> {
     // First fetch current settings
-    let response = client.get("/api/settings").await?;
-    let response = check_response(response).await?;
-    let current: ApiSiteSettings = response.json().await?;
+    let current: ApiSiteSettings =
+        decode_json(check_response(client.get("/api/settings").await?).await?).await?;
 
     // Merge updates
     let request = UpdateSiteSettingsRequest {
@@ -73,12 +68,11 @@ async fn update(
             .collect(),
     };
 
-    let response = client.put_auth("/api/settings", &request).await?;
-    let response = check_response(response).await?;
-    let settings: ApiSiteSettings = response.json().await?;
+    let settings: ApiSiteSettings =
+        decode_json(check_response(client.put("/api/settings", &request).await?).await?).await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&settings)?);
+        output::print_json(&settings)?;
     } else {
         output::success("Updated site settings");
         output::print_settings(&settings);

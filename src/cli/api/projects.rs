@@ -1,18 +1,14 @@
-use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::cli::client::{ApiClient, check_response};
+use crate::cli::client::{ApiClient, check_response, json as decode_json};
+use crate::cli::error::CliError;
 use crate::cli::output;
-use crate::cli::{ProjectsCommand, TagOp, parse_create_tags, parse_update_tags};
-use crate::db::{ApiAdminProject, ApiProjectDetail, ApiTag, ProjectStatus, TerminalCast};
+use crate::cli::{ProjectsCommand, StatusArg, TagOp, parse_create_tags, parse_update_tags};
+use crate::db::{ApiAdminProject, ApiProjectDetail, ApiTag, TerminalCast};
 use crate::handlers::{CreateProjectRequest, UpdateProjectRequest};
 
 /// Run a projects subcommand
-pub async fn run(
-    client: ApiClient,
-    command: ProjectsCommand,
-    json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(client: ApiClient, command: ProjectsCommand, json: bool) -> Result<(), CliError> {
     match command {
         ProjectsCommand::List => list(client, json).await,
         ProjectsCommand::Get { reference } => get(client, &reference, json).await,
@@ -35,7 +31,7 @@ pub async fn run(
                 &name,
                 &short_desc,
                 slug,
-                &status,
+                status,
                 github_repo,
                 demo_url,
                 tag_slugs,
@@ -62,7 +58,7 @@ pub async fn run(
             related,
         } => {
             let tag_ops = match tags {
-                Some(s) => parse_update_tags(&s)?,
+                Some(s) => parse_update_tags(&s).map_err(CliError::invalid)?,
                 None => vec![],
             };
             update(
@@ -89,13 +85,12 @@ pub async fn run(
 }
 
 /// List all projects
-async fn list(client: ApiClient, json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    let response = client.get_auth("/api/projects").await?;
-    let response = check_response(response).await?;
-    let projects: Vec<ApiAdminProject> = response.json().await?;
+async fn list(client: ApiClient, json: bool) -> Result<(), CliError> {
+    let projects: Vec<ApiAdminProject> =
+        decode_json(check_response(client.get("/api/projects").await?).await?).await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&projects)?);
+        output::print_json(&projects)?;
     } else {
         output::print_projects_table(&projects);
     }
@@ -104,15 +99,11 @@ async fn list(client: ApiClient, json: bool) -> Result<(), Box<dyn std::error::E
 }
 
 /// Get a project by slug or UUID
-async fn get(
-    client: ApiClient,
-    reference: &str,
-    json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn get(client: ApiClient, reference: &str, json: bool) -> Result<(), CliError> {
     let project = resolve_project(&client, reference).await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&project)?);
+        output::print_json(&project)?;
     } else {
         output::print_project(&project.project);
     }
@@ -127,7 +118,7 @@ async fn create(
     name: &str,
     short_desc: &str,
     slug: Option<String>,
-    status: &str,
+    status: StatusArg,
     github_repo: Option<String>,
     demo_url: Option<String>,
     tag_slugs: Vec<String>,
@@ -136,18 +127,16 @@ async fn create(
     terminal_cast: Option<String>,
     related: Option<String>,
     json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), CliError> {
     // Resolve tag slugs to IDs
     let tag_ids = resolve_tag_ids(&client, &tag_slugs).await?;
     let related_ids = resolve_related(&client, related).await?;
-
-    let status = parse_status(status)?;
 
     let request = CreateProjectRequest {
         name: name.to_string(),
         slug,
         short_description: short_desc.to_string(),
-        status,
+        status: status.into(),
         github_repo: github_repo.filter(|s| !s.is_empty()),
         demo_url: demo_url.filter(|s| !s.is_empty()),
         tag_ids,
@@ -162,12 +151,11 @@ async fn create(
         related_ids,
     };
 
-    let response = client.post_auth("/api/projects", &request).await?;
-    let response = check_response(response).await?;
-    let project: ApiAdminProject = response.json().await?;
+    let project: ApiAdminProject =
+        decode_json(check_response(client.post("/api/projects", &request).await?).await?).await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&project)?);
+        output::print_json(&project)?;
     } else {
         output::success(&format!("Created project: {}", project.project.name));
         output::print_project(&project);
@@ -184,7 +172,7 @@ async fn update(
     name: Option<String>,
     slug: Option<String>,
     short_desc: Option<String>,
-    status: Option<String>,
+    status: Option<StatusArg>,
     github_repo: Option<String>,
     demo_url: Option<String>,
     tag_ops: Vec<TagOp>,
@@ -193,7 +181,7 @@ async fn update(
     terminal_cast: Option<String>,
     related: Option<String>,
     json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), CliError> {
     // First fetch the current project
     let current = resolve_project(&client, reference).await?;
     // PUT is a full replace, so carry the detail body through unchanged (it has
@@ -222,18 +210,11 @@ async fn update(
         }
     }
 
-    // Merge updates with current values
-    let status = if let Some(s) = status {
-        parse_status(&s)?
-    } else {
-        current.status
-    };
-
     let request = UpdateProjectRequest {
         name: name.unwrap_or(current.project.name),
         slug,
         short_description: short_desc.unwrap_or(current.project.short_description),
-        status,
+        status: status.map_or(current.status, Into::into),
         github_repo: match github_repo {
             Some(s) if s.is_empty() => None,
             Some(s) => Some(s),
@@ -269,14 +250,18 @@ async fn update(
         },
     };
 
-    let response = client
-        .put_auth(&format!("/api/projects/{}", current.project.id), &request)
-        .await?;
-    let response = check_response(response).await?;
-    let project: ApiAdminProject = response.json().await?;
+    let project: ApiAdminProject = decode_json(
+        check_response(
+            client
+                .put(&format!("/api/projects/{}", current.project.id), &request)
+                .await?,
+        )
+        .await?,
+    )
+    .await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&project)?);
+        output::print_json(&project)?;
     } else {
         output::success(&format!("Updated project: {}", project.project.name));
         output::print_project(&project);
@@ -286,22 +271,22 @@ async fn update(
 }
 
 /// Delete a project
-async fn delete(
-    client: ApiClient,
-    reference: &str,
-    json: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn delete(client: ApiClient, reference: &str, json: bool) -> Result<(), CliError> {
     // First resolve to get the ID
     let project = resolve_project(&client, reference).await?.project;
 
-    let response = client
-        .delete_auth(&format!("/api/projects/{}", project.project.id))
-        .await?;
-    let response = check_response(response).await?;
-    let deleted: ApiAdminProject = response.json().await?;
+    let deleted: ApiAdminProject = decode_json(
+        check_response(
+            client
+                .delete(&format!("/api/projects/{}", project.project.id))
+                .await?,
+        )
+        .await?,
+    )
+    .await?;
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&deleted)?);
+        output::print_json(&deleted)?;
     } else {
         output::success(&format!("Deleted project: {}", deleted.project.name));
     }
@@ -313,21 +298,23 @@ async fn delete(
 async fn resolve_project(
     client: &ApiClient,
     reference: &str,
-) -> Result<ApiProjectDetail, Box<dyn std::error::Error>> {
+) -> Result<ApiProjectDetail, CliError> {
     // The single-project endpoint accepts both UUID and slug, and returns the
     // full detail (including detail_content) so update can preserve it.
-    let response = client
-        .get_auth(&format!("/api/projects/{reference}"))
-        .await?;
-    let response = check_response(response).await?;
-    Ok(response.json().await?)
+    decode_json(check_response(client.get(&format!("/api/projects/{reference}")).await?).await?)
+        .await
 }
 
 /// Read a terminal-cast transcript from a JSON file.
-fn read_cast(path: &str) -> Result<TerminalCast, Box<dyn std::error::Error>> {
-    let raw = std::fs::read_to_string(path).map_err(|e| format!("reading {path}: {e}"))?;
-    serde_json::from_str(&raw)
-        .map_err(|e| format!("{path} is not a valid terminal cast: {e}").into())
+fn read_cast(path: &str) -> Result<TerminalCast, CliError> {
+    let raw = std::fs::read_to_string(path).map_err(|source| CliError::Io {
+        path: path.into(),
+        source,
+    })?;
+    serde_json::from_str(&raw).map_err(|source| CliError::Json {
+        path: path.to_string(),
+        source,
+    })
 }
 
 /// Resolve a comma-separated list of related project refs (slug or UUID) to IDs,
@@ -335,7 +322,7 @@ fn read_cast(path: &str) -> Result<TerminalCast, Box<dyn std::error::Error>> {
 async fn resolve_related(
     client: &ApiClient,
     related: Option<String>,
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+) -> Result<Vec<String>, CliError> {
     let Some(list) = related else {
         return Ok(vec![]);
     };
@@ -347,22 +334,12 @@ async fn resolve_related(
 }
 
 /// Resolve a single project reference (slug or UUID) to its UUID.
-async fn resolve_project_id(
-    client: &ApiClient,
-    reference: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
+async fn resolve_project_id(client: &ApiClient, reference: &str) -> Result<String, CliError> {
     Ok(resolve_project(client, reference).await?.project.project.id)
 }
 
 /// Resolve tag slugs to IDs
-async fn resolve_tag_ids(
-    client: &ApiClient,
-    slugs: &[String],
-) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    if slugs.is_empty() {
-        return Ok(vec![]);
-    }
-
+async fn resolve_tag_ids(client: &ApiClient, slugs: &[String]) -> Result<Vec<String>, CliError> {
     let mut ids = Vec::new();
     for slug in slugs {
         ids.push(resolve_tag_id(client, slug).await?);
@@ -371,37 +348,20 @@ async fn resolve_tag_ids(
 }
 
 /// Resolve a single tag slug or ID to an ID
-async fn resolve_tag_id(
-    client: &ApiClient,
-    slug_or_id: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
+async fn resolve_tag_id(client: &ApiClient, slug_or_id: &str) -> Result<String, CliError> {
     // Try as UUID first
     if Uuid::parse_str(slug_or_id).is_ok() {
         return Ok(slug_or_id.to_string());
     }
 
     // Otherwise look up by slug
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct TagResponse {
         tag: ApiTag,
     }
 
-    let response = client.get(&format!("/api/tags/{slug_or_id}")).await?;
-    let response = check_response(response).await?;
-    let tag_response: TagResponse = response.json().await?;
+    let tag_response: TagResponse =
+        decode_json(check_response(client.get(&format!("/api/tags/{slug_or_id}")).await?).await?)
+            .await?;
     Ok(tag_response.tag.id)
-}
-
-/// Parse status string to `ProjectStatus`
-fn parse_status(s: &str) -> Result<ProjectStatus, Box<dyn std::error::Error>> {
-    match s.to_lowercase().as_str() {
-        "active" => Ok(ProjectStatus::Active),
-        "maintained" => Ok(ProjectStatus::Maintained),
-        "archived" => Ok(ProjectStatus::Archived),
-        "hidden" => Ok(ProjectStatus::Hidden),
-        _ => Err(format!(
-            "Invalid status '{s}'. Valid values: active, maintained, archived, hidden"
-        )
-        .into()),
-    }
 }

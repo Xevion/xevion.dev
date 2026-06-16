@@ -54,6 +54,8 @@ open = "5.3.5"
 tokio-stream = { version = "0.1.18", features = ["sync"] }
 gethostname = "1.1.0"
 hex = "0.4.3"
+snafu = "0.9.1"
+miette = { version = "7.6.0", features = ["fancy"] }
 
 [profile.dev]
 debug = "line-tables-only"

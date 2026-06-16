@@ -5,13 +5,15 @@
 pub mod api;
 pub mod client;
 pub mod config;
+pub mod error;
 pub mod output;
 pub mod seed;
 pub mod serve;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config::ListenAddr;
+use crate::db::ProjectStatus;
 
 /// xevion.dev - Personal portfolio server and API client
 #[derive(Parser, Debug)]
@@ -85,8 +87,16 @@ pub enum ApiCommand {
     /// Check current session status
     Session,
 
-    /// List configured API targets
-    Targets,
+    /// List and manage configured API targets
+    Targets {
+        /// Omit to list targets; otherwise manage them
+        #[command(subcommand)]
+        command: Option<TargetsCommand>,
+    },
+
+    /// Inspect CLI configuration
+    #[command(subcommand)]
+    Config(ConfigCommand),
 
     /// Project management
     #[command(subcommand)]
@@ -99,6 +109,87 @@ pub enum ApiCommand {
     /// Site settings management
     #[command(subcommand)]
     Settings(SettingsCommand),
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TargetsCommand {
+    /// Make a target the default (used when --api is omitted)
+    Use {
+        /// Target name
+        name: String,
+    },
+
+    /// Add a target without authorizing it (set its base URL)
+    Add {
+        /// Target name
+        name: String,
+
+        /// API base URL
+        #[arg(long)]
+        url: String,
+    },
+
+    /// Remove a target
+    Rm {
+        /// Target name
+        name: String,
+    },
+
+    /// Rename a target, preserving its URL, token, and default status
+    Rename {
+        /// Current name
+        from: String,
+
+        /// New name
+        to: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ConfigCommand {
+    /// Print the resolved config file path
+    Path,
+}
+
+/// Project lifecycle status, validated at parse time and mirrored to
+/// [`ProjectStatus`](crate::db::ProjectStatus).
+#[derive(Copy, Clone, Debug, ValueEnum)]
+#[value(rename_all = "lowercase")]
+pub enum StatusArg {
+    Active,
+    Maintained,
+    Archived,
+    Hidden,
+}
+
+impl From<StatusArg> for ProjectStatus {
+    fn from(arg: StatusArg) -> Self {
+        match arg {
+            StatusArg::Active => Self::Active,
+            StatusArg::Maintained => Self::Maintained,
+            StatusArg::Archived => Self::Archived,
+            StatusArg::Hidden => Self::Hidden,
+        }
+    }
+}
+
+/// clap `value_parser` for hex colors: accepts `#6366F1` or `6366F1`, returns the
+/// canonical bare lowercase form. Shared by `--color` (tags) and `--accent`
+/// (projects) so both flags behave identically.
+pub fn parse_hex_color(raw: &str) -> Result<String, String> {
+    // An empty value is the documented "clear this field" sentinel on update
+    // commands; pass it through untouched and let the handler drop it.
+    if raw.is_empty() {
+        return Ok(String::new());
+    }
+    let hex = raw.strip_prefix('#').unwrap_or(raw);
+    if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Ok(hex.to_ascii_lowercase())
+    } else {
+        Err(format!(
+            "'{raw}' is not a 6-digit hex color (e.g. '6366F1' or '#6366F1')"
+        ))
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -127,8 +218,8 @@ pub enum ProjectsCommand {
         slug: Option<String>,
 
         /// Project status
-        #[arg(long, default_value = "active")]
-        status: String,
+        #[arg(long, value_enum, default_value_t = StatusArg::Active)]
+        status: StatusArg,
 
         /// GitHub repository (e.g., "Xevion/xevion.dev")
         #[arg(long)]
@@ -143,7 +234,7 @@ pub enum ProjectsCommand {
         tags: Option<String>,
 
         /// Accent color hex, e.g. "6366F1" or "#6366F1"
-        #[arg(long)]
+        #[arg(long, value_parser = parse_hex_color)]
         accent: Option<String>,
 
         /// Primary type label, e.g. "Web App"
@@ -178,8 +269,8 @@ pub enum ProjectsCommand {
         short_desc: Option<String>,
 
         /// Project status
-        #[arg(long)]
-        status: Option<String>,
+        #[arg(long, value_enum)]
+        status: Option<StatusArg>,
 
         /// GitHub repository (use "" to clear)
         #[arg(long)]
@@ -194,7 +285,7 @@ pub enum ProjectsCommand {
         tags: Option<String>,
 
         /// Accent color hex, e.g. "6366F1" or "#6366F1" (use "" to clear)
-        #[arg(long)]
+        #[arg(long, value_parser = parse_hex_color)]
         accent: Option<String>,
 
         /// Primary type label, e.g. "Web App" (use "" to clear)
@@ -325,8 +416,9 @@ pub enum TagsCommand {
 
     /// Get tag details with associated projects
     Get {
-        /// Tag slug
-        slug: String,
+        /// Tag slug or UUID
+        #[arg(name = "ref")]
+        reference: String,
     },
 
     /// Create a new tag
@@ -342,30 +434,31 @@ pub enum TagsCommand {
         #[arg(long)]
         icon: Option<String>,
 
-        /// Color hex without # (e.g., "3b82f6")
-        #[arg(long)]
+        /// Color hex, e.g. "3b82f6" or "#3b82f6"
+        #[arg(long, value_parser = parse_hex_color)]
         color: Option<String>,
     },
 
     /// Update an existing tag
     Update {
-        /// Tag slug
-        slug: String,
+        /// Tag slug or UUID
+        #[arg(name = "ref")]
+        reference: String,
 
         /// Tag name
         #[arg(short = 'n', long)]
         name: Option<String>,
 
         /// New URL slug
-        #[arg(long = "new-slug")]
-        new_slug: Option<String>,
+        #[arg(long)]
+        slug: Option<String>,
 
         /// Icon identifier (use "" to clear)
         #[arg(long)]
         icon: Option<String>,
 
-        /// Color hex (use "" to clear)
-        #[arg(long)]
+        /// Color hex, e.g. "3b82f6" or "#3b82f6" (use "" to clear)
+        #[arg(long, value_parser = parse_hex_color)]
         color: Option<String>,
     },
 
@@ -443,4 +536,25 @@ pub fn parse_update_tags(s: &str) -> Result<Vec<TagOp>, String> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_hex_color;
+
+    #[test]
+    fn hex_color_accepts_bare_and_prefixed_and_normalizes() {
+        assert_eq!(parse_hex_color("3B82F6").unwrap(), "3b82f6");
+        assert_eq!(parse_hex_color("#3b82f6").unwrap(), "3b82f6");
+        // Empty is the "clear this field" sentinel and passes through.
+        assert_eq!(parse_hex_color("").unwrap(), "");
+    }
+
+    #[test]
+    fn hex_color_rejects_bad_input() {
+        assert!(parse_hex_color("xyz").is_err()); // non-hex
+        assert!(parse_hex_color("abc").is_err()); // too short
+        assert!(parse_hex_color("abcdef0").is_err()); // too long
+        assert!(parse_hex_color("#12345g").is_err()); // non-hex with prefix
+    }
 }

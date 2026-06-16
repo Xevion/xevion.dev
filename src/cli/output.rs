@@ -1,21 +1,35 @@
 use nu_ansi_term::{Color, Style};
+use serde::Serialize;
+use snafu::ResultExt;
 
+use crate::cli::error::{CliError, SerializeSnafu};
 use crate::db::{ApiAdminProject, ApiSiteSettings, ApiTag, ApiTagWithCount};
 use crate::pm::{Doc, Node};
 
-/// Print a success message
+// Status, progress, and confirmation lines are diagnostics: they go to stderr so
+// stdout carries only data (tables in human mode, JSON in `--json` mode) and
+// every command stays cleanly pipeable.
+
+/// Print a success message (stderr).
 pub fn success(msg: &str) {
-    println!("{} {}", Color::Green.paint("✓"), msg);
+    eprintln!("{} {}", Color::Green.paint("✓"), msg);
 }
 
-/// Print an error message
+/// Print an error/warning message (stderr).
 pub fn error(msg: &str) {
     eprintln!("{} {}", Color::Red.paint("✗"), msg);
 }
 
-/// Print an info message
+/// Print an info/progress message (stderr).
 pub fn info(msg: &str) {
-    println!("{} {}", Color::Blue.paint("→"), msg);
+    eprintln!("{} {}", Color::Blue.paint("→"), msg);
+}
+
+/// Pretty-print a value as JSON to stdout (the machine-readable data channel).
+pub fn print_json<T: Serialize>(value: &T) -> Result<(), CliError> {
+    let rendered = serde_json::to_string_pretty(value).context(SerializeSnafu)?;
+    println!("{rendered}");
+    Ok(())
 }
 
 /// Print a project in formatted output
@@ -354,14 +368,14 @@ fn format_status(status: crate::db::ProjectStatus) -> String {
     color.paint(label).to_string()
 }
 
-/// Print session info
+/// Print session info (stderr — this is status, not pipeable data)
 pub fn print_session(username: &str, api_url: &str) {
     let dim = Style::new().dimmed();
     success(&format!(
         "Logged in as {}",
         Style::new().bold().paint(username)
     ));
-    println!("  {} {}", dim.paint("API:"), api_url);
+    eprintln!("  {} {}", dim.paint("API:"), api_url);
 }
 
 #[cfg(test)]

@@ -102,9 +102,17 @@ async fn main() {
         }
         Some(Command::Api(api_args)) => {
             // API client commands - no tracing needed
+            let json = api_args.json;
             if let Err(e) = cli::api::run(*api_args).await {
-                eprintln!("Error: {e}");
-                std::process::exit(1);
+                let code = e.exit_code();
+                if json {
+                    // Machine-readable error on stdout for scripted callers.
+                    println!("{}", e.to_json());
+                } else {
+                    // Rich diagnostic (help line + source chain) on stderr.
+                    eprintln!("{:?}", miette::Report::new(e));
+                }
+                std::process::exit(code);
             }
         }
         None => {
