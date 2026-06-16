@@ -16,4 +16,14 @@ sourceClosed: boolean,
 /**
  * Explicit accent hex; frontend falls back to `#71717a` when absent.
  */
-accentColor?: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };
+accentColor?: string, 
+/**
+ * Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
+ * sync-health signal, distinct from `lastActivity`.
+ */
+githubSyncedAt?: string, 
+/**
+ * Most recent GitHub sync failure; absent when healthy. Lets the admin UI
+ * flag a repo whose sync is broken.
+ */
+githubSyncError?: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };

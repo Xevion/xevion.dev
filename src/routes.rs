@@ -46,6 +46,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
                 .put(handlers::update_project_handler)
                 .delete(handlers::delete_project_handler),
         )
+        .route("/projects/{ref}/sync", post(handlers::sync_project_handler))
         .route(
             "/projects/{ref}/content",
             get(handlers::get_project_content_handler)
@@ -92,6 +93,8 @@ pub fn api_routes() -> Router<Arc<AppState>> {
         )
         .route("/events", get(handlers::list_events_handler))
         .route("/stats", get(handlers::get_admin_stats_handler))
+        .route("/github/status", get(handlers::github_status_handler))
+        .route("/github/sync", post(handlers::sync_all_projects_handler))
         .route(
             "/settings",
             get(handlers::get_settings_handler).put(handlers::update_settings_handler),

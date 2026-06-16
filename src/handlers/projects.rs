@@ -10,6 +10,40 @@ use crate::{
     state::{AdminSession, AppError, AppResult, AppState, OptionNotFoundExt, SqlxResultExt},
 };
 
+/// Normalize a submitted `github_repo` to canonical "owner/repo", mapping a bad
+/// shape to a 400 field error. An empty/absent value clears the field (`None`).
+fn normalize_repo_field(raw: Option<&str>) -> AppResult<Option<String>> {
+    match raw.map(str::trim).filter(|s| !s.is_empty()) {
+        None => Ok(None),
+        Some(value) => github::normalize_github_repo(value)
+            .map(Some)
+            .map_err(|msg| AppError::field("githubRepo", msg)),
+    }
+}
+
+/// Live existence check for a normalized "owner/repo" at save time. A definitive
+/// 404 rejects the save; an inconclusive result (rate-limited, transport error,
+/// or sync disabled) only warns so saves never hinge on GitHub's availability.
+async fn verify_repo_exists(repo: &str) -> AppResult<()> {
+    let Some((owner, name)) = repo.split_once('/') else {
+        return Ok(());
+    };
+    let Some(client) = github::GitHubClient::get().await else {
+        return Ok(()); // sync disabled (no token) — can't verify, don't block
+    };
+    match client.repo_exists(owner, name).await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(AppError::field(
+            "githubRepo",
+            "GitHub repository not found or inaccessible",
+        )),
+        Err(err) => {
+            tracing::warn!(repo = %repo, error = %err, "Could not verify github_repo; saving anyway");
+            Ok(())
+        }
+    }
+}
+
 #[tracing::instrument(skip_all)]
 pub async fn projects_handler(
     State(state): State<Arc<AppState>>,
@@ -99,6 +133,11 @@ pub async fn create_project_handler(
         .transpose()?
         .and_then(|doc| doc.to_stored());
 
+    let github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
+    if let Some(repo) = &github_repo {
+        verify_repo_exists(repo).await?;
+    }
+
     let project = db::create_project(
         &state.pool,
         db::ProjectInput {
@@ -106,7 +145,7 @@ pub async fn create_project_handler(
             slug_override: payload.slug.as_deref(),
             short_description: &payload.short_description,
             status: payload.status,
-            github_repo: payload.github_repo.as_deref(),
+            github_repo: github_repo.as_deref(),
             demo_url: payload.demo_url.as_deref(),
             detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
@@ -211,6 +250,15 @@ pub async fn update_project_handler(
         .transpose()?
         .and_then(|doc| doc.to_stored());
 
+    let github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
+    // Only spend an API call verifying the repo when it actually changed, so
+    // editing unrelated fields never hinges on GitHub being reachable.
+    if github_repo.as_deref() != existing_project.github_repo.as_deref()
+        && let Some(repo) = &github_repo
+    {
+        verify_repo_exists(repo).await?;
+    }
+
     let project = db::update_project(
         &state.pool,
         project_id,
@@ -219,7 +267,7 @@ pub async fn update_project_handler(
             slug_override: payload.slug.as_deref(),
             short_description: &payload.short_description,
             status: payload.status,
-            github_repo: payload.github_repo.as_deref(),
+            github_repo: github_repo.as_deref(),
             demo_url: payload.demo_url.as_deref(),
             detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
@@ -329,6 +377,100 @@ pub async fn delete_project_handler(
         .await;
 
     Ok(Json(project.to_api_admin_project(tags, media)?))
+}
+
+/// Manually run a synchronous GitHub sync for one project (requires auth).
+/// Returns the refreshed project so the caller sees the updated activity.
+#[tracing::instrument(skip_all, fields(ref_str))]
+pub async fn sync_project_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(ref_str): axum::extract::Path<String>,
+    _: AdminSession,
+) -> AppResult<impl IntoResponse> {
+    let project = db::get_project_by_ref(&state.pool, &ref_str)
+        .await?
+        .or_not_found()?;
+
+    let Some(repo) = project.github_repo.clone() else {
+        return Err(AppError::field(
+            "githubRepo",
+            "Project has no GitHub repository to sync",
+        ));
+    };
+
+    match github::sync_project_now(&state.pool, project.id, &repo).await {
+        Ok(_) => {}
+        Err(github::GitHubError::RateLimited { .. }) => {
+            return Err(AppError::ServiceUnavailable(
+                "GitHub API rate limit exceeded; try again later".to_string(),
+            ));
+        }
+        Err(err @ github::GitHubError::Api(503, _)) => {
+            return Err(AppError::ServiceUnavailable(err.to_string()));
+        }
+        Err(github::GitHubError::NotFound(_)) => {
+            let _ = db::record_github_sync_error(
+                &state.pool,
+                project.id,
+                "Repository not found or inaccessible",
+            )
+            .await;
+            return Err(AppError::field(
+                "githubRepo",
+                "GitHub repository not found or inaccessible",
+            ));
+        }
+        Err(err) => return Err(AppError::Internal(err.to_string())),
+    }
+
+    let (project, tags, media) = db::get_project_by_id_with_tags(&state.pool, project.id)
+        .await?
+        .or_not_found()?;
+
+    tracing::info!(project_id = %project.id, repo = %repo, "Manual GitHub sync complete");
+    state.isr_cache.invalidate("/").await;
+    state
+        .isr_cache
+        .invalidate(&format!("/projects/{}", project.slug))
+        .await;
+
+    Ok(Json(project.to_api_admin_project(tags, media)?))
+}
+
+/// Enqueue every tracked project for an immediate GitHub sync (requires auth).
+#[tracing::instrument(skip_all)]
+pub async fn sync_all_projects_handler(_: AdminSession) -> AppResult<impl IntoResponse> {
+    let Some(scheduler) = github::get_scheduler() else {
+        return Err(AppError::ServiceUnavailable(
+            "GitHub sync is disabled".to_string(),
+        ));
+    };
+    let enqueued = scheduler.trigger_all();
+    tracing::info!(enqueued, "Enqueued all projects for GitHub sync");
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({ "enqueued": enqueued })),
+    ))
+}
+
+/// Report GitHub sync scheduler health (requires auth).
+#[tracing::instrument(skip_all)]
+pub async fn github_status_handler(_: AdminSession) -> AppResult<impl IntoResponse> {
+    let Some(scheduler) = github::get_scheduler() else {
+        return Ok(Json(serde_json::json!({ "enabled": false })));
+    };
+
+    let stats = scheduler.stats();
+    let next = scheduler.next_check_info();
+    Ok(Json(serde_json::json!({
+        "enabled": true,
+        "tracked": scheduler.len(),
+        "synced": stats.synced,
+        "skipped": stats.skipped,
+        "errors": stats.errors,
+        "nextRepo": next.as_ref().map(|(repo, _)| repo.clone()),
+        "nextCheckSecs": next.as_ref().map(|(_, until)| until.as_secs()),
+    })))
 }
 
 /// Get admin stats (requires authentication)

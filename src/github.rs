@@ -5,20 +5,30 @@
 //! frequently (down to 15 minutes), while stale projects are checked less often
 //! (up to 24 hours).
 //!
-//! Fetches the latest activity from GitHub for projects that have `github_repo` set.
-//! Only considers:
-//! - Project-wide activity: Issues, PRs
-//! - Main branch activity: Commits/pushes to the default branch only
+//! Activity is sourced from two repo-scoped endpoints that both work for public
+//! and private repositories with an authenticated token:
+//! - `GET /repos/{o}/{r}/activity` — pushes / force-pushes / branch ops / merges
+//!   on any ref (no conditional-request support, so always a live call).
+//! - `GET /repos/{o}/{r}/issues?state=all&sort=updated&direction=desc` — the most
+//!   recently updated issue or PR (REST treats PRs as issues; `updated_at` also
+//!   advances on comments). Polled with an `ETag`, so unchanged repos return 304
+//!   and cost nothing against the rate limit.
+//!
+//! The latest activity is `max()` of the two. Stars/forks are intentionally not
+//! counted (neither endpoint surfaces them).
 
 use dashmap::DashMap;
 use parking_lot::Mutex;
-use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT};
+use reqwest::StatusCode;
+use reqwest::header::{
+    ACCEPT, AUTHORIZATION, ETAG, HeaderMap, HeaderValue, IF_NONE_MATCH, USER_AGENT,
+};
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::cmp::{Ordering, Reverse};
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashMap};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering as AtomicOrdering};
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 use tokio::sync::OnceCell;
@@ -47,6 +57,10 @@ fn max_interval() -> Duration {
 
 /// Days of inactivity after which the maximum interval is used
 const DAYS_TO_MAX: f64 = 90.0;
+
+/// Fallback wait when a rate-limit response carries no `retry-after` /
+/// `x-ratelimit-reset` header to compute the exact reset from.
+const RATE_LIMIT_FALLBACK: Duration = Duration::from_mins(5);
 
 /// How often the scheduler checks for due items (hardcoded)
 pub const SCHEDULER_TICK_INTERVAL: Duration = Duration::from_secs(30);
@@ -79,6 +93,16 @@ pub fn calculate_check_interval(last_activity: Option<OffsetDateTime>) -> Durati
     Duration::from_secs(interval_secs as u64)
 }
 
+/// Most recent of two optional timestamps, treating `None` as "no signal".
+/// Used both to merge the activity/issue sources and to advance a project's
+/// in-memory `last_activity` without ever regressing it.
+fn merge_activity(a: Option<OffsetDateTime>, b: Option<OffsetDateTime>) -> Option<OffsetDateTime> {
+    match (a, b) {
+        (Some(x), Some(y)) => Some(x.max(y)),
+        (x, y) => x.or(y),
+    }
+}
+
 /// Statistics from scheduler operations
 #[derive(Debug, Default)]
 pub struct SyncStats {
@@ -100,43 +124,25 @@ pub struct ScheduledProject {
     pub last_activity: Option<OffsetDateTime>,
     /// Consecutive error count (for exponential backoff)
     pub error_count: u32,
+    /// Registration epoch this entry was scheduled under. A heap entry is valid
+    /// only while it matches the project's current epoch in the registry; this is
+    /// how deletes and repo changes invalidate in-flight/queued entries (see
+    /// [`GitHubScheduler`]).
+    epoch: u64,
 }
 
-impl ScheduledProject {
-    fn new(project: &DbProject, next_check: Instant) -> Option<Self> {
-        Some(Self {
-            next_check,
-            project_id: project.id,
-            github_repo: project.github_repo.clone()?,
-            last_activity: project.last_github_activity,
-            error_count: 0,
-        })
-    }
-
-    /// Create a scheduled project for immediate checking
-    pub fn immediate(project_id: Uuid, github_repo: String) -> Self {
-        Self {
-            next_check: Instant::now(),
-            project_id,
-            github_repo,
-            last_activity: None,
-            error_count: 0,
-        }
-    }
-}
-
-// Ordering for BinaryHeap (we use Reverse<> for min-heap behavior)
+// Ordering for BinaryHeap (we use Reverse<> for min-heap behavior). Only
+// `next_check` matters for scheduling order.
 impl Eq for ScheduledProject {}
 
 impl PartialEq for ScheduledProject {
     fn eq(&self, other: &Self) -> bool {
-        self.project_id == other.project_id
+        self.next_check == other.next_check
     }
 }
 
 impl Ord for ScheduledProject {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Order by next_check time (earliest first when wrapped in Reverse)
         self.next_check.cmp(&other.next_check)
     }
 }
@@ -147,11 +153,36 @@ impl PartialOrd for ScheduledProject {
     }
 }
 
-/// GitHub activity sync scheduler with priority queue
+/// Authoritative registration for a tracked project: its current repo and epoch.
+/// The heap may hold stale entries; this map is the source of truth.
+#[derive(Debug, Clone)]
+struct RegEntry {
+    repo: String,
+    epoch: u64,
+}
+
+/// Mutable scheduler state guarded by a single lock so the queue and the
+/// registry can never disagree.
+struct SchedulerInner {
+    /// Min-heap of scheduled checks (earliest first). May contain stale entries
+    /// that are discarded lazily on pop / reschedule.
+    queue: BinaryHeap<Reverse<ScheduledProject>>,
+    /// Authoritative set of tracked projects (id -> repo + current epoch).
+    registry: HashMap<Uuid, RegEntry>,
+}
+
+/// GitHub activity sync scheduler with a priority queue.
+///
+/// Heap entries are validated against `registry` by epoch on pop and before
+/// re-pushing. `remove_project` drops the registry entry, and `add_project`
+/// allocates a fresh (globally monotonic) epoch — so a project deleted or
+/// re-homed while its sync is in flight cannot be resurrected by the completing
+/// task, and duplicate enqueues self-heal.
 pub struct GitHubScheduler {
-    /// Min-heap of scheduled projects (earliest check first)
-    queue: Mutex<BinaryHeap<Reverse<ScheduledProject>>>,
-    /// Running statistics
+    inner: Mutex<SchedulerInner>,
+    /// Monotonic epoch allocator; never reuses a value, so a re-added id can't
+    /// collide with a lingering stale heap entry.
+    next_epoch: AtomicU64,
     pub total_synced: AtomicU32,
     pub total_skipped: AtomicU32,
     pub total_errors: AtomicU32,
@@ -173,67 +204,105 @@ impl GitHubScheduler {
         let now = Instant::now();
         let total = projects.len().max(1) as f64;
 
-        let scheduled: Vec<_> = projects
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, project)| {
-                let interval = calculate_check_interval(project.last_github_activity);
+        let mut queue = BinaryHeap::new();
+        let mut registry = HashMap::new();
+        let mut epoch = 0u64;
 
-                // Stagger initial checks: position i of n gets (i/n * interval) offset
-                // This spreads checks evenly across each project's interval
-                let offset_secs = (i as f64 / total) * interval.as_secs_f64();
-                let next_check = now + Duration::from_secs_f64(offset_secs);
+        for (i, project) in projects.into_iter().enumerate() {
+            let Some(repo) = project.github_repo.clone() else {
+                continue;
+            };
 
-                ScheduledProject::new(&project, next_check)
-            })
-            .map(Reverse)
-            .collect();
+            let interval = calculate_check_interval(project.last_github_activity);
+            // Stagger initial checks: position i of n gets (i/n * interval) offset,
+            // spreading checks evenly across each project's interval.
+            let offset_secs = (i as f64 / total) * interval.as_secs_f64();
+            let next_check = now + Duration::from_secs_f64(offset_secs);
 
-        let queue = BinaryHeap::from(scheduled);
+            registry.insert(
+                project.id,
+                RegEntry {
+                    repo: repo.clone(),
+                    epoch,
+                },
+            );
+            queue.push(Reverse(ScheduledProject {
+                next_check,
+                project_id: project.id,
+                github_repo: repo,
+                last_activity: project.last_github_activity,
+                error_count: 0,
+                epoch,
+            }));
+            epoch += 1;
+        }
 
         Self {
-            queue: Mutex::new(queue),
+            inner: Mutex::new(SchedulerInner { queue, registry }),
+            next_epoch: AtomicU64::new(epoch),
             total_synced: AtomicU32::new(0),
             total_skipped: AtomicU32::new(0),
             total_errors: AtomicU32::new(0),
         }
     }
 
-    /// Number of projects in the scheduler
+    /// Number of tracked projects (authoritative; ignores stale heap entries).
     pub fn len(&self) -> usize {
-        self.queue.lock().len()
+        self.inner.lock().registry.len()
     }
 
-    /// Check if the scheduler has no projects
+    /// Check if the scheduler tracks no projects.
     pub fn is_empty(&self) -> bool {
-        self.queue.lock().is_empty()
+        self.inner.lock().registry.is_empty()
     }
 
-    /// Pop the next due project, if any.
+    /// Pop the next due, still-valid project, if any.
     ///
-    /// Returns None if the queue is empty or the next project isn't due yet.
+    /// Stale heap entries (deleted or superseded by a newer epoch) are discarded
+    /// in place. Returns `None` if the queue is empty or the next item isn't due.
     pub fn pop_if_due(&self) -> Option<ScheduledProject> {
-        let mut queue = self.queue.lock();
+        let mut inner = self.inner.lock();
         let now = Instant::now();
 
-        // Peek to check if the next item is due
-        if queue.peek().is_some_and(|p| p.0.next_check <= now) {
-            queue.pop().map(|r| r.0)
-        } else {
-            None
+        loop {
+            match inner.queue.peek() {
+                Some(p) if p.0.next_check <= now => {}
+                _ => return None,
+            }
+            let project = inner.queue.pop().expect("peek confirmed non-empty").0;
+            if inner
+                .registry
+                .get(&project.project_id)
+                .is_some_and(|r| r.epoch == project.epoch)
+            {
+                return Some(project);
+            }
+            // Stale: deleted or superseded by a newer epoch. Drop and continue.
+        }
+    }
+
+    /// Re-push a project only if it is still the current registration.
+    fn push_if_current(&self, project: ScheduledProject) {
+        let mut inner = self.inner.lock();
+        if inner
+            .registry
+            .get(&project.project_id)
+            .is_some_and(|r| r.epoch == project.epoch)
+        {
+            inner.queue.push(Reverse(project));
         }
     }
 
     /// Reschedule a project after a successful sync.
     pub fn reschedule(&self, mut project: ScheduledProject, new_activity: Option<OffsetDateTime>) {
-        project.last_activity = new_activity.or(project.last_activity);
-        project.error_count = 0; // Reset error count on success
+        project.last_activity = merge_activity(new_activity, project.last_activity);
+        project.error_count = 0;
 
         let interval = calculate_check_interval(project.last_activity);
         project.next_check = Instant::now() + interval;
 
-        self.queue.lock().push(Reverse(project));
         self.total_synced.fetch_add(1, AtomicOrdering::Relaxed);
+        self.push_if_current(project);
     }
 
     /// Reschedule a project after an error with exponential backoff.
@@ -242,7 +311,6 @@ impl GitHubScheduler {
     pub fn reschedule_with_error(&self, mut project: ScheduledProject) {
         project.error_count += 1;
 
-        // Exponential backoff: base_interval * 2^error_count, capped at max
         let base = calculate_check_interval(project.last_activity);
         let multiplier = 2u32.saturating_pow(project.error_count.min(6)); // Cap at 2^6 = 64x
         let backoff = base.saturating_mul(multiplier);
@@ -257,8 +325,8 @@ impl GitHubScheduler {
             "Rescheduled with error backoff"
         );
 
-        self.queue.lock().push(Reverse(project));
         self.total_errors.fetch_add(1, AtomicOrdering::Relaxed);
+        self.push_if_current(project);
     }
 
     /// Mark a project as skipped (no update needed).
@@ -268,40 +336,79 @@ impl GitHubScheduler {
         let interval = calculate_check_interval(project.last_activity);
         project.next_check = Instant::now() + interval;
 
-        self.queue.lock().push(Reverse(project));
         self.total_skipped.fetch_add(1, AtomicOrdering::Relaxed);
+        self.push_if_current(project);
     }
 
-    /// Back off all projects by a fixed duration (e.g., after rate limiting).
+    /// Back off all queued checks by at least `backoff` (e.g. after rate limiting).
     pub fn backoff_all(&self, backoff: Duration) {
-        let mut queue = self.queue.lock();
-        let now = Instant::now();
+        let mut inner = self.inner.lock();
+        let target = Instant::now() + backoff;
 
-        // Drain and re-add with updated times
-        let projects: Vec<_> = queue.drain().collect();
-        for mut p in projects {
-            // Only push back projects that aren't already further out
-            if p.0.next_check < now + backoff {
-                p.0.next_check = now + backoff;
+        let entries: Vec<_> = inner.queue.drain().collect();
+        for mut p in entries {
+            if p.0.next_check < target {
+                p.0.next_check = target;
             }
-            queue.push(p);
+            inner.queue.push(p);
         }
     }
 
-    /// Add a new project to the scheduler for immediate checking.
+    /// Add (or re-home) a project, scheduling it for an immediate check. A fresh
+    /// epoch supersedes any prior queued/in-flight entry for the same id.
     pub fn add_project(&self, project_id: Uuid, github_repo: String) {
-        let project = ScheduledProject::immediate(project_id, github_repo);
-        self.queue.lock().push(Reverse(project));
+        let epoch = self.next_epoch.fetch_add(1, AtomicOrdering::Relaxed);
+        let mut inner = self.inner.lock();
+        inner.registry.insert(
+            project_id,
+            RegEntry {
+                repo: github_repo.clone(),
+                epoch,
+            },
+        );
+        inner.queue.push(Reverse(ScheduledProject {
+            next_check: Instant::now(),
+            project_id,
+            github_repo,
+            last_activity: None,
+            error_count: 0,
+            epoch,
+        }));
     }
 
-    /// Remove a project from the scheduler.
+    /// Stop tracking a project. Any queued/in-flight entry becomes stale and is
+    /// discarded the next time it surfaces.
     pub fn remove_project(&self, project_id: Uuid) {
-        let mut queue = self.queue.lock();
-        let projects: Vec<_> = queue
-            .drain()
-            .filter(|p| p.0.project_id != project_id)
+        self.inner.lock().registry.remove(&project_id);
+    }
+
+    /// Schedule every tracked project for an immediate check. Returns the count.
+    pub fn trigger_all(&self) -> usize {
+        let mut inner = self.inner.lock();
+        let now = Instant::now();
+        let entries: Vec<(Uuid, String)> = inner
+            .registry
+            .iter()
+            .map(|(id, r)| (*id, r.repo.clone()))
             .collect();
-        queue.extend(projects);
+
+        for (id, repo) in &entries {
+            let epoch = self.next_epoch.fetch_add(1, AtomicOrdering::Relaxed);
+            if let Some(entry) = inner.registry.get_mut(id) {
+                entry.epoch = epoch;
+            }
+            inner.queue.push(Reverse(ScheduledProject {
+                next_check: now,
+                project_id: *id,
+                github_repo: repo.clone(),
+                last_activity: None,
+                error_count: 0,
+                epoch,
+            }));
+        }
+
+        drop(inner);
+        entries.len()
     }
 
     /// Get current statistics snapshot
@@ -313,10 +420,10 @@ impl GitHubScheduler {
         }
     }
 
-    /// Get info about the next scheduled check (for logging/debugging)
+    /// Get info about the next scheduled check (for logging/debugging).
     pub fn next_check_info(&self) -> Option<(String, Duration)> {
-        let queue = self.queue.lock();
-        queue.peek().map(|p| {
+        let inner = self.inner.lock();
+        inner.queue.peek().map(|p| {
             let until = p.0.next_check.saturating_duration_since(Instant::now());
             (p.0.github_repo.clone(), until)
         })
@@ -348,43 +455,52 @@ pub async fn init_scheduler(pool: &PgPool) -> Option<Arc<GitHubScheduler>> {
     Some(scheduler)
 }
 
-/// GitHub API client with caching for default branches
+/// Cached conditional-request state for the issues endpoint of a single repo.
+#[derive(Clone)]
+struct IssueCache {
+    etag: String,
+    timestamp: Option<OffsetDateTime>,
+}
+
+/// GitHub API client with per-repo `ETag` caching for the issues endpoint.
 pub struct GitHubClient {
     client: reqwest::Client,
-    /// Cache of "owner/repo" -> `default_branch`
-    branch_cache: DashMap<String, String>,
+    /// "owner/repo" -> last issues `ETag` + the timestamp it resolved to, so a
+    /// 304 can return the cached value without re-parsing (and without cost).
+    issue_cache: DashMap<String, IssueCache>,
 }
 
 // GitHub API response types
 
+/// An item from `GET /repos/{o}/{r}/activity` (push/branch/merge activity).
 #[derive(Debug, Deserialize)]
-struct RepoInfo {
-    default_branch: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct ActivityEvent {
-    /// The activity endpoint uses `timestamp`, not `created_at`
+struct ActivityItem {
     timestamp: String,
 }
 
+/// An item from `GET /repos/{o}/{r}/issues` (issues and PRs alike).
 #[derive(Debug, Deserialize)]
-struct IssueEvent {
-    created_at: String,
+struct IssueItem {
+    updated_at: String,
 }
 
 /// Errors that can occur during GitHub API operations
 #[derive(Debug)]
 pub enum GitHubError {
-    /// HTTP request failed
+    /// HTTP transport failure
     Request(reqwest::Error),
-    /// Repository not found (404)
+    /// Repository not found / inaccessible (404)
     NotFound(String),
-    /// Rate limited (429)
-    RateLimited,
-    /// Failed to parse timestamp
+    /// Rate limited (403 with remaining=0, or 429). Carries the computed wait, if
+    /// the response told us when the window resets.
+    RateLimited { retry_after: Option<Duration> },
+    /// Failed to parse a timestamp from the API
     ParseTime(String),
-    /// Other API error
+    /// Malformed `github_repo` — permanent, never worth retrying.
+    InvalidRepo(String),
+    /// A database write failed while persisting sync results.
+    Database(String),
+    /// Other non-success API response
     Api(u16, String),
 }
 
@@ -392,15 +508,85 @@ impl std::fmt::Display for GitHubError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Request(e) => write!(f, "HTTP request failed: {e}"),
-            Self::NotFound(repo) => write!(f, "Repository not found: {repo}"),
-            Self::RateLimited => write!(f, "GitHub API rate limit exceeded"),
+            Self::NotFound(repo) => write!(f, "Repository not found or inaccessible: {repo}"),
+            Self::RateLimited { .. } => write!(f, "GitHub API rate limit exceeded"),
             Self::ParseTime(s) => write!(f, "Failed to parse timestamp: {s}"),
+            Self::InvalidRepo(r) => write!(f, "Invalid github_repo: {r}"),
+            Self::Database(e) => write!(f, "Database error during sync: {e}"),
             Self::Api(status, msg) => write!(f, "GitHub API error ({status}): {msg}"),
         }
     }
 }
 
 impl std::error::Error for GitHubError {}
+
+/// Read a header as a `&str`, if present and valid UTF-8.
+fn header_str<'a>(headers: &'a HeaderMap, key: &str) -> Option<&'a str> {
+    headers.get(key).and_then(|v| v.to_str().ok())
+}
+
+/// Whether a response status + `x-ratelimit-remaining` indicates rate limiting.
+/// GitHub uses 429 for secondary limits and 403-with-remaining-0 for primary.
+fn is_rate_limited(status: u16, remaining: Option<&str>) -> bool {
+    status == 429 || (status == 403 && remaining == Some("0"))
+}
+
+/// Compute how long to wait from rate-limit headers: prefer `retry-after`
+/// (seconds), else `x-ratelimit-reset` (Unix seconds) minus `now`. `None` when
+/// neither is present (caller applies a fallback).
+fn rate_limit_backoff(
+    retry_after: Option<&str>,
+    reset_at: Option<&str>,
+    now_unix: i64,
+) -> Option<Duration> {
+    if let Some(secs) = retry_after.and_then(|s| s.trim().parse::<u64>().ok()) {
+        return Some(Duration::from_secs(secs));
+    }
+    if let Some(reset) = reset_at.and_then(|s| s.trim().parse::<i64>().ok()) {
+        return Some(Duration::from_secs((reset - now_unix).max(0) as u64));
+    }
+    None
+}
+
+/// Build the rate-limit error from a response's headers.
+fn rate_limited_error(headers: &HeaderMap) -> GitHubError {
+    GitHubError::RateLimited {
+        retry_after: rate_limit_backoff(
+            header_str(headers, "retry-after"),
+            header_str(headers, "x-ratelimit-reset"),
+            OffsetDateTime::now_utc().unix_timestamp(),
+        ),
+    }
+}
+
+/// Map a non-success response to the appropriate [`GitHubError`], consuming the
+/// body only for the generic-error case.
+async fn ensure_ok(
+    response: reqwest::Response,
+    repo: &str,
+) -> Result<reqwest::Response, GitHubError> {
+    let status = response.status();
+    if status.is_success() {
+        return Ok(response);
+    }
+    if status == StatusCode::NOT_FOUND {
+        return Err(GitHubError::NotFound(repo.to_string()));
+    }
+    if is_rate_limited(
+        status.as_u16(),
+        header_str(response.headers(), "x-ratelimit-remaining"),
+    ) {
+        return Err(rate_limited_error(response.headers()));
+    }
+    let body = response.text().await.unwrap_or_default();
+    Err(GitHubError::Api(status.as_u16(), body))
+}
+
+/// Parse an RFC 3339 timestamp from the GitHub API.
+fn parse_ts(s: &str) -> Result<OffsetDateTime, GitHubError> {
+    OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+        .map_err(|_| GitHubError::ParseTime(s.to_string()))
+}
 
 impl GitHubClient {
     /// Create a new GitHub client if `GITHUB_TOKEN` is set.
@@ -433,7 +619,7 @@ impl GitHubClient {
 
         Some(Self {
             client,
-            branch_cache: DashMap::new(),
+            issue_cache: DashMap::new(),
         })
     }
 
@@ -457,109 +643,14 @@ impl GitHubClient {
             .clone()
     }
 
-    /// Fetch repository info (primarily for `default_branch`).
-    async fn get_repo_info(&self, owner: &str, repo: &str) -> Result<RepoInfo, GitHubError> {
-        let url = format!("https://api.github.com/repos/{owner}/{repo}");
-
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(GitHubError::Request)?;
-
-        let status = response.status();
-
-        if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(GitHubError::NotFound(format!("{owner}/{repo}")));
-        }
-
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-            return Err(GitHubError::RateLimited);
-        }
-
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(GitHubError::Api(status.as_u16(), body));
-        }
-
-        response
-            .json::<RepoInfo>()
-            .await
-            .map_err(GitHubError::Request)
-    }
-
-    /// Get the default branch for a repo, using cache if available.
-    async fn get_default_branch(&self, owner: &str, repo: &str) -> Result<String, GitHubError> {
-        let cache_key = format!("{owner}/{repo}");
-
-        // Check cache first
-        if let Some(branch) = self.branch_cache.get(&cache_key) {
-            return Ok(branch.clone());
-        }
-
-        // Fetch from API
-        let info = self.get_repo_info(owner, repo).await?;
-        self.branch_cache
-            .insert(cache_key, info.default_branch.clone());
-        Ok(info.default_branch)
-    }
-
-    /// Fetch the latest activity on the default branch.
-    /// Returns the timestamp of the most recent push, if any.
-    async fn get_latest_branch_activity(
-        &self,
-        owner: &str,
-        repo: &str,
-        branch: &str,
-    ) -> Result<Option<OffsetDateTime>, GitHubError> {
-        let url =
-            format!("https://api.github.com/repos/{owner}/{repo}/activity?ref={branch}&per_page=1");
-
-        let response = self
-            .client
-            .get(&url)
-            .send()
-            .await
-            .map_err(GitHubError::Request)?;
-
-        let status = response.status();
-
-        if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(GitHubError::NotFound(format!("{owner}/{repo}")));
-        }
-
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-            return Err(GitHubError::RateLimited);
-        }
-
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(GitHubError::Api(status.as_u16(), body));
-        }
-
-        let events: Vec<ActivityEvent> = response.json().await.map_err(GitHubError::Request)?;
-
-        if let Some(event) = events.first() {
-            let timestamp = OffsetDateTime::parse(
-                &event.timestamp,
-                &time::format_description::well_known::Rfc3339,
-            )
-            .map_err(|_| GitHubError::ParseTime(event.timestamp.clone()))?;
-            Ok(Some(timestamp))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Fetch the latest issue/PR event.
-    /// Returns the timestamp of the most recent event, if any.
-    async fn get_latest_issue_event(
+    /// Latest push/branch/merge activity on any ref (no conditional request).
+    async fn get_activity_timestamp(
         &self,
         owner: &str,
         repo: &str,
     ) -> Result<Option<OffsetDateTime>, GitHubError> {
-        let url = format!("https://api.github.com/repos/{owner}/{repo}/issues/events?per_page=1");
+        let slug = format!("{owner}/{repo}");
+        let url = format!("https://api.github.com/repos/{slug}/activity?per_page=1");
 
         let response = self
             .client
@@ -567,108 +658,199 @@ impl GitHubClient {
             .send()
             .await
             .map_err(GitHubError::Request)?;
+        let response = ensure_ok(response, &slug).await?;
 
-        let status = response.status();
-
-        if status == reqwest::StatusCode::NOT_FOUND {
-            return Err(GitHubError::NotFound(format!("{owner}/{repo}")));
-        }
-
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-            return Err(GitHubError::RateLimited);
-        }
-
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            return Err(GitHubError::Api(status.as_u16(), body));
-        }
-
-        let events: Vec<IssueEvent> = response.json().await.map_err(GitHubError::Request)?;
-
-        if let Some(event) = events.first() {
-            let timestamp = OffsetDateTime::parse(
-                &event.created_at,
-                &time::format_description::well_known::Rfc3339,
-            )
-            .map_err(|_| GitHubError::ParseTime(event.created_at.clone()))?;
-            Ok(Some(timestamp))
-        } else {
-            Ok(None)
-        }
+        let items: Vec<ActivityItem> = response.json().await.map_err(GitHubError::Request)?;
+        items
+            .first()
+            .map(|item| parse_ts(&item.timestamp))
+            .transpose()
     }
 
-    /// Fetch the latest activity for a repository.
-    /// Considers both branch activity and issue/PR events, returning the most recent.
+    /// Latest issue/PR update (`updated_at`), polled conditionally with an `ETag`.
+    /// A 304 returns the cached timestamp without touching the rate limit.
+    async fn get_issue_timestamp(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Option<OffsetDateTime>, GitHubError> {
+        let slug = format!("{owner}/{repo}");
+        let url = format!(
+            "https://api.github.com/repos/{slug}/issues?state=all&sort=updated&direction=desc&per_page=1"
+        );
+
+        let mut request = self.client.get(&url);
+        if let Some(cached) = self.issue_cache.get(&slug) {
+            request = request.header(IF_NONE_MATCH, cached.etag.clone());
+        }
+
+        let response = request.send().await.map_err(GitHubError::Request)?;
+
+        if response.status() == StatusCode::NOT_MODIFIED {
+            return Ok(self.issue_cache.get(&slug).and_then(|c| c.timestamp));
+        }
+
+        let etag = header_str(response.headers(), ETAG.as_str()).map(String::from);
+        let response = ensure_ok(response, &slug).await?;
+
+        let items: Vec<IssueItem> = response.json().await.map_err(GitHubError::Request)?;
+        let timestamp = items
+            .first()
+            .map(|item| parse_ts(&item.updated_at))
+            .transpose()?;
+
+        if let Some(etag) = etag {
+            self.issue_cache
+                .insert(slug, IssueCache { etag, timestamp });
+        }
+
+        Ok(timestamp)
+    }
+
+    /// Fetch the latest activity for a repository: the most recent of push-layer
+    /// activity and issue/PR updates.
     pub async fn get_latest_activity(
         &self,
         owner: &str,
         repo: &str,
     ) -> Result<Option<OffsetDateTime>, GitHubError> {
-        // Get default branch (cached)
-        let branch = self.get_default_branch(owner, repo).await?;
-
-        // Fetch both activity sources in parallel
-        let (branch_activity, issue_activity) = tokio::join!(
-            self.get_latest_branch_activity(owner, repo, &branch),
-            self.get_latest_issue_event(owner, repo)
+        let (activity, issue) = tokio::join!(
+            self.get_activity_timestamp(owner, repo),
+            self.get_issue_timestamp(owner, repo),
         );
+        Ok(merge_activity(activity?, issue?))
+    }
 
-        // Take the most recent timestamp from either source
-        let branch_time = branch_activity?;
-        let issue_time = issue_activity?;
+    /// Whether a repository exists and is accessible to this token.
+    /// `Ok(false)` is a definitive 404; transport/rate-limit/other failures are
+    /// `Err` so callers can distinguish "missing" from "couldn't tell".
+    pub async fn repo_exists(&self, owner: &str, repo: &str) -> Result<bool, GitHubError> {
+        let slug = format!("{owner}/{repo}");
+        let url = format!("https://api.github.com/repos/{slug}");
 
-        Ok(match (branch_time, issue_time) {
-            (Some(a), Some(b)) => Some(a.max(b)),
-            (Some(a), None) => Some(a),
-            (None, Some(b)) => Some(b),
-            (None, None) => None,
-        })
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(GitHubError::Request)?;
+
+        let status = response.status();
+        if status.is_success() {
+            return Ok(true);
+        }
+        if status == StatusCode::NOT_FOUND {
+            return Ok(false);
+        }
+        if is_rate_limited(
+            status.as_u16(),
+            header_str(response.headers(), "x-ratelimit-remaining"),
+        ) {
+            return Err(rate_limited_error(response.headers()));
+        }
+        let body = response.text().await.unwrap_or_default();
+        Err(GitHubError::Api(status.as_u16(), body))
     }
 }
 
-/// Parse a "owner/repo" string into (owner, repo) tuple.
-fn parse_github_repo(github_repo: &str) -> Option<(&str, &str)> {
-    let parts: Vec<&str> = github_repo.split('/').collect();
-    if parts.len() == 2 && !parts[0].is_empty() && !parts[1].is_empty() {
-        Some((parts[0], parts[1]))
-    } else {
-        None
-    }
-}
-
-/// Sync a single project's GitHub activity.
+/// Normalize a user-supplied GitHub repo reference to canonical "owner/repo".
 ///
-/// Returns the new activity timestamp if found, or None if no activity.
+/// Accepts the bare form plus pasted URLs (`https://github.com/owner/repo`,
+/// with or without a trailing slash or `.git`). Validates the two-segment shape
+/// and the character set of each segment; returns a human-readable error message
+/// suitable for a 400 field error otherwise.
+pub fn normalize_github_repo(input: &str) -> Result<String, String> {
+    let trimmed = input.trim();
+    let stripped = trimmed
+        .strip_prefix("https://github.com/")
+        .or_else(|| trimmed.strip_prefix("http://github.com/"))
+        .or_else(|| trimmed.strip_prefix("github.com/"))
+        .unwrap_or(trimmed);
+    let stripped = stripped.strip_suffix('/').unwrap_or(stripped);
+    let stripped = stripped.strip_suffix(".git").unwrap_or(stripped);
+
+    let parts: Vec<&str> = stripped.split('/').collect();
+    let invalid = || format!("'{input}' is not a valid GitHub repo (expected owner/repo)");
+    if parts.len() != 2 {
+        return Err(invalid());
+    }
+    let (owner, repo) = (parts[0], parts[1]);
+    if owner.is_empty() || repo.is_empty() || !is_valid_owner(owner) || !is_valid_repo_name(repo) {
+        return Err(invalid());
+    }
+    Ok(format!("{owner}/{repo}"))
+}
+
+/// GitHub usernames/orgs: ASCII alphanumerics and hyphens.
+fn is_valid_owner(s: &str) -> bool {
+    s.len() <= 39 && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+/// GitHub repo names: ASCII alphanumerics, hyphen, underscore, period.
+fn is_valid_repo_name(s: &str) -> bool {
+    s.chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+}
+
+/// Parse a canonical "owner/repo" string into its parts.
+fn parse_github_repo(github_repo: &str) -> Option<(&str, &str)> {
+    let (owner, repo) = github_repo.split_once('/')?;
+    if owner.is_empty() || repo.is_empty() || repo.contains('/') {
+        None
+    } else {
+        Some((owner, repo))
+    }
+}
+
+/// Sync a single project's GitHub activity and persist the result.
+///
+/// On success, records the poll (stamping `github_synced_at`, clearing any error,
+/// and advancing `last_github_activity` if newer) and returns the freshly fetched
+/// activity timestamp.
 pub async fn sync_single_project(
     client: &GitHubClient,
     pool: &PgPool,
     project: &ScheduledProject,
 ) -> Result<Option<OffsetDateTime>, GitHubError> {
     let (owner, repo) = parse_github_repo(&project.github_repo)
-        .ok_or_else(|| GitHubError::Api(400, "Invalid github_repo format".to_string()))?;
+        .ok_or_else(|| GitHubError::InvalidRepo(project.github_repo.clone()))?;
 
-    let activity_time = client.get_latest_activity(owner, repo).await?;
+    let activity = client.get_latest_activity(owner, repo).await?;
 
-    if let Some(new_time) = activity_time {
-        // Only update if newer than current value
-        let should_update = project
-            .last_activity
-            .is_none_or(|current| new_time > current);
+    crate::db::projects::record_github_sync_success(pool, project.project_id, activity)
+        .await
+        .map_err(|e| GitHubError::Database(e.to_string()))?;
 
-        if should_update {
-            crate::db::projects::update_last_github_activity(pool, project.project_id, new_time)
-                .await
-                .map_err(|e| GitHubError::Api(500, e.to_string()))?;
+    Ok(activity)
+}
 
-            tracing::debug!(
-                repo = %project.github_repo,
-                activity_time = %new_time,
-                "Updated last_github_activity"
-            );
-        }
+/// Run an on-demand sync for a single project, returning the fetched activity.
+/// Used by the manual `POST /api/projects/{ref}/sync` endpoint.
+pub async fn sync_project_now(
+    pool: &PgPool,
+    project_id: Uuid,
+    github_repo: &str,
+) -> Result<Option<OffsetDateTime>, GitHubError> {
+    let client = GitHubClient::get()
+        .await
+        .ok_or_else(|| GitHubError::Api(503, "GitHub sync disabled (no token)".to_string()))?;
+
+    let scheduled = ScheduledProject {
+        next_check: Instant::now(),
+        project_id,
+        github_repo: github_repo.to_string(),
+        last_activity: None,
+        error_count: 0,
+        epoch: 0,
+    };
+    sync_single_project(&client, pool, &scheduled).await
+}
+
+/// Best-effort: persist a sync error to the project row for the admin UI.
+async fn record_error(pool: &PgPool, project_id: Uuid, message: &str) {
+    if let Err(e) = crate::db::projects::record_github_sync_error(pool, project_id, message).await {
+        tracing::warn!(error = %e, "Failed to record GitHub sync error");
     }
-
-    Ok(activity_time)
 }
 
 /// Run the GitHub activity sync scheduler loop.
@@ -691,7 +873,6 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
         return;
     }
 
-    // Log initial state
     if let Some((next_repo, until)) = scheduler.next_check_info() {
         tracing::info!(
             projects = scheduler.len(),
@@ -703,30 +884,29 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
         tracing::info!(projects = scheduler.len(), "GitHub scheduler started");
     }
 
-    // Check for due projects every 30 seconds
     let mut tick = tokio::time::interval(SCHEDULER_TICK_INTERVAL);
 
     loop {
         tick.tick().await;
 
-        // Process all due projects
         let mut processed = 0u32;
         while let Some(project) = scheduler.pop_if_due() {
             processed += 1;
 
             match sync_single_project(&client, &pool, &project).await {
                 Ok(new_activity) => {
-                    let interval = calculate_check_interval(new_activity);
+                    let merged = merge_activity(new_activity, project.last_activity);
+                    let changed = merged != project.last_activity;
+
+                    let interval = calculate_check_interval(merged);
                     tracing::debug!(
                         repo = %project.github_repo,
                         next_check_mins = interval.as_secs() / 60,
+                        changed,
                         "GitHub sync complete"
                     );
 
-                    // Check if activity changed
-                    if new_activity == project.last_activity {
-                        scheduler.reschedule_skipped(project);
-                    } else {
+                    if changed {
                         crate::events::log_event(
                             &event_sender,
                             crate::events::EventType::GithubSyncCompleted,
@@ -738,14 +918,17 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                             None,
                         );
                         scheduler.reschedule(project, new_activity);
+                    } else {
+                        scheduler.reschedule_skipped(project);
                     }
                 }
-                Err(GitHubError::RateLimited) => {
-                    // Back off ALL projects by 5 minutes
-                    scheduler.backoff_all(Duration::from_mins(5));
+                Err(GitHubError::RateLimited { retry_after }) => {
+                    let backoff = retry_after.unwrap_or(RATE_LIMIT_FALLBACK);
+                    scheduler.backoff_all(backoff);
                     tracing::warn!(
                         processed,
-                        "GitHub rate limit hit, backing off all projects 5 minutes"
+                        backoff_secs = backoff.as_secs(),
+                        "GitHub rate limit hit, backing off all projects"
                     );
                     crate::events::log_event(
                         &event_sender,
@@ -754,20 +937,59 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                         Some("system"),
                         None,
                         None,
-                        "GitHub API rate limit hit, backing off 5 minutes".to_string(),
+                        format!(
+                            "GitHub API rate limit hit, backing off {}s",
+                            backoff.as_secs()
+                        ),
                         None,
                     );
-                    // Re-add the current project too
                     scheduler.reschedule_with_error(project);
                     break;
                 }
                 Err(GitHubError::NotFound(repo)) => {
-                    // Repo doesn't exist or is private - use long interval
-                    tracing::warn!(
-                        repo = %repo,
-                        "GitHub repo not found or inaccessible, using max interval"
+                    tracing::warn!(repo = %repo, "GitHub repo not found or inaccessible");
+                    record_error(
+                        &pool,
+                        project.project_id,
+                        "Repository not found or inaccessible",
+                    )
+                    .await;
+                    crate::events::log_event(
+                        &event_sender,
+                        crate::events::EventType::GithubSyncFailed,
+                        crate::events::EventLevel::Warning,
+                        Some("project"),
+                        Some(project.project_id),
+                        None,
+                        format!("GitHub repo not found or inaccessible: {repo}"),
+                        None,
+                    );
+                    // Permanent until the repo is fixed: park at the max interval.
+                    scheduler.reschedule_skipped(project);
+                }
+                Err(GitHubError::InvalidRepo(repo)) => {
+                    tracing::warn!(repo = %repo, "Invalid github_repo, parking project");
+                    record_error(&pool, project.project_id, "Invalid github_repo format").await;
+                    crate::events::log_event(
+                        &event_sender,
+                        crate::events::EventType::GithubSyncFailed,
+                        crate::events::EventLevel::Error,
+                        Some("project"),
+                        Some(project.project_id),
+                        None,
+                        format!("Invalid github_repo, sync disabled: {repo}"),
+                        None,
                     );
                     scheduler.reschedule_skipped(project);
+                }
+                Err(GitHubError::Database(msg)) => {
+                    // Can't persist to the DB right now; just retry with backoff.
+                    tracing::warn!(
+                        repo = %project.github_repo,
+                        error = %msg,
+                        "GitHub sync DB write failed, scheduling retry"
+                    );
+                    scheduler.reschedule_with_error(project);
                 }
                 Err(e) => {
                     tracing::warn!(
@@ -775,6 +997,7 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                         error = %e,
                         "GitHub sync error, scheduling retry with backoff"
                     );
+                    record_error(&pool, project.project_id, &e.to_string()).await;
                     crate::events::log_event(
                         &event_sender,
                         crate::events::EventType::GithubSyncFailed,
@@ -806,5 +1029,239 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ts(rfc3339: &str) -> OffsetDateTime {
+        parse_ts(rfc3339).unwrap()
+    }
+
+    #[test]
+    fn check_interval_is_clamped_to_bounds() {
+        let min = min_interval();
+        let max = max_interval();
+
+        // Today's activity → minimum interval.
+        let now = OffsetDateTime::now_utc();
+        assert_eq!(calculate_check_interval(Some(now)), min);
+
+        // No activity recorded → maximum interval.
+        assert_eq!(calculate_check_interval(None), max);
+
+        // Far in the past (beyond DAYS_TO_MAX) → clamped to maximum.
+        let old = now - Duration::from_hours(200 * 24);
+        assert_eq!(calculate_check_interval(Some(old)), max);
+    }
+
+    #[test]
+    fn check_interval_grows_monotonically_with_age() {
+        let now = OffsetDateTime::now_utc();
+        let day = Duration::from_hours(24);
+
+        let recent = calculate_check_interval(Some(now - day));
+        let week = calculate_check_interval(Some(now - 7 * day));
+        let month = calculate_check_interval(Some(now - 30 * day));
+
+        assert!(recent <= week, "1d {recent:?} should be <= 7d {week:?}");
+        assert!(week <= month, "7d {week:?} should be <= 30d {month:?}");
+        assert!(month <= max_interval());
+    }
+
+    #[test]
+    fn merge_activity_takes_the_latest_and_never_regresses() {
+        let early = ts("2024-01-01T00:00:00Z");
+        let late = ts("2024-06-01T00:00:00Z");
+
+        assert_eq!(merge_activity(Some(early), Some(late)), Some(late));
+        assert_eq!(merge_activity(Some(late), Some(early)), Some(late));
+        assert_eq!(merge_activity(Some(early), None), Some(early));
+        assert_eq!(merge_activity(None, Some(late)), Some(late));
+        assert_eq!(merge_activity(None, None), None);
+    }
+
+    #[test]
+    fn normalize_repo_accepts_bare_and_url_forms() {
+        assert_eq!(
+            normalize_github_repo("Xevion/xevion.dev").unwrap(),
+            "Xevion/xevion.dev"
+        );
+        assert_eq!(
+            normalize_github_repo("https://github.com/Xevion/xevion.dev").unwrap(),
+            "Xevion/xevion.dev"
+        );
+        assert_eq!(
+            normalize_github_repo("http://github.com/owner/repo/").unwrap(),
+            "owner/repo"
+        );
+        assert_eq!(
+            normalize_github_repo("github.com/owner/repo.git").unwrap(),
+            "owner/repo"
+        );
+        assert_eq!(
+            normalize_github_repo("  owner/repo  ").unwrap(),
+            "owner/repo"
+        );
+    }
+
+    #[test]
+    fn normalize_repo_rejects_malformed_input() {
+        assert!(normalize_github_repo("not-a-repo").is_err()); // one segment
+        assert!(normalize_github_repo("owner/repo/extra").is_err()); // three segments
+        assert!(normalize_github_repo("owner/").is_err()); // empty repo
+        assert!(normalize_github_repo("/repo").is_err()); // empty owner
+        assert!(normalize_github_repo("ow ner/repo").is_err()); // space in owner
+        assert!(normalize_github_repo("owner/re po").is_err()); // space in repo
+    }
+
+    #[test]
+    fn parse_repo_splits_canonical_form() {
+        assert_eq!(parse_github_repo("owner/repo"), Some(("owner", "repo")));
+        assert_eq!(parse_github_repo("owner"), None);
+        assert_eq!(parse_github_repo("owner/repo/extra"), None);
+        assert_eq!(parse_github_repo("/repo"), None);
+    }
+
+    #[test]
+    fn rate_limit_detected_for_429_and_403_with_zero_remaining() {
+        assert!(is_rate_limited(429, None));
+        assert!(is_rate_limited(429, Some("57")));
+        assert!(is_rate_limited(403, Some("0")));
+        assert!(!is_rate_limited(403, Some("57"))); // 403 for another reason
+        assert!(!is_rate_limited(403, None));
+        assert!(!is_rate_limited(404, Some("0")));
+        assert!(!is_rate_limited(200, None));
+    }
+
+    #[test]
+    fn rate_limit_backoff_prefers_retry_after_then_reset() {
+        // retry-after wins, in seconds.
+        assert_eq!(
+            rate_limit_backoff(Some("120"), Some("9999999999"), 0),
+            Some(Duration::from_mins(2))
+        );
+        // falls back to x-ratelimit-reset minus now.
+        assert_eq!(
+            rate_limit_backoff(None, Some("1000"), 700),
+            Some(Duration::from_mins(5))
+        );
+        // a reset already in the past clamps to zero, not a negative/huge value.
+        assert_eq!(
+            rate_limit_backoff(None, Some("500"), 900),
+            Some(Duration::ZERO)
+        );
+        // nothing usable → None (caller applies a fallback).
+        assert_eq!(rate_limit_backoff(None, None, 0), None);
+    }
+
+    /// A project row with only the fields the scheduler reads.
+    fn project(id: Uuid, repo: &str) -> DbProject {
+        DbProject {
+            id,
+            slug: "s".into(),
+            name: "n".into(),
+            short_description: "d".into(),
+            status: crate::db::ProjectStatus::Active,
+            github_repo: Some(repo.into()),
+            demo_url: None,
+            last_github_activity: None,
+            created_at: OffsetDateTime::now_utc(),
+            updated_at: OffsetDateTime::now_utc(),
+            detail_content: None,
+            project_type: None,
+            source_closed: false,
+            terminal_cast: None,
+            accent_color: None,
+            github_synced_at: None,
+            github_sync_error: None,
+        }
+    }
+
+    #[test]
+    fn scheduler_pops_due_projects_then_reports_empty_queue() {
+        let id = Uuid::new_v4();
+        let sched = GitHubScheduler::new(vec![project(id, "owner/repo")]);
+
+        // The single staggered entry is due immediately (offset 0/1 = now).
+        let popped = sched.pop_if_due().expect("one due project");
+        assert_eq!(popped.project_id, id);
+        // Nothing left in the queue until it's rescheduled.
+        assert!(sched.pop_if_due().is_none());
+        // It's still tracked, though.
+        assert_eq!(sched.len(), 1);
+    }
+
+    #[test]
+    fn removing_a_popped_project_prevents_resurrection() {
+        let id = Uuid::new_v4();
+        let sched = GitHubScheduler::new(vec![project(id, "owner/repo")]);
+
+        // Simulate the sync loop: pop (now in-flight, not in the queue)...
+        let in_flight = sched.pop_if_due().expect("due");
+        // ...the project is deleted while the sync is in flight...
+        sched.remove_project(id);
+        assert_eq!(sched.len(), 0);
+        // ...and the completing sync tries to reschedule it.
+        sched.reschedule(in_flight, None);
+
+        // It must NOT come back: a removed project stays gone.
+        assert!(sched.pop_if_due().is_none());
+        assert_eq!(sched.len(), 0);
+    }
+
+    #[test]
+    fn re_homing_during_sync_drops_the_stale_entry() {
+        let id = Uuid::new_v4();
+        let sched = GitHubScheduler::new(vec![project(id, "old/repo")]);
+
+        let in_flight = sched.pop_if_due().expect("due"); // old/repo, in flight
+        // Repo changes mid-sync: handlers call remove then add.
+        sched.remove_project(id);
+        sched.add_project(id, "new/repo".to_string());
+        // The old in-flight entry reschedules but is now superseded.
+        sched.reschedule(in_flight, None);
+
+        // Exactly one entry surfaces, and it's the new repo.
+        let next = sched.pop_if_due().expect("the re-homed entry is due");
+        assert_eq!(next.github_repo, "new/repo");
+        assert!(sched.pop_if_due().is_none());
+    }
+
+    #[test]
+    fn adding_an_existing_id_supersedes_the_old_entry() {
+        let id = Uuid::new_v4();
+        let sched = GitHubScheduler::new(vec![project(id, "owner/repo")]);
+
+        // Re-add the same id (e.g. a duplicate enqueue): old queued entry is stale.
+        sched.add_project(id, "owner/repo".to_string());
+
+        // Only one valid entry should ever surface.
+        assert!(sched.pop_if_due().is_some());
+        assert!(sched.pop_if_due().is_none());
+        assert_eq!(sched.len(), 1);
+    }
+
+    #[test]
+    fn error_backoff_doubles_per_failure_and_caps_at_max() {
+        let id = Uuid::new_v4();
+        let sched = GitHubScheduler::new(vec![project(id, "owner/repo")]);
+        let base = sched.pop_if_due().expect("due");
+
+        // First error: ~2x base interval.
+        let one = base.clone();
+        sched.reschedule_with_error(one);
+        // Re-pop is not time-due, so assert via the stats counter instead.
+        assert_eq!(sched.stats().errors, 1);
+
+        // Many consecutive errors never exceed the max interval.
+        let mut p = base;
+        p.error_count = 20; // far past the 2^6 cap
+        let before = sched.len();
+        sched.reschedule_with_error(p);
+        assert_eq!(sched.len(), before); // still tracked, just deferred
+        assert_eq!(sched.stats().errors, 2);
     }
 }

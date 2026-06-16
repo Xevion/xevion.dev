@@ -38,6 +38,12 @@ pub struct DbProject {
     pub terminal_cast: Option<serde_json::Value>,
     /// Explicit per-project accent (hex); the frontend falls back to `#71717a`.
     pub accent_color: Option<String>,
+    /// Timestamp of the last successful GitHub poll (distinct from
+    /// `last_github_activity`); `None` until the repo has been synced once.
+    pub github_synced_at: Option<OffsetDateTime>,
+    /// Most recent GitHub sync failure, cleared on success. `None` means healthy
+    /// (or never synced); `Some` flags a repo whose sync is broken.
+    pub github_sync_error: Option<String>,
 }
 
 /// One line of a [`TerminalCast`], tagged by how it should be styled.
@@ -118,6 +124,16 @@ pub struct ApiAdminProject {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub accent_color: Option<String>,
+    /// Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
+    /// sync-health signal, distinct from `lastActivity`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub github_synced_at: Option<String>,
+    /// Most recent GitHub sync failure; absent when healthy. Lets the admin UI
+    /// flag a repo whose sync is broken.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub github_sync_error: Option<String>,
 }
 
 /// Single-project response that additionally carries the rich detail content.
@@ -185,6 +201,12 @@ impl DbProject {
             .format(&Rfc3339)
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
+        let github_synced_at = self
+            .github_synced_at
+            .map(|t| t.format(&Rfc3339))
+            .transpose()
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
         Ok(ApiAdminProject {
             project: self.to_api_project(),
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
@@ -200,6 +222,8 @@ impl DbProject {
             project_type: self.project_type.clone(),
             source_closed: self.source_closed,
             accent_color: self.accent_color.clone(),
+            github_synced_at,
+            github_sync_error: self.github_sync_error.clone(),
         })
     }
 
@@ -254,7 +278,9 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             project_type,
             source_closed,
             terminal_cast,
-            accent_color
+            accent_color,
+            github_synced_at,
+            github_sync_error
         FROM projects
         WHERE status != 'hidden'
         ORDER BY COALESCE(last_github_activity, created_at) DESC
@@ -315,7 +341,9 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             project_type,
             source_closed,
             terminal_cast,
-            accent_color
+            accent_color,
+            github_synced_at,
+            github_sync_error
         FROM projects
         ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
@@ -376,7 +404,9 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             project_type,
             source_closed,
             terminal_cast,
-            accent_color
+            accent_color,
+            github_synced_at,
+            github_sync_error
         FROM projects
         WHERE id = $1
         "#,
@@ -426,7 +456,9 @@ pub async fn get_project_by_slug(
             project_type,
             source_closed,
             terminal_cast,
-            accent_color
+            accent_color,
+            github_synced_at,
+            github_sync_error
         FROM projects
         WHERE slug = $1
         "#,
@@ -498,7 +530,8 @@ pub async fn create_project(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
                   github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
-                  project_type, source_closed, terminal_cast, accent_color
+                  project_type, source_closed, terminal_cast, accent_color,
+                  github_synced_at, github_sync_error
         "#,
         slug,
         input.name,
@@ -536,7 +569,8 @@ pub async fn update_project(
         WHERE id = $1
         RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
                   github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
-                  project_type, source_closed, terminal_cast, accent_color
+                  project_type, source_closed, terminal_cast, accent_color,
+                  github_synced_at, github_sync_error
         "#,
         id,
         slug,
@@ -646,7 +680,9 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             project_type,
             source_closed,
             terminal_cast,
-            accent_color
+            accent_color,
+            github_synced_at,
+            github_sync_error
         FROM projects
         WHERE github_repo IS NOT NULL
         ORDER BY last_github_activity DESC NULLS LAST
@@ -656,16 +692,42 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
     .await
 }
 
-/// Update the `last_github_activity` timestamp for a project
-pub async fn update_last_github_activity(
+/// Record a successful GitHub poll: stamp `github_synced_at`, clear any prior
+/// `github_sync_error`, and advance `last_github_activity` to the newer of the
+/// stored value and `activity`. `GREATEST` ignores NULLs, so a `None` activity
+/// leaves the stored timestamp untouched and the value never regresses.
+pub async fn record_github_sync_success(
     pool: &PgPool,
     id: Uuid,
-    activity_time: OffsetDateTime,
+    activity: Option<OffsetDateTime>,
 ) -> Result<(), sqlx::Error> {
     query!(
-        "UPDATE projects SET last_github_activity = $2 WHERE id = $1",
+        r#"
+        UPDATE projects
+        SET last_github_activity = GREATEST(last_github_activity, $2::timestamptz),
+            github_synced_at = now(),
+            github_sync_error = NULL
+        WHERE id = $1
+        "#,
         id,
-        activity_time
+        activity
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Record a failed GitHub poll, storing the error message for the admin UI.
+/// Leaves `github_synced_at` (the last *successful* poll) untouched.
+pub async fn record_github_sync_error(
+    pool: &PgPool,
+    id: Uuid,
+    error: &str,
+) -> Result<(), sqlx::Error> {
+    query!(
+        "UPDATE projects SET github_sync_error = $2 WHERE id = $1",
+        id,
+        error
     )
     .execute(pool)
     .await?;

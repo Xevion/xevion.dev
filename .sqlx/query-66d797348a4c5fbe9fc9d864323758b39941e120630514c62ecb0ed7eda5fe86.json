@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO projects (slug, name, short_description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        RETURNING id, slug, name, short_description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color\n        ",
+  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at,\n            detail_content,\n            project_type,\n            source_closed,\n            terminal_cast,\n            accent_color,\n            github_synced_at,\n            github_sync_error\n        FROM projects\n        ORDER BY COALESCE(last_github_activity, created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -89,34 +89,20 @@
         "ordinal": 14,
         "name": "accent_color",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "github_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "github_sync_error",
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "project_status",
-            "kind": {
-              "Enum": [
-                "active",
-                "maintained",
-                "archived",
-                "hidden"
-              ]
-            }
-          }
-        },
-        "Text",
-        "Text",
-        "Jsonb",
-        "Text",
-        "Bool",
-        "Jsonb",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -133,8 +119,10 @@
       true,
       false,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "fe18cdf54143238645439fd5d8b168b5529e2a51f88a0cf56963670b873196cc"
+  "hash": "66d797348a4c5fbe9fc9d864323758b39941e120630514c62ecb0ed7eda5fe86"
 }

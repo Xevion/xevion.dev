@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at,\n            detail_content,\n            project_type,\n            source_closed,\n            terminal_cast,\n            accent_color\n        FROM projects\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT \n            p.id, \n            p.slug, \n            p.name,\n            p.short_description,\n            p.status as \"status: super::ProjectStatus\",\n            p.github_repo, \n            p.demo_url, \n            p.last_github_activity,\n            p.created_at,\n            p.updated_at,\n            p.detail_content,\n            p.project_type,\n            p.source_closed,\n            p.terminal_cast,\n            p.accent_color,\n            p.github_synced_at,\n            p.github_sync_error\n        FROM projects p\n        JOIN project_tags pt ON p.id = pt.project_id\n        WHERE pt.tag_id = $1\n        ORDER BY COALESCE(p.last_github_activity, p.created_at) DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "status: ProjectStatus",
+        "name": "status: super::ProjectStatus",
         "type_info": {
           "Custom": {
             "name": "project_status",
@@ -89,6 +89,16 @@
         "ordinal": 14,
         "name": "accent_color",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "github_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "github_sync_error",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -111,8 +121,10 @@
       true,
       false,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "a537d26d0fe9c1d87c10217d321c7f185043055329159f56703d6689d2e6572a"
+  "hash": "b729454f547de19511256ecd7a46010443bac63443bad0035f2ea5204bc96a7d"
 }

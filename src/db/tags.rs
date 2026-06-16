@@ -320,7 +320,9 @@ pub async fn get_projects_for_tag(
             p.project_type,
             p.source_closed,
             p.terminal_cast,
-            p.accent_color
+            p.accent_color,
+            p.github_synced_at,
+            p.github_sync_error
         FROM projects p
         JOIN project_tags pt ON p.id = pt.project_id
         WHERE pt.tag_id = $1

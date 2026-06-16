@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at,\n            detail_content,\n            project_type,\n            source_closed,\n            terminal_cast,\n            accent_color\n        FROM projects\n        WHERE github_repo IS NOT NULL\n        ORDER BY last_github_activity DESC NULLS LAST\n        ",
+  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4,\n            status = $5, github_repo = $6, demo_url = $7, detail_content = $8,\n            project_type = $9, source_closed = $10, terminal_cast = $11, accent_color = $12\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color,\n                  github_synced_at, github_sync_error\n        ",
   "describe": {
     "columns": [
       {
@@ -89,10 +89,45 @@
         "ordinal": 14,
         "name": "accent_color",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "github_synced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "github_sync_error",
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "maintained",
+                "archived",
+                "hidden"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Bool",
+        "Jsonb",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -109,8 +144,10 @@
       true,
       false,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "0840db6eaca94801eef86598854202965bbe24fc83514bdf068a0b3604c48486"
+  "hash": "cd999c8aac9119c007a7b9ee0761932401685cc64630769ffcea8d0ac11c0b4a"
 }

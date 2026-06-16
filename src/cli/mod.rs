@@ -284,6 +284,17 @@ pub enum ProjectsCommand {
         reference: String,
     },
 
+    /// Trigger an immediate GitHub activity sync
+    Sync {
+        /// Project slug or UUID (omit when using --all)
+        #[arg(name = "ref")]
+        reference: Option<String>,
+
+        /// Sync every project that has a GitHub repository
+        #[arg(long, conflicts_with = "ref")]
+        all: bool,
+    },
+
     /// Edit detail-page block content
     #[command(subcommand)]
     Content(ProjectContentCommand),

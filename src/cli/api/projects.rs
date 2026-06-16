@@ -80,6 +80,7 @@ pub async fn run(client: ApiClient, command: ProjectsCommand, json: bool) -> Res
             .await
         }
         ProjectsCommand::Delete { reference } => delete(client, &reference, json).await,
+        ProjectsCommand::Sync { reference, all } => sync(client, reference, all, json).await,
         ProjectsCommand::Content(cmd) => super::content::run(client, cmd, json).await,
     }
 }
@@ -291,6 +292,61 @@ async fn delete(client: ApiClient, reference: &str, json: bool) -> Result<(), Cl
         output::success(&format!("Deleted project: {}", deleted.project.name));
     }
 
+    Ok(())
+}
+
+/// Trigger a GitHub activity sync for one project, or all projects with `--all`.
+async fn sync(
+    client: ApiClient,
+    reference: Option<String>,
+    all: bool,
+    json: bool,
+) -> Result<(), CliError> {
+    if all {
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct Enqueued {
+            enqueued: usize,
+        }
+        let result: Enqueued = decode_json(
+            check_response(
+                client
+                    .post("/api/github/sync", &serde_json::json!({}))
+                    .await?,
+            )
+            .await?,
+        )
+        .await?;
+        if json {
+            output::print_json(&result)?;
+        } else {
+            output::success(&format!("Enqueued {} project(s) for sync", result.enqueued));
+        }
+        return Ok(());
+    }
+
+    let Some(reference) = reference else {
+        return Err(CliError::invalid("provide a project ref or --all"));
+    };
+
+    let project: ApiAdminProject = decode_json(
+        check_response(
+            client
+                .post(
+                    &format!("/api/projects/{reference}/sync"),
+                    &serde_json::json!({}),
+                )
+                .await?,
+        )
+        .await?,
+    )
+    .await?;
+
+    if json {
+        output::print_json(&project)?;
+    } else {
+        output::success(&format!("Synced project: {}", project.project.name));
+        output::print_project(&project);
+    }
     Ok(())
 }
 

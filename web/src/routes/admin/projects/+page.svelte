@@ -6,6 +6,7 @@
   import type { PageData } from "./$types";
   import type { ProjectStatus } from "$lib/bindings";
   import IconPlus from "~icons/lucide/plus";
+  import IconAlert from "~icons/lucide/alert-circle";
   import { css, cx } from "styled-system/css";
   import { hstack, wrap } from "styled-system/patterns";
   import {
@@ -148,9 +149,24 @@
                 color: "admin.textSecondary",
                 fontSize: "sm",
               })}
-              title={formatDateTime(project.lastActivity)}
             >
-              {timeAgo(project.lastActivity)}
+              <span class={hstack({ gap: "1.5", alignItems: "center" })}>
+                <span
+                  title={project.githubSyncedAt
+                    ? `Last activity: ${formatDateTime(project.lastActivity)}\nLast synced: ${formatDateTime(project.githubSyncedAt)}`
+                    : formatDateTime(project.lastActivity)}
+                >
+                  {timeAgo(project.lastActivity)}
+                </span>
+                {#if project.githubSyncError}
+                  <span
+                    class={css({ display: "inline-flex", color: "#f59e0b" })}
+                    title={`GitHub sync error: ${project.githubSyncError}`}
+                  >
+                    <IconAlert class={iconSm} aria-label="GitHub sync error" />
+                  </span>
+                {/if}
+              </span>
             </td>
           </tr>
         {/each}
