@@ -6,7 +6,7 @@ use axum::{
 };
 use dashmap::DashMap;
 use futures::stream::{self, Stream};
-use rand::Rng;
+use rand::RngExt;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::Arc;
