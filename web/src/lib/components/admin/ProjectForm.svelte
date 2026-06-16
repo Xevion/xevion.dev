@@ -140,6 +140,7 @@
       placeholder={slugPlaceholder}
       help="URL-friendly identifier (leave empty to auto-generate)"
       error={fieldErrors.slug}
+      inputClass={css({ fontFamily: "geist" })}
     />
   </div>
 

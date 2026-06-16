@@ -26,6 +26,8 @@
     error?: string;
     help?: string;
     class?: string;
+    /** Extra classes applied to the input/textarea/select element itself. */
+    inputClass?: string;
     rows?: number;
     options?: Array<{ value: string; label: string }>;
     oninput?: (value: string | number) => void;
@@ -41,6 +43,7 @@
     error,
     help,
     class: className,
+    inputClass,
     rows = 4,
     options = [],
     oninput,
@@ -80,7 +83,12 @@
       {disabled}
       {required}
       {rows}
-      class={cx(adminInputBase, errorBorder, css({ resize: "vertical" }))}
+      class={cx(
+        adminInputBase,
+        errorBorder,
+        css({ resize: "vertical" }),
+        inputClass,
+      )}
       oninput={handleInput}
     ></textarea>
   {:else if type === "select"}
@@ -89,7 +97,7 @@
       bind:value
       {disabled}
       {required}
-      class={cx(adminInputBase, errorBorder)}
+      class={cx(adminInputBase, errorBorder, inputClass)}
       onchange={handleInput}
     >
       {#if placeholder}
@@ -107,7 +115,7 @@
       {placeholder}
       {disabled}
       {required}
-      class={cx(adminInputBase, errorBorder)}
+      class={cx(adminInputBase, errorBorder, inputClass)}
       oninput={handleInput}
     />
   {/if}

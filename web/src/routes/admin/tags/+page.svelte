@@ -207,6 +207,7 @@
           bind:value={createSlug}
           placeholder="Leave empty to auto-generate"
           error={createFieldErrors.slug}
+          inputClass={css({ fontFamily: "geist" })}
         />
       </div>
       <div class={css({ mt: "4" })}>

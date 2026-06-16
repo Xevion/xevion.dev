@@ -116,6 +116,8 @@ export const sectionHeadingClass = css({
 /** Settings tab recipe */
 export const settingsTab = cva({
   base: {
+    display: "inline-block",
+    textDecoration: "none",
     pb: "3",
     px: "1",
     fontSize: "sm",

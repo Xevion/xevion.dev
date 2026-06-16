@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
@@ -83,10 +82,6 @@
     }
   }
 
-  function navigateToTab(tab: Tab) {
-    goto(`/admin/settings/${tab}`, { replaceState: true });
-  }
-
   // Tab styling now uses shared settingsTab cva recipe from admin styles
 </script>
 
@@ -113,24 +108,24 @@
     <!-- Tabs -->
     <div class={css({ borderBottomWidth: "1px", borderColor: "admin.border" })}>
       <nav class={flex({ gap: "6" })} aria-label="Settings tabs">
-        <button
-          type="button"
+        <a
+          href="/admin/settings/identity"
+          data-sveltekit-replacestate
           class={settingsTab({
             state: activeTab === "identity" ? "active" : "inactive",
           })}
-          onclick={() => navigateToTab("identity")}
         >
           Identity
-        </button>
-        <button
-          type="button"
+        </a>
+        <a
+          href="/admin/settings/social"
+          data-sveltekit-replacestate
           class={settingsTab({
             state: activeTab === "social" ? "active" : "inactive",
           })}
-          onclick={() => navigateToTab("social")}
         >
           Social Links
-        </button>
+        </a>
       </nav>
     </div>
 

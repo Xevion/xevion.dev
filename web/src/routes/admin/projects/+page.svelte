@@ -2,7 +2,6 @@
   import Button from "$lib/components/admin/Button.svelte";
   import Table from "$lib/components/admin/Table.svelte";
   import TagChip from "$lib/components/TagChip.svelte";
-  import { goto } from "$app/navigation";
   import type { PageData } from "./$types";
   import type { ProjectStatus } from "$lib/bindings";
   import IconPlus from "~icons/lucide/plus";
@@ -76,30 +75,44 @@
         {#each data.projects as project (project.id)}
           <tr
             class={css({
+              position: "relative",
               _hover: { bg: "admin.surfaceHover/50" },
               transition: "colors",
-              cursor: "pointer",
             })}
-            onclick={() => goto(`/admin/projects/${project.id}`)}
-            onkeydown={(e) =>
-              (e.key === "Enter" || e.key === " ") &&
-              goto(`/admin/projects/${project.id}`)}
-            role="link"
-            tabindex="0"
           >
             <td class={css({ px: "4", py: "3" })}>
               <div class={hstack({ gap: "3" })}>
                 <div>
-                  <div
-                    class={css({ fontWeight: "medium", color: "admin.text" })}
+                  <a
+                    href={`/admin/projects/${project.id}`}
+                    class={css({
+                      display: "block",
+                      textDecoration: "none",
+                      color: "inherit",
+                      // Stretched link: the ::after covers the whole row so the
+                      // entire row is clickable while remaining a real anchor.
+                      _after: {
+                        content: '""',
+                        position: "absolute",
+                        inset: "0",
+                      },
+                    })}
                   >
-                    {project.name}
-                  </div>
-                  <div
-                    class={css({ fontSize: "xs", color: "admin.textMuted" })}
-                  >
-                    {project.slug}
-                  </div>
+                    <div
+                      class={css({ fontWeight: "medium", color: "admin.text" })}
+                    >
+                      {project.name}
+                    </div>
+                    <div
+                      class={css({
+                        fontSize: "xs",
+                        color: "admin.textMuted",
+                        fontFamily: "geist",
+                      })}
+                    >
+                      {project.slug}
+                    </div>
+                  </a>
                 </div>
               </div>
             </td>
@@ -110,11 +123,12 @@
               />
             </td>
             <td class={css({ px: "4", py: "3" })}>
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <!-- Sits above the row's stretched link so tag links stay clickable. -->
               <div
-                class={wrap({ gap: "1" })}
-                onclick={(e) => e.stopPropagation()}
-                onkeydown={(e) => e.stopPropagation()}
+                class={cx(
+                  wrap({ gap: "1" }),
+                  css({ position: "relative", zIndex: "1" }),
+                )}
               >
                 {#each project.tags.slice(0, 3) as tag (tag.id)}
                   <TagChip

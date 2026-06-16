@@ -170,6 +170,7 @@
         bind:value={slug}
         placeholder="Leave empty to keep current"
         error={fieldErrors.slug}
+        inputClass={css({ fontFamily: "geist" })}
       />
     </div>
 
