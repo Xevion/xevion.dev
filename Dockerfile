@@ -1,5 +1,5 @@
 # ========== Stage 1: Cargo Chef Base ==========
-FROM rust:1.91-alpine AS chef
+FROM rust:1.95-alpine AS chef
 WORKDIR /build
 
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static && \
