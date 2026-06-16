@@ -18,12 +18,19 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "status"
+          }
         }
       },
       {
         "ordinal": 1,
         "name": "count!",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": "Expression"
       }
     ],
     "parameters": {

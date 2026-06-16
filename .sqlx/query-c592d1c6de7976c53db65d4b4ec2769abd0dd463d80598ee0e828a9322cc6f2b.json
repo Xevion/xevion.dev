@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "slug",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "slug"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "short_description",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "short_description"
+          }
+        }
       },
       {
         "ordinal": 4,
@@ -38,67 +62,145 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "status"
+          }
         }
       },
       {
         "ordinal": 5,
         "name": "github_repo",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "github_repo"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "demo_url",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "demo_url"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "last_github_activity",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "last_github_activity"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "created_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "created_at"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "updated_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "updated_at"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "detail_content",
-        "type_info": "Jsonb"
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "detail_content"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "project_type",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "project_type"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "source_closed",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "source_closed"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "terminal_cast",
-        "type_info": "Jsonb"
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "terminal_cast"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "accent_color",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "accent_color"
+          }
+        }
       },
       {
         "ordinal": 15,
         "name": "github_synced_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "github_synced_at"
+          }
+        }
       },
       {
         "ordinal": 16,
         "name": "github_sync_error",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "github_sync_error"
+          }
+        }
       }
     ],
     "parameters": {
