@@ -48,7 +48,7 @@
     "posthog-js": "^1.323.0",
     "posthog-node": "^5.21.0",
     "sanitize-html": "^2.17.4",
-    "satori": "^0.18.3",
+    "satori": "^0.26.0",
     "seedrandom": "^3.0.5",
     "shiki": "^4.2.0",
     "svelte-dnd-action": "^0.9.69",
