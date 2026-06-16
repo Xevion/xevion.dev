@@ -382,6 +382,16 @@ impl GitHubScheduler {
         self.inner.lock().registry.remove(&project_id);
     }
 
+    /// Update the stored "owner/repo" of a tracked project in place, keeping its
+    /// epoch and schedule. Used to heal a rename mid-lifetime so `trigger_all`
+    /// and future reschedules use the canonical name. No-op if untracked.
+    pub fn rename_project(&self, project_id: Uuid, new_repo: &str) {
+        let mut inner = self.inner.lock();
+        if let Some(entry) = inner.registry.get_mut(&project_id) {
+            entry.repo = new_repo.to_string();
+        }
+    }
+
     /// Schedule every tracked project for an immediate check. Returns the count.
     pub fn trigger_all(&self) -> usize {
         let mut inner = self.inner.lock();
@@ -482,6 +492,22 @@ struct ActivityItem {
 #[derive(Debug, Deserialize)]
 struct IssueItem {
     updated_at: String,
+}
+
+/// The subset of `GET /repos/{o}/{r}` we care about: stable identity.
+#[derive(Debug, Deserialize)]
+struct RepoResponse {
+    id: i64,
+    full_name: String,
+}
+
+/// A repository's stable identity, resolved against the live API.
+#[derive(Debug, Clone)]
+pub struct RepoMeta {
+    /// GitHub's immutable numeric repo id (survives renames and transfers).
+    pub id: i64,
+    /// Canonical "owner/repo" as GitHub currently reports it.
+    pub full_name: String,
 }
 
 /// Errors that can occur during GitHub API operations
@@ -721,10 +747,15 @@ impl GitHubClient {
         Ok(merge_activity(activity?, issue?))
     }
 
-    /// Whether a repository exists and is accessible to this token.
-    /// `Ok(false)` is a definitive 404; transport/rate-limit/other failures are
-    /// `Err` so callers can distinguish "missing" from "couldn't tell".
-    pub async fn repo_exists(&self, owner: &str, repo: &str) -> Result<bool, GitHubError> {
+    /// Resolve a repository's stable identity from `GET /repos/{owner}/{repo}`.
+    ///
+    /// reqwest follows GitHub's rename/transfer redirect (301), so passing a stale
+    /// "owner/repo" returns the *current* `full_name` and the immutable numeric
+    /// `id` — this is the basis for both save-time capture and sync-time healing.
+    /// A definitive 404 is [`GitHubError::NotFound`]; rate-limit/transport/other
+    /// failures surface as their own variants so callers can tell "missing" from
+    /// "couldn't tell".
+    pub async fn fetch_repo(&self, owner: &str, repo: &str) -> Result<RepoMeta, GitHubError> {
         let slug = format!("{owner}/{repo}");
         let url = format!("https://api.github.com/repos/{slug}");
 
@@ -734,22 +765,13 @@ impl GitHubClient {
             .send()
             .await
             .map_err(GitHubError::Request)?;
+        let response = ensure_ok(response, &slug).await?;
 
-        let status = response.status();
-        if status.is_success() {
-            return Ok(true);
-        }
-        if status == StatusCode::NOT_FOUND {
-            return Ok(false);
-        }
-        if is_rate_limited(
-            status.as_u16(),
-            header_str(response.headers(), "x-ratelimit-remaining"),
-        ) {
-            return Err(rate_limited_error(response.headers()));
-        }
-        let body = response.text().await.unwrap_or_default();
-        Err(GitHubError::Api(status.as_u16(), body))
+        let body: RepoResponse = response.json().await.map_err(GitHubError::Request)?;
+        Ok(RepoMeta {
+            id: body.id,
+            full_name: body.full_name,
+        })
     }
 }
 
@@ -802,35 +824,83 @@ fn parse_github_repo(github_repo: &str) -> Option<(&str, &str)> {
     }
 }
 
-/// Sync a single project's GitHub activity and persist the result.
+/// Result of syncing one project.
+pub struct SyncOutcome {
+    /// Freshly fetched latest-activity timestamp (merged push + issue signals).
+    pub activity: Option<OffsetDateTime>,
+    /// Set when GitHub reports the repo now lives under a different "owner/repo"
+    /// than we have stored (rename/transfer); the caller updates the scheduler's
+    /// in-memory name. The DB is healed regardless of this field.
+    pub renamed_to: Option<String>,
+}
+
+/// Sync a single project's GitHub activity and identity, persisting both.
 ///
-/// On success, records the poll (stamping `github_synced_at`, clearing any error,
-/// and advancing `last_github_activity` if newer) and returns the freshly fetched
-/// activity timestamp.
+/// Activity is the primary signal — its errors drive retry/backoff. Identity
+/// resolution (canonical name + stable id) runs in parallel and is best-effort:
+/// it heals a renamed repo and backfills the numeric id, but a failure to resolve
+/// it never fails the sync.
 pub async fn sync_single_project(
     client: &GitHubClient,
     pool: &PgPool,
     project: &ScheduledProject,
-) -> Result<Option<OffsetDateTime>, GitHubError> {
+) -> Result<SyncOutcome, GitHubError> {
     let (owner, repo) = parse_github_repo(&project.github_repo)
         .ok_or_else(|| GitHubError::InvalidRepo(project.github_repo.clone()))?;
 
-    let activity = client.get_latest_activity(owner, repo).await?;
+    let (activity, meta) = tokio::join!(
+        client.get_latest_activity(owner, repo),
+        client.fetch_repo(owner, repo),
+    );
+    let activity = activity?;
 
     crate::db::projects::record_github_sync_success(pool, project.project_id, activity)
         .await
         .map_err(|e| GitHubError::Database(e.to_string()))?;
 
-    Ok(activity)
+    // Best-effort identity heal: persist the canonical name + id, surfacing a
+    // rename so the scheduler can follow it. DB or API hiccups here only log.
+    let renamed_to = match meta {
+        Ok(meta) => {
+            let renamed = meta.full_name != project.github_repo;
+            match crate::db::projects::record_github_identity(
+                pool,
+                project.project_id,
+                &meta.full_name,
+                meta.id,
+            )
+            .await
+            {
+                Ok(()) => renamed.then_some(meta.full_name),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to persist GitHub repo identity");
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            tracing::debug!(
+                repo = %project.github_repo,
+                error = %e,
+                "Repo identity resolve failed (best-effort, skipping heal)"
+            );
+            None
+        }
+    };
+
+    Ok(SyncOutcome {
+        activity,
+        renamed_to,
+    })
 }
 
-/// Run an on-demand sync for a single project, returning the fetched activity.
+/// Run an on-demand sync for a single project, returning the outcome.
 /// Used by the manual `POST /api/projects/{ref}/sync` endpoint.
 pub async fn sync_project_now(
     pool: &PgPool,
     project_id: Uuid,
     github_repo: &str,
-) -> Result<Option<OffsetDateTime>, GitHubError> {
+) -> Result<SyncOutcome, GitHubError> {
     let client = GitHubClient::get()
         .await
         .ok_or_else(|| GitHubError::Api(503, "GitHub sync disabled (no token)".to_string()))?;
@@ -890,11 +960,23 @@ pub async fn run_scheduler(pool: PgPool, event_sender: crate::events::EventSende
         tick.tick().await;
 
         let mut processed = 0u32;
-        while let Some(project) = scheduler.pop_if_due() {
+        while let Some(mut project) = scheduler.pop_if_due() {
             processed += 1;
 
             match sync_single_project(&client, &pool, &project).await {
-                Ok(new_activity) => {
+                Ok(outcome) => {
+                    let new_activity = outcome.activity;
+                    // Follow a rename: heal the scheduler's in-memory name (the DB
+                    // was already healed) so future polls use the canonical repo.
+                    if let Some(new_repo) = outcome.renamed_to {
+                        tracing::info!(
+                            old_repo = %project.github_repo,
+                            new_repo = %new_repo,
+                            "GitHub repo renamed; healed canonical name"
+                        );
+                        scheduler.rename_project(project.project_id, &new_repo);
+                        project.github_repo = new_repo;
+                    }
                     let merged = merge_activity(new_activity, project.last_activity);
                     let changed = merged != project.last_activity;
 
@@ -1165,14 +1247,16 @@ mod tests {
             name: "n".into(),
             short_description: "d".into(),
             status: crate::db::ProjectStatus::Active,
+            hidden: false,
             github_repo: Some(repo.into()),
+            github_repo_id: None,
             demo_url: None,
             last_github_activity: None,
             created_at: OffsetDateTime::now_utc(),
             updated_at: OffsetDateTime::now_utc(),
             detail_content: None,
             project_type: None,
-            source_closed: false,
+            private: false,
             terminal_cast: None,
             accent_color: None,
             github_synced_at: None,

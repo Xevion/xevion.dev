@@ -14,9 +14,8 @@
 
   const status = $derived(statusMeta(project.status));
 
-  // At-a-glance identity under the description: type · status · updated. Replaces
-  // the old rail facts grid and the mobile-only badge with one line that works at
-  // every width. Children are separated by middots inserted via CSS.
+  // At-a-glance identity under the description: type · status · updated. One line
+  // that works at every width; children are separated by middots inserted via CSS.
   const metaLine = css({
     display: "flex",
     flexWrap: "wrap",

@@ -21,7 +21,6 @@
       active: { color: "10b981", label: "Active" },
       maintained: { color: "6366f1", label: "Maintained" },
       archived: { color: "71717a", label: "Archived" },
-      hidden: { color: "52525b", label: "Hidden" },
     };
 
   let { data }: { data: PageData } = $props();
@@ -117,10 +116,18 @@
               </div>
             </td>
             <td class={css({ px: "4", py: "3" })}>
-              <TagChip
-                name={STATUS_CONFIG[project.status].label}
-                color={STATUS_CONFIG[project.status].color}
-              />
+              <div class={wrap({ gap: "1" })}>
+                <TagChip
+                  name={STATUS_CONFIG[project.status].label}
+                  color={STATUS_CONFIG[project.status].color}
+                />
+                {#if project.hidden}
+                  <TagChip name="Hidden" color="52525b" />
+                {/if}
+                {#if project.private}
+                  <TagChip name="Private" color="b45309" />
+                {/if}
+              </div>
             </td>
             <td class={css({ px: "4", py: "3" })}>
               <!-- Sits above the row's stretched link so tag links stay clickable. -->

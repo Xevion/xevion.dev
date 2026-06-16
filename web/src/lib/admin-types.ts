@@ -14,6 +14,8 @@ export interface CreateProjectData {
   slug?: string;
   shortDescription: string;
   status: ProjectStatus;
+  hidden: boolean;
+  private: boolean;
   githubRepo?: string;
   demoUrl?: string;
   tagIds: string[];

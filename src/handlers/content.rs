@@ -47,7 +47,7 @@ pub async fn get_project_content_handler(
         .await?
         .or_not_found()?;
 
-    if project.status == db::ProjectStatus::Hidden && !is_admin {
+    if project.hidden && !is_admin {
         return Err(AppError::NotFound);
     }
 

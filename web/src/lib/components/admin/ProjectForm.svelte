@@ -43,6 +43,11 @@
   let slug = $state("");
   let shortDescription = $state("");
   let status = $state<ProjectStatus>("active");
+  // Overall public visibility, independent of activity status.
+  let hidden = $state(false);
+  // Source is private: hides repo links but keeps GitHub activity syncing.
+  // Named `isPrivate` because `private` is a reserved word for a local binding.
+  let isPrivate = $state(false);
   let githubRepo = $state("");
   let demoUrl = $state("");
   let selectedTagIds = $state<string[]>([]);
@@ -63,6 +68,8 @@
       slug = project.slug;
       shortDescription = project.shortDescription;
       status = project.status;
+      hidden = project.hidden;
+      isPrivate = project.private;
       githubRepo = project.githubRepo ?? "";
       demoUrl = project.demoUrl ?? "";
       selectedTagIds = project.tags.map((t) => t.id);
@@ -78,7 +85,6 @@
     { value: "active", label: "Active" },
     { value: "maintained", label: "Maintained" },
     { value: "archived", label: "Archived" },
-    { value: "hidden", label: "Hidden" },
   ];
 
   // Auto-generate slug placeholder from name
@@ -104,6 +110,8 @@
       slug: slug || slugPlaceholder,
       shortDescription,
       status,
+      hidden,
+      private: isPrivate,
       githubRepo: githubRepo || undefined,
       demoUrl: demoUrl || undefined,
       tagIds: selectedTagIds,
@@ -168,8 +176,69 @@
     type="select"
     bind:value={status}
     options={statusOptions}
-    help="Project visibility and state"
+    help="Activity/development state (separate from visibility)"
   />
+
+  <!-- Visibility & source -->
+  <div class={css({ display: "flex", flexDirection: "column", gap: "3" })}>
+    <label
+      class={css({
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "2",
+        cursor: "pointer",
+      })}
+    >
+      <input
+        type="checkbox"
+        bind:checked={hidden}
+        class={css({ mt: "1", cursor: "pointer" })}
+      />
+      <span>
+        <span class={css({ fontSize: "sm", fontWeight: "medium" })}>Hidden</span
+        >
+        <span
+          class={css({
+            display: "block",
+            fontSize: "xs",
+            color: "admin.textMuted",
+          })}
+        >
+          Hide from all public listings and the project's public page.
+        </span>
+      </span>
+    </label>
+
+    <label
+      class={css({
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "2",
+        cursor: "pointer",
+      })}
+    >
+      <input
+        type="checkbox"
+        bind:checked={isPrivate}
+        class={css({ mt: "1", cursor: "pointer" })}
+      />
+      <span>
+        <span class={css({ fontSize: "sm", fontWeight: "medium" })}
+          >Private</span
+        >
+        <span
+          class={css({
+            display: "block",
+            fontSize: "xs",
+            color: "admin.textMuted",
+          })}
+        >
+          Source is private: hides the GitHub link, but the repo is still synced
+          for activity.
+        </span>
+      </span>
+    </label>
+  </div>
 
   <!-- Links -->
   <div class={grid({ columns: { md: 2 }, gap: "6" })}>

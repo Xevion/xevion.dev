@@ -135,7 +135,6 @@ pub enum StatusArg {
     Active,
     Maintained,
     Archived,
-    Hidden,
 }
 
 impl From<StatusArg> for ProjectStatus {
@@ -144,7 +143,6 @@ impl From<StatusArg> for ProjectStatus {
             StatusArg::Active => Self::Active,
             StatusArg::Maintained => Self::Maintained,
             StatusArg::Archived => Self::Archived,
-            StatusArg::Hidden => Self::Hidden,
         }
     }
 }
@@ -197,6 +195,14 @@ pub enum ProjectsCommand {
         #[arg(long, value_enum, default_value_t = StatusArg::Active)]
         status: StatusArg,
 
+        /// Hide from public listings (overall visibility)
+        #[arg(long)]
+        hidden: bool,
+
+        /// Mark the source as private: hides repo links, keeps syncing
+        #[arg(long)]
+        private: bool,
+
         /// GitHub repository (e.g., "Xevion/xevion.dev")
         #[arg(long)]
         github_repo: Option<String>,
@@ -247,6 +253,14 @@ pub enum ProjectsCommand {
         /// Project status
         #[arg(long, value_enum)]
         status: Option<StatusArg>,
+
+        /// Hide from public listings (true/false)
+        #[arg(long)]
+        hidden: Option<bool>,
+
+        /// Mark the source as private (true/false): hides repo links, keeps syncing
+        #[arg(long)]
+        private: Option<bool>,
 
         /// GitHub repository (use "" to clear)
         #[arg(long)]

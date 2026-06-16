@@ -21,25 +21,27 @@ fn normalize_repo_field(raw: Option<&str>) -> AppResult<Option<String>> {
     }
 }
 
-/// Live existence check for a normalized "owner/repo" at save time. A definitive
-/// 404 rejects the save; an inconclusive result (rate-limited, transport error,
-/// or sync disabled) only warns so saves never hinge on GitHub's availability.
-async fn verify_repo_exists(repo: &str) -> AppResult<()> {
+/// Resolve a normalized "owner/repo" against the live API at save time, returning
+/// its canonical identity (full name + stable numeric id). A definitive 404
+/// rejects the save; an inconclusive result (rate-limited, transport error, or
+/// sync disabled) yields `None` so saves never hinge on GitHub's availability —
+/// sync backfills the identity later.
+async fn resolve_repo(repo: &str) -> AppResult<Option<github::RepoMeta>> {
     let Some((owner, name)) = repo.split_once('/') else {
-        return Ok(());
+        return Ok(None);
     };
     let Some(client) = github::GitHubClient::get().await else {
-        return Ok(()); // sync disabled (no token) — can't verify, don't block
+        return Ok(None); // sync disabled (no token) — can't resolve, don't block
     };
-    match client.repo_exists(owner, name).await {
-        Ok(true) => Ok(()),
-        Ok(false) => Err(AppError::field(
+    match client.fetch_repo(owner, name).await {
+        Ok(meta) => Ok(Some(meta)),
+        Err(github::GitHubError::NotFound(_)) => Err(AppError::field(
             "githubRepo",
             "GitHub repository not found or inaccessible",
         )),
         Err(err) => {
-            tracing::warn!(repo = %repo, error = %err, "Could not verify github_repo; saving anyway");
-            Ok(())
+            tracing::warn!(repo = %repo, error = %err, "Could not resolve github_repo; saving anyway");
+            Ok(None)
         }
     }
 }
@@ -76,7 +78,7 @@ pub async fn get_project_handler(
         .await?
         .or_not_found()?;
 
-    if project.status == db::ProjectStatus::Hidden && !is_admin {
+    if project.hidden && !is_admin {
         return Err(AppError::NotFound);
     }
 
@@ -133,9 +135,16 @@ pub async fn create_project_handler(
         .transpose()?
         .and_then(|doc| doc.to_stored());
 
-    let github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
-    if let Some(repo) = &github_repo {
-        verify_repo_exists(repo).await?;
+    // Resolve the repo to its canonical name + stable id at save time. A 404
+    // rejects; an inconclusive result keeps the user's normalized name and leaves
+    // the id for sync to backfill.
+    let mut github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
+    let mut github_repo_id = None;
+    if let Some(repo) = &github_repo
+        && let Some(meta) = resolve_repo(repo).await?
+    {
+        github_repo_id = Some(meta.id);
+        github_repo = Some(meta.full_name);
     }
 
     let project = db::create_project(
@@ -145,11 +154,13 @@ pub async fn create_project_handler(
             slug_override: payload.slug.as_deref(),
             short_description: &payload.short_description,
             status: payload.status,
+            hidden: payload.hidden,
             github_repo: github_repo.as_deref(),
+            github_repo_id,
             demo_url: payload.demo_url.as_deref(),
             detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
-            source_closed: payload.source_closed,
+            private: payload.private,
             terminal_cast: terminal_cast.as_ref(),
             accent_color: payload.accent_color.as_deref(),
         },
@@ -250,14 +261,23 @@ pub async fn update_project_handler(
         .transpose()?
         .and_then(|doc| doc.to_stored());
 
-    let github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
-    // Only spend an API call verifying the repo when it actually changed, so
-    // editing unrelated fields never hinges on GitHub being reachable.
-    if github_repo.as_deref() != existing_project.github_repo.as_deref()
-        && let Some(repo) = &github_repo
-    {
-        verify_repo_exists(repo).await?;
-    }
+    let mut github_repo = normalize_repo_field(payload.github_repo.as_deref())?;
+    // Only spend an API call when the repo actually changed, so editing unrelated
+    // fields never hinges on GitHub being reachable. Unchanged → keep the stored
+    // id; changed → re-resolve (canonical name + id), and if that's inconclusive
+    // drop the stale id so sync re-captures it.
+    let github_repo_id = if github_repo.as_deref() == existing_project.github_repo.as_deref() {
+        existing_project.github_repo_id
+    } else {
+        let mut resolved_id = None;
+        if let Some(repo) = &github_repo
+            && let Some(meta) = resolve_repo(repo).await?
+        {
+            resolved_id = Some(meta.id);
+            github_repo = Some(meta.full_name);
+        }
+        resolved_id
+    };
 
     let project = db::update_project(
         &state.pool,
@@ -267,11 +287,13 @@ pub async fn update_project_handler(
             slug_override: payload.slug.as_deref(),
             short_description: &payload.short_description,
             status: payload.status,
+            hidden: payload.hidden,
             github_repo: github_repo.as_deref(),
+            github_repo_id,
             demo_url: payload.demo_url.as_deref(),
             detail_content: detail_content.as_ref(),
             project_type: payload.project_type.as_deref(),
-            source_closed: payload.source_closed,
+            private: payload.private,
             terminal_cast: terminal_cast.as_ref(),
             accent_color: payload.accent_color.as_deref(),
         },

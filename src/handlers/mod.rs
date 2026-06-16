@@ -82,6 +82,9 @@ pub struct CreateProjectRequest {
     pub slug: Option<String>,
     pub short_description: String,
     pub status: crate::db::ProjectStatus,
+    /// Overall public visibility, independent of activity `status`.
+    #[serde(default)]
+    pub hidden: bool,
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
     pub tag_ids: Vec<String>,
@@ -91,9 +94,10 @@ pub struct CreateProjectRequest {
     /// Authored primary label ("CLI Tool", "Web App", …).
     #[serde(default)]
     pub project_type: Option<String>,
-    /// Closed-source flag (orthogonal to `status`).
+    /// Source-is-private flag (orthogonal to `status`): hides repo links while
+    /// the repo keeps syncing.
     #[serde(default)]
-    pub source_closed: bool,
+    pub private: bool,
     /// Authored CLI-hero transcript.
     #[serde(default)]
     pub terminal_cast: Option<crate::db::TerminalCast>,
@@ -112,6 +116,9 @@ pub struct UpdateProjectRequest {
     pub slug: Option<String>,
     pub short_description: String,
     pub status: crate::db::ProjectStatus,
+    /// Overall public visibility, independent of activity `status`.
+    #[serde(default)]
+    pub hidden: bool,
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
     pub tag_ids: Vec<String>,
@@ -123,9 +130,10 @@ pub struct UpdateProjectRequest {
     /// Authored primary label ("CLI Tool", "Web App", …). PUT replace.
     #[serde(default)]
     pub project_type: Option<String>,
-    /// Closed-source flag (orthogonal to `status`).
+    /// Source-is-private flag (orthogonal to `status`): hides repo links while
+    /// the repo keeps syncing.
     #[serde(default)]
-    pub source_closed: bool,
+    pub private: bool,
     /// Authored CLI-hero transcript. PUT replace (null clears it).
     #[serde(default)]
     pub terminal_cast: Option<crate::db::TerminalCast>,

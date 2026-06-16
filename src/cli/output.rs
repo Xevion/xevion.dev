@@ -45,6 +45,16 @@ pub fn print_project(project: &ApiAdminProject) {
         dim.paint("Status:"),
         format_status(project.status)
     );
+    if project.hidden || project.private {
+        let mut flags = Vec::new();
+        if project.hidden {
+            flags.push("hidden");
+        }
+        if project.private {
+            flags.push("private");
+        }
+        println!("  {} {}", dim.paint("Flags:"), flags.join(", "));
+    }
     println!(
         "  {} {}",
         dim.paint("Description:"),
@@ -357,13 +367,11 @@ fn format_status(status: crate::db::ProjectStatus) -> String {
         ProjectStatus::Active => "active",
         ProjectStatus::Maintained => "maintained",
         ProjectStatus::Archived => "archived",
-        ProjectStatus::Hidden => "hidden",
     };
     let color = match status {
         ProjectStatus::Active => Color::Green,
         ProjectStatus::Maintained => Color::Blue,
         ProjectStatus::Archived => Color::Yellow,
-        ProjectStatus::Hidden => Color::Red,
     };
     color.paint(label).to_string()
 }

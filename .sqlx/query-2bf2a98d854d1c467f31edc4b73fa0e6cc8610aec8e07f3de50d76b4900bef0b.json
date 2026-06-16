@@ -13,8 +13,7 @@
               "Enum": [
                 "active",
                 "maintained",
-                "archived",
-                "hidden"
+                "archived"
               ]
             }
           }

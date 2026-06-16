@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO projects (slug, name, short_description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        RETURNING id, slug, name, short_description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color,\n                  github_synced_at, github_sync_error\n        ",
+  "query": "\n        INSERT INTO projects (slug, name, short_description, status, hidden, github_repo, github_repo_id, demo_url, detail_content, project_type, private, terminal_cast, accent_color)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n        RETURNING id, slug, name, short_description, status as \"status: ProjectStatus\",\n                  hidden, github_repo, github_repo_id, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, private, terminal_cast, accent_color,\n                  github_synced_at, github_sync_error\n        ",
   "describe": {
     "columns": [
       {
@@ -57,8 +57,7 @@
               "Enum": [
                 "active",
                 "maintained",
-                "archived",
-                "hidden"
+                "archived"
               ]
             }
           }
@@ -72,6 +71,17 @@
       },
       {
         "ordinal": 5,
+        "name": "hidden",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "hidden"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
         "name": "github_repo",
         "type_info": "Text",
         "origin": {
@@ -82,7 +92,18 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
+        "name": "github_repo_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "projects",
+            "name": "github_repo_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "demo_url",
         "type_info": "Text",
         "origin": {
@@ -93,7 +114,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "last_github_activity",
         "type_info": "Timestamptz",
         "origin": {
@@ -104,7 +125,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -115,7 +136,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -126,7 +147,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "detail_content",
         "type_info": "Jsonb",
         "origin": {
@@ -137,7 +158,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "project_type",
         "type_info": "Text",
         "origin": {
@@ -148,18 +169,18 @@
         }
       },
       {
-        "ordinal": 12,
-        "name": "source_closed",
+        "ordinal": 14,
+        "name": "private",
         "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "projects",
-            "name": "source_closed"
+            "name": "private"
           }
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "terminal_cast",
         "type_info": "Jsonb",
         "origin": {
@@ -170,7 +191,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 16,
         "name": "accent_color",
         "type_info": "Text",
         "origin": {
@@ -181,7 +202,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "github_synced_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -192,7 +213,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "github_sync_error",
         "type_info": "Text",
         "origin": {
@@ -215,13 +236,14 @@
               "Enum": [
                 "active",
                 "maintained",
-                "archived",
-                "hidden"
+                "archived"
               ]
             }
           }
         },
+        "Bool",
         "Text",
+        "Int8",
         "Text",
         "Jsonb",
         "Text",
@@ -236,6 +258,8 @@
       false,
       false,
       false,
+      false,
+      true,
       true,
       true,
       true,
@@ -250,5 +274,5 @@
       true
     ]
   },
-  "hash": "f0456a1c350a299441de741859b5bd9c9c923da90287b3e29b42d533bc203e11"
+  "hash": "4d068cdbaac852c16bad9ad1a69e88094b17207f5e544f3722551faca10b4b0e"
 }

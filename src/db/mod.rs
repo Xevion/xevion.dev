@@ -99,5 +99,4 @@ pub enum ProjectStatus {
     Active,
     Maintained,
     Archived,
-    Hidden,
 }

@@ -20,10 +20,10 @@
   // Action layout is decided by data: demo > open repo > closed lock.
   const showDemo = $derived(!!project.demoUrl);
   const showRepoRow = $derived(
-    !project.demoUrl && !!repoUrl && !project.sourceClosed,
+    !project.demoUrl && !!repoUrl && !project.private,
   );
   const showClosed = $derived(
-    !project.demoUrl && !showRepoRow && project.sourceClosed,
+    !project.demoUrl && !showRepoRow && project.private,
   );
 
   // Buttons stack in the narrow desktop rail; they sit in a wrapping row on
@@ -65,7 +65,7 @@
         Open live demo
         <IconExternal class={css({ w: "14px", h: "14px" })} />
       </a>
-      {#if repoUrl && !project.sourceClosed}
+      {#if repoUrl && !project.private}
         <a
           href={repoUrl}
           target="_blank"

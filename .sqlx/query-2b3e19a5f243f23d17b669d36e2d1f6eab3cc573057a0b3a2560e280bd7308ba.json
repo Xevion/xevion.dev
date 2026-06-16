@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE projects\n        SET github_repo = $2, github_repo_id = $3\n        WHERE id = $1\n          AND (github_repo IS DISTINCT FROM $2 OR github_repo_id IS DISTINCT FROM $3)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b3e19a5f243f23d17b669d36e2d1f6eab3cc573057a0b3a2560e280bd7308ba"
+}

@@ -31,15 +31,21 @@ terminalCast?: TerminalCast,
  * Curated related projects in authored order (resolved server-side from the
  * `project_relations` table). Empty when none are authored.
  */
-related: Array<ApiRelatedProject>, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
+related: Array<ApiRelatedProject>, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, 
 /**
- * Authored primary label; the rail's "Type" slot (replaces "Language").
+ * Overall public visibility. Admin-only signal; public responses never
+ * include hidden projects in the first place.
+ */
+hidden: boolean, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
+/**
+ * Authored primary label; the rail's "Type" slot.
  */
 projectType?: string, 
 /**
- * When true the page hides repo links and shows the closed-source callout.
+ * When true the page hides repo links and shows the closed-source callout;
+ * the repo is still synced for activity.
  */
-sourceClosed: boolean, 
+private: boolean, 
 /**
  * Explicit accent hex; frontend falls back to `#71717a` when absent.
  */

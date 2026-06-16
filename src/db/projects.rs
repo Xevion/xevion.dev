@@ -21,19 +21,27 @@ pub struct DbProject {
     pub name: String,
     pub short_description: String,
     pub status: ProjectStatus,
+    /// Overall public visibility. When true the project is excluded from public
+    /// listings and its detail page 404s for non-admins. Independent of `status`,
+    /// which carries only activity state.
+    pub hidden: bool,
     pub github_repo: Option<String>,
+    /// GitHub's stable numeric repo id, captured on save/sync. Survives repo
+    /// renames and transfers, so it anchors a project to its repo even as the
+    /// "owner/repo" string drifts. `None` until first resolved against the API.
+    pub github_repo_id: Option<i64>,
     pub demo_url: Option<String>,
     pub last_github_activity: Option<OffsetDateTime>,
     pub created_at: OffsetDateTime,
     /// Last authored edit; the DB trigger excludes background GitHub syncs.
     pub updated_at: OffsetDateTime,
     pub detail_content: Option<serde_json::Value>,
-    /// Authored primary label ("CLI Tool", "Web App", …). Replaces the old
-    /// tag-derived "Language" field.
+    /// Authored primary label ("CLI Tool", "Web App", …).
     pub project_type: Option<String>,
-    /// Closed-source flag, orthogonal to `status`: a project can be `active`
-    /// and still have no public repo.
-    pub source_closed: bool,
+    /// Source-is-private flag, orthogonal to `status`: a project can be `active`
+    /// and still have a private repo. When true, repo links are hidden while the
+    /// repo is still synced for activity.
+    pub private: bool,
     /// Optional asciinema-style cast for the CLI hero, shaped like [`TerminalCast`].
     pub terminal_cast: Option<serde_json::Value>,
     /// Explicit per-project accent (hex); the frontend falls back to `#71717a`.
@@ -106,6 +114,9 @@ pub struct ApiAdminProject {
     pub tags: Vec<ApiTag>,
     pub media: Vec<ApiProjectMedia>,
     pub status: ProjectStatus,
+    /// Overall public visibility. Admin-only signal; public responses never
+    /// include hidden projects in the first place.
+    pub hidden: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub github_repo: Option<String>,
@@ -114,12 +125,13 @@ pub struct ApiAdminProject {
     pub demo_url: Option<String>,
     pub created_at: String,
     pub last_activity: String,
-    /// Authored primary label; the rail's "Type" slot (replaces "Language").
+    /// Authored primary label; the rail's "Type" slot.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub project_type: Option<String>,
-    /// When true the page hides repo links and shows the closed-source callout.
-    pub source_closed: bool,
+    /// When true the page hides repo links and shows the closed-source callout;
+    /// the repo is still synced for activity.
+    pub private: bool,
     /// Explicit accent hex; frontend falls back to `#71717a` when absent.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -167,7 +179,11 @@ impl DbProject {
     pub fn to_api_project(&self) -> ApiProject {
         let mut links = Vec::new();
 
-        if let Some(ref repo) = self.github_repo {
+        // Private repos are still synced, but their source link is suppressed
+        // everywhere it would otherwise appear (cards, list, detail).
+        if let Some(ref repo) = self.github_repo
+            && !self.private
+        {
             links.push(ApiProjectLink {
                 url: format!("https://github.com/{repo}"),
                 title: Some("GitHub".to_string()),
@@ -212,6 +228,7 @@ impl DbProject {
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
             media: media.into_iter().map(|m| m.to_api_media()).collect(),
             status: self.status,
+            hidden: self.hidden,
             github_repo: self.github_repo.clone(),
             demo_url: self.demo_url.clone(),
             created_at: self
@@ -220,7 +237,7 @@ impl DbProject {
                 .map_err(|e| AppError::Internal(e.to_string()))?,
             last_activity,
             project_type: self.project_type.clone(),
-            source_closed: self.source_closed,
+            private: self.private,
             accent_color: self.accent_color.clone(),
             github_synced_at,
             github_sync_error: self.github_sync_error.clone(),
@@ -269,20 +286,22 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             name,
             short_description,
             status as "status: ProjectStatus",
+            hidden,
             github_repo,
+            github_repo_id,
             demo_url,
             last_github_activity,
             created_at,
             updated_at,
             detail_content,
             project_type,
-            source_closed,
+            private,
             terminal_cast,
             accent_color,
             github_synced_at,
             github_sync_error
         FROM projects
-        WHERE status != 'hidden'
+        WHERE hidden = false
         ORDER BY COALESCE(last_github_activity, created_at) DESC
         "#
     )
@@ -332,14 +351,16 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             name,
             short_description,
             status as "status: ProjectStatus",
+            hidden,
             github_repo,
+            github_repo_id,
             demo_url,
             last_github_activity,
             created_at,
             updated_at,
             detail_content,
             project_type,
-            source_closed,
+            private,
             terminal_cast,
             accent_color,
             github_synced_at,
@@ -395,14 +416,16 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             name,
             short_description,
             status as "status: ProjectStatus",
+            hidden,
             github_repo,
+            github_repo_id,
             demo_url,
             last_github_activity,
             created_at,
             updated_at,
             detail_content,
             project_type,
-            source_closed,
+            private,
             terminal_cast,
             accent_color,
             github_synced_at,
@@ -447,14 +470,16 @@ pub async fn get_project_by_slug(
             name,
             short_description,
             status as "status: ProjectStatus",
+            hidden,
             github_repo,
+            github_repo_id,
             demo_url,
             last_github_activity,
             created_at,
             updated_at,
             detail_content,
             project_type,
-            source_closed,
+            private,
             terminal_cast,
             accent_color,
             github_synced_at,
@@ -505,11 +530,15 @@ pub struct ProjectInput<'a> {
     pub slug_override: Option<&'a str>,
     pub short_description: &'a str,
     pub status: ProjectStatus,
+    pub hidden: bool,
     pub github_repo: Option<&'a str>,
+    /// Stable GitHub repo id, resolved by the handler at save time. `None` when
+    /// the repo couldn't be resolved (no token / rate-limited); sync backfills it.
+    pub github_repo_id: Option<i64>,
     pub demo_url: Option<&'a str>,
     pub detail_content: Option<&'a serde_json::Value>,
     pub project_type: Option<&'a str>,
-    pub source_closed: bool,
+    pub private: bool,
     pub terminal_cast: Option<&'a serde_json::Value>,
     pub accent_color: Option<&'a str>,
 }
@@ -526,22 +555,24 @@ pub async fn create_project(
     query_as!(
         DbProject,
         r#"
-        INSERT INTO projects (slug, name, short_description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO projects (slug, name, short_description, status, hidden, github_repo, github_repo_id, demo_url, detail_content, project_type, private, terminal_cast, accent_color)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
-                  project_type, source_closed, terminal_cast, accent_color,
+                  hidden, github_repo, github_repo_id, demo_url, last_github_activity, created_at, updated_at, detail_content,
+                  project_type, private, terminal_cast, accent_color,
                   github_synced_at, github_sync_error
         "#,
         slug,
         input.name,
         input.short_description,
         input.status as ProjectStatus,
+        input.hidden,
         input.github_repo,
+        input.github_repo_id,
         input.demo_url,
         input.detail_content as Option<&serde_json::Value>,
         input.project_type,
-        input.source_closed,
+        input.private,
         input.terminal_cast as Option<&serde_json::Value>,
         input.accent_color
     )
@@ -564,12 +595,13 @@ pub async fn update_project(
         r#"
         UPDATE projects
         SET slug = $2, name = $3, short_description = $4,
-            status = $5, github_repo = $6, demo_url = $7, detail_content = $8,
-            project_type = $9, source_closed = $10, terminal_cast = $11, accent_color = $12
+            status = $5, hidden = $6, github_repo = $7, github_repo_id = $8,
+            demo_url = $9, detail_content = $10, project_type = $11, private = $12,
+            terminal_cast = $13, accent_color = $14
         WHERE id = $1
         RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
-                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
-                  project_type, source_closed, terminal_cast, accent_color,
+                  hidden, github_repo, github_repo_id, demo_url, last_github_activity, created_at, updated_at, detail_content,
+                  project_type, private, terminal_cast, accent_color,
                   github_synced_at, github_sync_error
         "#,
         id,
@@ -577,11 +609,13 @@ pub async fn update_project(
         input.name,
         input.short_description,
         input.status as ProjectStatus,
+        input.hidden,
         input.github_repo,
+        input.github_repo_id,
         input.demo_url,
         input.detail_content as Option<&serde_json::Value>,
         input.project_type,
-        input.source_closed,
+        input.private,
         input.terminal_cast as Option<&serde_json::Value>,
         input.accent_color
     )
@@ -635,7 +669,6 @@ pub async fn get_admin_stats(pool: &PgPool) -> Result<AdminStats, sqlx::Error> {
         "active": 0,
         "maintained": 0,
         "archived": 0,
-        "hidden": 0,
     });
 
     let mut total_projects = 0;
@@ -671,14 +704,16 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             name,
             short_description,
             status as "status: ProjectStatus",
+            hidden,
             github_repo,
+            github_repo_id,
             demo_url,
             last_github_activity,
             created_at,
             updated_at,
             detail_content,
             project_type,
-            source_closed,
+            private,
             terminal_cast,
             accent_color,
             github_synced_at,
@@ -728,6 +763,33 @@ pub async fn record_github_sync_error(
         "UPDATE projects SET github_sync_error = $2 WHERE id = $1",
         id,
         error
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Persist a project's resolved GitHub identity: the canonical "owner/repo" name
+/// and stable numeric id. Lets sync follow a repo renamed/transferred on GitHub
+/// and fill in the id where it isn't set yet. Writes only when something differs,
+/// and never touches `updated_at` (`github_repo` + `github_repo_id` are exempt
+/// from the editorial trigger) so this background correction isn't seen as an edit.
+pub async fn record_github_identity(
+    pool: &PgPool,
+    id: Uuid,
+    full_name: &str,
+    repo_id: i64,
+) -> Result<(), sqlx::Error> {
+    query!(
+        r#"
+        UPDATE projects
+        SET github_repo = $2, github_repo_id = $3
+        WHERE id = $1
+          AND (github_repo IS DISTINCT FROM $2 OR github_repo_id IS DISTINCT FROM $3)
+        "#,
+        id,
+        full_name,
+        repo_id
     )
     .execute(pool)
     .await?;

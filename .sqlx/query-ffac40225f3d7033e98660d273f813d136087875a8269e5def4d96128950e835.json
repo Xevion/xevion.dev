@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT p.id, p.slug, p.name, p.project_type, p.accent_color\n        FROM project_relations r\n        JOIN projects p ON p.id = r.related_project_id\n        WHERE r.project_id = $1 AND p.status != 'hidden'\n        ORDER BY r.position ASC\n        ",
+  "query": "\n        SELECT p.id, p.slug, p.name, p.project_type, p.accent_color\n        FROM project_relations r\n        JOIN projects p ON p.id = r.related_project_id\n        WHERE r.project_id = $1 AND p.hidden = false\n        ORDER BY r.position ASC\n        ",
   "describe": {
     "columns": [
       {
@@ -72,5 +72,5 @@
       true
     ]
   },
-  "hash": "bd7a99e36987dc52eff93651cc967197e10de2fb7149369f59dabd92ec7e3a11"
+  "hash": "ffac40225f3d7033e98660d273f813d136087875a8269e5def4d96128950e835"
 }

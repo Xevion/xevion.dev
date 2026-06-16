@@ -87,8 +87,6 @@ export function statusMeta(status: ProjectStatus): {
       return { label: "Maintained", color: "#0a8bc4" };
     case "archived":
       return { label: "Archived", color: NEUTRAL };
-    case "hidden":
-      return { label: "Hidden", color: NEUTRAL };
   }
 }
 

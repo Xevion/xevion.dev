@@ -34,7 +34,7 @@ pub async fn get_related_projects(
         SELECT p.id, p.slug, p.name, p.project_type, p.accent_color
         FROM project_relations r
         JOIN projects p ON p.id = r.related_project_id
-        WHERE r.project_id = $1 AND p.status != 'hidden'
+        WHERE r.project_id = $1 AND p.hidden = false
         ORDER BY r.position ASC
         "#,
         project_id
