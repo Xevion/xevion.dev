@@ -20,13 +20,13 @@ format *flags:
 bindings:
 	tempo bindings
 
-# Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build), -i (install)
+# Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build)
 build *flags:
-	tempo run build {{flags}}
+	tempo build {{flags}}
 
-# Install the `xevion` CLI to ~/.cargo/bin (builds frontend for embedded assets)
+# Install the `xevion` client CLI to ~/.cargo/bin (no frontend/server build)
 install *flags:
-	tempo run install {{flags}}
+	tempo install {{flags}}
 
 # Start dev servers with pretty log formatting
 dev:
@@ -38,7 +38,7 @@ dev-json:
 
 # Manage local PostgreSQL container (default: start)
 db *flags:
-	tempo run db {{flags}}
+	tempo db {{flags}}
 
 # Run all tests
 test:
@@ -51,12 +51,12 @@ migrate:
 
 # Start DB + run migrations + seed test data
 seed:
-	tempo run seed
+	tempo seed
 
 # Build Docker image
 docker-image:
-	tempo run docker-image
+	tempo docker-image
 
 # Run Docker container on specified port
 docker-run port="8080":
-	tempo run docker-run --port {{port}}
+	tempo docker-run --port {{port}}

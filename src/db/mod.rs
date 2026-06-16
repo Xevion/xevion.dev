@@ -1,3 +1,6 @@
+// The events table is written only by server-side mutation handlers; its DTOs
+// pull in the server-only `events` module, so it gates out for client builds.
+#[cfg(feature = "server")]
 pub mod events;
 pub mod media;
 pub mod projects;

@@ -1,12 +1,16 @@
 use std::collections::BTreeMap;
+
+#[cfg(feature = "server")]
 use std::sync::Arc;
 
+#[cfg(feature = "server")]
 use crate::{
     auth::SessionManager, cache::IsrCache, cli_auth::CliAuthRegistry, events::EventSender,
     health::HealthChecker, http::HttpClient, icon_cache::IconCache, tarpit::TarpitState,
 };
 
 /// Application state shared across all handlers
+#[cfg(feature = "server")]
 #[derive(Clone)]
 pub struct AppState {
     pub client: HttpClient,
@@ -219,9 +223,11 @@ impl<T> SqlxResultExt<T> for Result<T, sqlx::Error> {
 /// Auth extractor — validates the admin session from either the browser cookie
 /// or a CLI `Authorization: Bearer` token. Use in handler signatures to require
 /// authentication.
+#[cfg(feature = "server")]
 #[derive(Debug)]
 pub struct AdminSession(pub crate::auth::Session);
 
+#[cfg(feature = "server")]
 impl axum::extract::FromRequestParts<Arc<AppState>> for AdminSession {
     type Rejection = AppError;
 

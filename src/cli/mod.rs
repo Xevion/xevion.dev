@@ -7,7 +7,11 @@ pub mod client;
 pub mod config;
 pub mod error;
 pub mod output;
+// `serve` (the web server) and `seed` (DB seeding) are the server entry points,
+// invoked from the `xevion-server` binary; the client CLI omits them.
+#[cfg(feature = "server")]
 pub mod seed;
+#[cfg(feature = "server")]
 pub mod serve;
 
 use clap::{Parser, Subcommand, ValueEnum};

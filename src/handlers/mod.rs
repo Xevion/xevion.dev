@@ -1,27 +1,54 @@
+// The handler implementations are server-only (they depend on `AppState`, asset
+// serving, the proxy, …). The request DTOs further down are shared with the
+// `xevion` CLI and stay ungated.
+#[cfg(feature = "server")]
 pub mod assets;
+#[cfg(feature = "server")]
 pub mod auth;
+#[cfg(feature = "server")]
 pub mod cli_auth;
+#[cfg(feature = "server")]
 pub mod content;
+#[cfg(feature = "server")]
 pub mod events;
+#[cfg(feature = "server")]
 pub mod health;
+#[cfg(feature = "server")]
 pub mod icons;
+#[cfg(feature = "server")]
 pub mod media;
+#[cfg(feature = "server")]
 pub mod projects;
+#[cfg(feature = "server")]
 pub mod sessions;
+#[cfg(feature = "server")]
 pub mod settings;
+#[cfg(feature = "server")]
 pub mod tags;
 
+#[cfg(feature = "server")]
 pub use assets::*;
+#[cfg(feature = "server")]
 pub use auth::*;
+#[cfg(feature = "server")]
 pub use cli_auth::*;
+#[cfg(feature = "server")]
 pub use content::*;
+#[cfg(feature = "server")]
 pub use events::*;
+#[cfg(feature = "server")]
 pub use health::*;
+#[cfg(feature = "server")]
 pub use icons::*;
+#[cfg(feature = "server")]
 pub use media::*;
+#[cfg(feature = "server")]
 pub use projects::*;
+#[cfg(feature = "server")]
 pub use sessions::*;
+#[cfg(feature = "server")]
 pub use settings::*;
+#[cfg(feature = "server")]
 pub use tags::*;
 
 #[derive(serde::Deserialize, serde::Serialize)]

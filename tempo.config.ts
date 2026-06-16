@@ -308,7 +308,7 @@ export default defineConfig({
       },
     },
     build: {
-      description: "Build frontend + Rust binary, optionally serve or install",
+      description: "Build frontend + Rust binary, optionally serve",
       flags: {
         serve: {
           type: Boolean,
@@ -325,14 +325,9 @@ export default defineConfig({
           alias: "n",
           description: "Skip build step",
         },
-        install: {
-          type: Boolean,
-          alias: "i",
-          description: "Install binary via cargo install",
-        },
       },
       run: async (ctx) => {
-        const { serve, debug, "no-build": noBuild, install } = ctx.flags;
+        const { serve, debug, "no-build": noBuild } = ctx.flags;
         const profile = debug ? "debug" : "release";
 
         if (!noBuild) {
@@ -361,21 +356,6 @@ export default defineConfig({
           ctx.run(cargoArgs);
         }
 
-        if (install) {
-          console.error(ctx.fmt.c.catBlue(`Installing xevion CLI (${profile})...`));
-          const installArgs = [
-            "cargo",
-            "install",
-            "--path",
-            ".",
-            "--bin",
-            "xevion",
-            "--force",
-          ];
-          if (debug) installArgs.push("--debug");
-          ctx.run(installArgs);
-        }
-
         if (serve) {
           console.error(ctx.fmt.c.catBlue(`Serving (${profile})...`));
           const servePort = process.env.PORT || "10237";
@@ -395,7 +375,7 @@ export default defineConfig({
       },
     },
     install: {
-      description: "Build the frontend and install the `xevion` CLI to ~/.cargo/bin",
+      description: "Install the `xevion` client CLI to ~/.cargo/bin",
       flags: {
         debug: {
           type: Boolean,
@@ -405,13 +385,9 @@ export default defineConfig({
       },
       run: async (ctx) => {
         const { debug } = ctx.flags;
-        // The binary embeds web/build/* via include_dir!, so the frontend must
-        // exist before cargo compiles the shared lib — even for the CLI.
-        console.error(
-          ctx.fmt.c.catBlue("Building frontend (required for embedded assets)..."),
-        );
-        ctx.run(["bunx", "--bun", "vite", "build"], { cwd: "web" });
-
+        // The client CLI builds without the `server` feature, so it skips the
+        // embedded-frontend `include_dir!` and the entire server module graph —
+        // no `vite build`, no `xevion-server`, just the client binary.
         console.error(
           ctx.fmt.c.catBlue(
             `Installing xevion CLI (${debug ? "debug" : "release"})...`,
@@ -424,6 +400,7 @@ export default defineConfig({
           ".",
           "--bin",
           "xevion",
+          "--no-default-features",
           "--force",
         ];
         if (debug) installArgs.push("--debug");

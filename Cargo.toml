@@ -16,6 +16,16 @@ path = "src/bin/xevion.rs"
 [[bin]]
 name = "xevion-server"
 path = "src/bin/xevion-server.rs"
+required-features = ["server"]
+
+[features]
+default = ["server"]
+# The web server: asset embedding (`include_dir!` of `web/build/*`) and every
+# server-only module (axum routing, proxy, ISR cache, OG images, R2, auth,
+# background jobs). The `xevion` client CLI is built without it
+# (`cargo install --no-default-features --bin xevion`), so it needs no frontend
+# build and skips the entire server module graph.
+server = []
 
 [dependencies]
 argon2 = "0.5"
