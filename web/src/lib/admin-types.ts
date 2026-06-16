@@ -13,7 +13,6 @@ export interface CreateProjectData {
   name: string;
   slug?: string;
   shortDescription: string;
-  description: string;
   status: ProjectStatus;
   githubRepo?: string;
   demoUrl?: string;

@@ -122,10 +122,6 @@ pub enum ProjectsCommand {
         #[arg(short = 's', long)]
         short_desc: String,
 
-        /// Full description
-        #[arg(short = 'd', long)]
-        desc: String,
-
         /// URL slug (auto-generated from name if omitted)
         #[arg(long)]
         slug: Option<String>,
@@ -180,10 +176,6 @@ pub enum ProjectsCommand {
         /// Short description
         #[arg(short = 's', long)]
         short_desc: Option<String>,
-
-        /// Full description
-        #[arg(short = 'd', long)]
-        desc: Option<String>,
 
         /// Project status
         #[arg(long)]

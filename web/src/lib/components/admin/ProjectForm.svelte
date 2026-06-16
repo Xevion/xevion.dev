@@ -42,7 +42,6 @@
   let name = $state("");
   let slug = $state("");
   let shortDescription = $state("");
-  let description = $state("");
   let status = $state<ProjectStatus>("active");
   let githubRepo = $state("");
   let demoUrl = $state("");
@@ -63,7 +62,6 @@
       name = project.name;
       slug = project.slug;
       shortDescription = project.shortDescription;
-      description = project.description;
       status = project.status;
       githubRepo = project.githubRepo ?? "";
       demoUrl = project.demoUrl ?? "";
@@ -105,7 +103,6 @@
       name,
       slug: slug || slugPlaceholder,
       shortDescription,
-      description,
       status,
       githubRepo: githubRepo || undefined,
       demoUrl: demoUrl || undefined,
@@ -155,18 +152,6 @@
     placeholder="A concise one-line summary"
     help="Brief description shown in project cards"
     error={fieldErrors.shortDescription}
-  />
-
-  <!-- Description -->
-  <Input
-    label="Description"
-    type="textarea"
-    bind:value={description}
-    required
-    rows={6}
-    placeholder="A detailed description of your project..."
-    help="Full project description (markdown not supported yet)"
-    error={fieldErrors.description}
   />
 
   <!-- Detail Content -->

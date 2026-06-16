@@ -4,7 +4,7 @@ import type { ApiProjectMedia } from "./ApiProjectMedia";
 import type { ApiTag } from "./ApiTag";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
+export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
 /**
  * Authored primary label; the rail's "Type" slot (replaces "Language").
  */

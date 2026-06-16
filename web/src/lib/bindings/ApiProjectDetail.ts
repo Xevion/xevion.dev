@@ -31,7 +31,7 @@ terminalCast?: TerminalCast,
  * Curated related projects in authored order (resolved server-side from the
  * `project_relations` table). Empty when none are authored.
  */
-related: Array<ApiRelatedProject>, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, description: string, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
+related: Array<ApiRelatedProject>, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
 /**
  * Authored primary label; the rail's "Type" slot (replaces "Language").
  */

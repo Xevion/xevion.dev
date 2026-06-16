@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            slug,\n            name,\n            short_description,\n            description,\n            status as \"status: ProjectStatus\",\n            github_repo,\n            demo_url,\n            last_github_activity,\n            created_at,\n            updated_at,\n            detail_content,\n            project_type,\n            source_closed,\n            terminal_cast,\n            accent_color\n        FROM projects\n        WHERE slug = $1\n        ",
+  "query": "\n        UPDATE projects\n        SET slug = $2, name = $3, short_description = $4,\n            status = $5, github_repo = $6, demo_url = $7, detail_content = $8,\n            project_type = $9, source_closed = $10, terminal_cast = $11, accent_color = $12\n        WHERE id = $1\n        RETURNING id, slug, name, short_description, status as \"status: ProjectStatus\",\n                  github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,\n                  project_type, source_closed, terminal_cast, accent_color\n        ",
   "describe": {
     "columns": [
       {
@@ -25,11 +25,6 @@
       },
       {
         "ordinal": 4,
-        "name": "description",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 5,
         "name": "status: ProjectStatus",
         "type_info": {
           "Custom": {
@@ -46,63 +41,85 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "github_repo",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "demo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "last_github_activity",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 8,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "detail_content",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "project_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "source_closed",
         "type_info": "Bool"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "terminal_cast",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "accent_color",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "project_status",
+            "kind": {
+              "Enum": [
+                "active",
+                "maintained",
+                "archived",
+                "hidden"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Bool",
+        "Jsonb",
         "Text"
       ]
     },
     "nullable": [
-      false,
       false,
       false,
       false,
@@ -120,5 +137,5 @@
       true
     ]
   },
-  "hash": "7717a8dea633f6720ab77a1fc98c6a98f30b7793e09291396605c88e9421e55c"
+  "hash": "0779476c01cc3dc24f5e29560e320de4a01d88bbc5acd4bf652861b7afd3070a"
 }

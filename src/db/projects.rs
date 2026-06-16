@@ -20,7 +20,6 @@ pub struct DbProject {
     pub slug: String,
     pub name: String,
     pub short_description: String,
-    pub description: String,
     pub status: ProjectStatus,
     pub github_repo: Option<String>,
     pub demo_url: Option<String>,
@@ -101,7 +100,6 @@ pub struct ApiAdminProject {
     pub tags: Vec<ApiTag>,
     pub media: Vec<ApiProjectMedia>,
     pub status: ProjectStatus,
-    pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub github_repo: Option<String>,
@@ -192,7 +190,6 @@ impl DbProject {
             tags: tags.into_iter().map(|t| t.to_api_tag()).collect(),
             media: media.into_iter().map(|m| m.to_api_media()).collect(),
             status: self.status,
-            description: self.description.clone(),
             github_repo: self.github_repo.clone(),
             demo_url: self.demo_url.clone(),
             created_at: self
@@ -247,7 +244,6 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
             slug,
             name,
             short_description,
-            description,
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
@@ -309,7 +305,6 @@ pub async fn get_all_projects_admin(pool: &PgPool) -> Result<Vec<DbProject>, sql
             slug,
             name,
             short_description,
-            description,
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
@@ -371,7 +366,6 @@ pub async fn get_project_by_id(pool: &PgPool, id: Uuid) -> Result<Option<DbProje
             slug,
             name,
             short_description,
-            description,
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
@@ -422,7 +416,6 @@ pub async fn get_project_by_slug(
             slug,
             name,
             short_description,
-            description,
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
@@ -479,7 +472,6 @@ pub struct ProjectInput<'a> {
     pub name: &'a str,
     pub slug_override: Option<&'a str>,
     pub short_description: &'a str,
-    pub description: &'a str,
     pub status: ProjectStatus,
     pub github_repo: Option<&'a str>,
     pub demo_url: Option<&'a str>,
@@ -502,16 +494,15 @@ pub async fn create_project(
     query_as!(
         DbProject,
         r#"
-        INSERT INTO projects (slug, name, short_description, description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
+        INSERT INTO projects (slug, name, short_description, status, github_repo, demo_url, detail_content, project_type, source_closed, terminal_cast, accent_color)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
                   github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
                   project_type, source_closed, terminal_cast, accent_color
         "#,
         slug,
         input.name,
         input.short_description,
-        input.description,
         input.status as ProjectStatus,
         input.github_repo,
         input.demo_url,
@@ -539,11 +530,11 @@ pub async fn update_project(
         DbProject,
         r#"
         UPDATE projects
-        SET slug = $2, name = $3, short_description = $4, description = $5,
-            status = $6, github_repo = $7, demo_url = $8, detail_content = $9,
-            project_type = $10, source_closed = $11, terminal_cast = $12, accent_color = $13
+        SET slug = $2, name = $3, short_description = $4,
+            status = $5, github_repo = $6, demo_url = $7, detail_content = $8,
+            project_type = $9, source_closed = $10, terminal_cast = $11, accent_color = $12
         WHERE id = $1
-        RETURNING id, slug, name, short_description, description, status as "status: ProjectStatus",
+        RETURNING id, slug, name, short_description, status as "status: ProjectStatus",
                   github_repo, demo_url, last_github_activity, created_at, updated_at, detail_content,
                   project_type, source_closed, terminal_cast, accent_color
         "#,
@@ -551,7 +542,6 @@ pub async fn update_project(
         slug,
         input.name,
         input.short_description,
-        input.description,
         input.status as ProjectStatus,
         input.github_repo,
         input.demo_url,
@@ -646,7 +636,6 @@ pub async fn get_projects_with_github_repo(pool: &PgPool) -> Result<Vec<DbProjec
             slug,
             name,
             short_description,
-            description,
             status as "status: ProjectStatus",
             github_repo,
             demo_url,
