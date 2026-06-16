@@ -262,7 +262,7 @@ export default defineConfig({
           debounce: 300,
         },
         build: {
-          cmd: ["cargo", "build", "--bin", "xevion", "--quiet"],
+          cmd: ["cargo", "build", "--bin", "xevion-server", "--quiet"],
           verbose: false,
         },
         // Array form (not a string) so tempo execs the binary directly rather
@@ -271,7 +271,7 @@ export default defineConfig({
         // AddrInUse on the still-held port.
         run: {
           cmd: [
-            "./target/debug/xevion",
+            "./target/debug/xevion-server",
             "--listen",
             `localhost:${port}`,
             "--listen",
@@ -362,8 +362,16 @@ export default defineConfig({
         }
 
         if (install) {
-          console.error(ctx.fmt.c.catBlue(`Installing (${profile})...`));
-          const installArgs = ["cargo", "install", "--path", "."];
+          console.error(ctx.fmt.c.catBlue(`Installing xevion CLI (${profile})...`));
+          const installArgs = [
+            "cargo",
+            "install",
+            "--path",
+            ".",
+            "--bin",
+            "xevion",
+            "--force",
+          ];
           if (debug) installArgs.push("--debug");
           ctx.run(installArgs);
         }
@@ -377,7 +385,7 @@ export default defineConfig({
             "-c",
             `LOG_JSON=true UPSTREAM_URL=/tmp/xevion-api.sock bunx concurrently --raw --prefix none ` +
               `"SOCKET_PATH=/tmp/xevion-bun.sock bun --preload ../console-logger.js --silent --cwd web/build index.js" ` +
-              `"target/${profile}/xevion --listen localhost:${servePort} --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock" ` +
+              `"target/${profile}/xevion-server --listen localhost:${servePort} --listen /tmp/xevion-api.sock --downstream /tmp/xevion-bun.sock" ` +
               `| hl --config .hl.config.toml -P --interrupt-ignore-count=0`,
             "/dev/null",
           ]);
@@ -386,12 +394,49 @@ export default defineConfig({
         return 0;
       },
     },
+    install: {
+      description: "Build the frontend and install the `xevion` CLI to ~/.cargo/bin",
+      flags: {
+        debug: {
+          type: Boolean,
+          alias: "d",
+          description: "Debug build (default: release)",
+        },
+      },
+      run: async (ctx) => {
+        const { debug } = ctx.flags;
+        // The binary embeds web/build/* via include_dir!, so the frontend must
+        // exist before cargo compiles the shared lib — even for the CLI.
+        console.error(
+          ctx.fmt.c.catBlue("Building frontend (required for embedded assets)..."),
+        );
+        ctx.run(["bunx", "--bun", "vite", "build"], { cwd: "web" });
+
+        console.error(
+          ctx.fmt.c.catBlue(
+            `Installing xevion CLI (${debug ? "debug" : "release"})...`,
+          ),
+        );
+        const installArgs = [
+          "cargo",
+          "install",
+          "--path",
+          ".",
+          "--bin",
+          "xevion",
+          "--force",
+        ];
+        if (debug) installArgs.push("--debug");
+        ctx.run(installArgs);
+        return 0;
+      },
+    },
     seed: {
       description: "Start DB, run migrations, and seed sample data",
       run: async (ctx) => {
         ctx.run(["tempo", "db"]);
         ctx.run(["sqlx", "migrate", "run"]);
-        ctx.run(["cargo", "run", "--bin", "xevion", "--", "seed"]);
+        ctx.run(["cargo", "run", "--bin", "xevion-server", "--", "seed"]);
         console.error(ctx.fmt.c.catGreen("Database ready with seed data"));
         return 0;
       },

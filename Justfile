@@ -24,6 +24,10 @@ bindings:
 build *flags:
 	tempo run build {{flags}}
 
+# Install the `xevion` CLI to ~/.cargo/bin (builds frontend for embedded assets)
+install *flags:
+	tempo run install {{flags}}
+
 # Start dev servers with pretty log formatting
 dev:
 	script -q -c "tempo dev | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null

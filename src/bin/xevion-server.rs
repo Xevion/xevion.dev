@@ -1,35 +1,41 @@
-use clap::Parser;
+//! `xevion-server` — the web server (reverse proxy, API, asset serving) plus the
+//! local database `seed` command. The remote content-management CLI lives in the
+//! `xevion` binary.
+
+use clap::{Parser, Subcommand};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-mod assets;
-mod auth;
-mod cache;
-mod cli;
-mod cli_auth;
-mod config;
-mod db;
-mod encoding;
-mod events;
-mod formatter;
-mod github;
-mod handlers;
-mod health;
-mod http;
-mod icon_cache;
-mod markdown;
-mod media_processing;
-mod middleware;
-mod og;
-mod pm;
-mod proxy;
-mod r2;
-mod routes;
-mod state;
-mod tarpit;
-mod utils;
+use api::config::ListenAddr;
+use api::formatter::{CustomJsonFormatter, CustomPrettyFormatter};
+use api::{cli, db};
 
-use cli::{Cli, Command};
-use formatter::{CustomJsonFormatter, CustomPrettyFormatter};
+/// xevion.dev — personal portfolio web server.
+#[derive(Parser, Debug)]
+#[command(name = "xevion-server")]
+#[command(about = "Personal portfolio web server (reverse proxy, API, SSR proxy)")]
+#[command(version)]
+struct ServerCli {
+    #[command(subcommand)]
+    command: Option<ServerCommand>,
+
+    /// Address(es) to listen on (TCP or Unix socket)
+    #[arg(long, env = "LISTEN_ADDR", value_delimiter = ',')]
+    listen: Vec<ListenAddr>,
+
+    /// Downstream SSR server URL
+    #[arg(long, env = "DOWNSTREAM_URL")]
+    downstream: Option<String>,
+
+    /// Trust X-Request-ID header from specified source
+    #[arg(long, env = "TRUST_REQUEST_ID")]
+    trust_request_id: Option<String>,
+}
+
+#[derive(Subcommand, Debug)]
+enum ServerCommand {
+    /// Seed the database with sample data
+    Seed,
+}
 
 fn init_tracing() {
     let use_json = std::env::var("LOG_JSON").is_ok_and(|v| v == "true" || v == "1");
@@ -77,10 +83,10 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     // Parse args early to allow --help to work without database
-    let args = Cli::parse();
+    let args = ServerCli::parse();
 
     match args.command {
-        Some(Command::Seed) => {
+        Some(ServerCommand::Seed) => {
             // Seed command - connect to database and run seeding
             let database_url =
                 std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in environment");
@@ -100,21 +106,6 @@ async fn main() {
                 std::process::exit(1);
             }
         }
-        Some(Command::Api(api_args)) => {
-            // API client commands - no tracing needed
-            let json = api_args.json;
-            if let Err(e) = cli::api::run(*api_args).await {
-                let code = e.exit_code();
-                if json {
-                    // Machine-readable error on stdout for scripted callers.
-                    println!("{}", e.to_json());
-                } else {
-                    // Rich diagnostic (help line + source chain) on stderr.
-                    eprintln!("{:?}", miette::Report::new(e));
-                }
-                std::process::exit(code);
-            }
-        }
         None => {
             // No subcommand - run the server
             init_tracing();
@@ -126,7 +117,7 @@ async fn main() {
                 .unwrap_or(10237);
 
             let listen = if args.listen.is_empty() {
-                vec![config::ListenAddr::Tcp(std::net::SocketAddr::from((
+                vec![ListenAddr::Tcp(std::net::SocketAddr::from((
                     [127, 0, 0, 1],
                     default_port,
                 )))]

@@ -5,7 +5,7 @@
 //! authenticated admin confirms the code matches, which mints a long-lived CLI
 //! token and pushes it back over the stream. Pending requests live in memory
 //! only — they're short-lived and losing them on restart just means re-running
-//! `xevion api login`.
+//! `xevion login`.
 
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};

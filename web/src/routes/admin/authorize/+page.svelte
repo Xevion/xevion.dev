@@ -118,8 +118,8 @@
       })}
     >
       This authorization request is invalid or has expired. Re-run
-      <code class={css({ color: "admin.text" })}>xevion api login</code> to start
-      a new one.
+      <code class={css({ color: "admin.text" })}>xevion login</code> to start a new
+      one.
     </div>
   {:else if phase === "approved"}
     <div

@@ -288,9 +288,7 @@ fn list_targets(config: &Config, json: bool) -> Result<(), CliError> {
     }
 
     if config.names().next().is_none() {
-        output::info(
-            "No API targets configured. Add one: xevion api targets add <name> --url <url>",
-        );
+        output::info("No API targets configured. Add one: xevion targets add <name> --url <url>");
         return Ok(());
     }
 
@@ -315,7 +313,7 @@ fn list_targets(config: &Config, json: bool) -> Result<(), CliError> {
 }
 
 /// Print the resolved config file path. Human mode prints the bare path to stdout
-/// so it is scriptable (`cd $(xevion api config path | xargs dirname)`).
+/// so it is scriptable (`cd $(xevion config path | xargs dirname)`).
 pub fn config_path(config: &Config, json: bool) {
     if json {
         println!(

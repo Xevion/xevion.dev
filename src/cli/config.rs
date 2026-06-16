@@ -64,7 +64,7 @@ pub enum ConfigError {
     #[snafu(display("API target '{name}' is not authorized"))]
     #[diagnostic(
         code(xevion::cli::config::unauthorized),
-        help("authorize it: xevion api login --api {name}")
+        help("authorize it: xevion login --api {name}")
     )]
     NotAuthenticated { name: String },
 
@@ -199,11 +199,9 @@ impl Config {
     fn no_target_help(&self) -> String {
         match self.names().next() {
             Some(existing) => format!(
-                "select a target with --api <name> (e.g. --api {existing}) or set a default: xevion api targets use {existing}"
+                "select a target with --api <name> (e.g. --api {existing}) or set a default: xevion targets use {existing}"
             ),
-            None => {
-                "authorize a target first: xevion api login --api <name> --url <url>".to_string()
-            }
+            None => "authorize a target first: xevion login --api <name> --url <url>".to_string(),
         }
     }
 
@@ -211,7 +209,7 @@ impl Config {
     fn unknown_target_help(&self) -> String {
         let names: Vec<&str> = self.names().collect();
         if names.is_empty() {
-            "no targets are configured yet: xevion api login --api <name> --url <url>".to_string()
+            "no targets are configured yet: xevion login --api <name> --url <url>".to_string()
         } else {
             format!("configured targets: {}", names.join(", "))
         }

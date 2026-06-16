@@ -69,9 +69,10 @@ COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 COPY --from=frontend /build/build/env.js ./web/build/env.js
 
-# Build with real assets (use sqlx offline mode)
+# Build with real assets (use sqlx offline mode). Only the server binary ships
+# in the image; the `xevion` CLI is a developer tool, not a runtime dependency.
 ENV SQLX_OFFLINE=true
-RUN cargo build --release
+RUN cargo build --release --bin xevion-server
 
 # ========== Stage 6: Runtime ==========
 FROM oven/bun:1-alpine AS runtime
@@ -80,8 +81,8 @@ WORKDIR /app
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata
 
-# Copy Rust binary
-COPY --from=final-builder /build/target/release/xevion ./xevion
+# Copy Rust server binary
+COPY --from=final-builder /build/target/release/xevion-server ./xevion-server
 
 # Copy Bun SSR server and client assets (including fonts for OG images)
 COPY --from=frontend /build/build/server ./web/build/server

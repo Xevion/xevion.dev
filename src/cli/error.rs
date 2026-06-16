@@ -1,6 +1,6 @@
 //! Typed CLI errors with [`miette`] diagnostics.
 //!
-//! Every `xevion api` subcommand returns [`CliError`]. The variants distinguish
+//! Every `xevion` subcommand returns [`CliError`]. The variants distinguish
 //! the failure modes a user actually cares about — couldn't *connect* vs the
 //! request failing, the server's own `{error, code}` body, a bad local file —
 //! so `main` can render an actionable diagnostic (with a `help:` line and source
@@ -31,9 +31,7 @@ pub enum CliError {
     #[snafu(display("could not connect to {url}"))]
     #[diagnostic(
         code(xevion::cli::connect),
-        help(
-            "is the server running and reachable? check the target URL with `xevion api targets`"
-        )
+        help("is the server running and reachable? check the target URL with `xevion targets`")
     )]
     Connect { url: String, source: reqwest::Error },
 
@@ -53,7 +51,7 @@ pub enum CliError {
     #[snafu(display("not authorized for this request"))]
     #[diagnostic(
         code(xevion::cli::unauthorized),
-        help("authorize this target first: xevion api login")
+        help("authorize this target first: xevion login")
     )]
     Unauthorized,
 
@@ -86,7 +84,7 @@ pub enum CliError {
     #[snafu(display("authorization {reason}"))]
     #[diagnostic(
         code(xevion::cli::approval),
-        help("re-run `xevion api login` and approve the request in the browser")
+        help("re-run `xevion login` and approve the request in the browser")
     )]
     Approval { reason: String },
 }

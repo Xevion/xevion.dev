@@ -3,9 +3,19 @@ name = "api"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "api"
+path = "src/lib.rs"
+
+# `xevion` is the content-management API client; `xevion-server` is the web
+# server. Both link the `api` library above (no separate crates).
 [[bin]]
 name = "xevion"
-path = "src/main.rs"
+path = "src/bin/xevion.rs"
+
+[[bin]]
+name = "xevion-server"
+path = "src/bin/xevion-server.rs"
 
 [dependencies]
 argon2 = "0.5"
@@ -94,3 +104,14 @@ items_after_statements = "allow"
 # lint suggests deriving `Eq` even where it cannot compile. Our content blocks
 # derive `PartialEq` for tests but hold opaque JSON `data`.
 derive_partial_eq_without_eq = "allow"
+
+# `src/lib.rs` exists only to share code between the `xevion` and `xevion-server`
+# binaries — it is not a published library, so its "public" surface is an
+# implementation detail. These pedantic public-API-hygiene lints (documenting
+# every Err/panic, #[must_use] on every getter, generic hashers) add pure noise
+# for an internal crate and would otherwise fire on hundreds of items.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+too_long_first_doc_paragraph = "allow"
+implicit_hasher = "allow"

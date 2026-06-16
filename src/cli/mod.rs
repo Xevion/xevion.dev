@@ -12,41 +12,13 @@ pub mod serve;
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config::ListenAddr;
 use crate::db::ProjectStatus;
 
-/// xevion.dev - Personal portfolio server and API client
+/// `xevion` — API client for managing xevion.dev content remotely.
 #[derive(Parser, Debug)]
 #[command(name = "xevion")]
-#[command(about = "Personal portfolio server with API client for content management")]
+#[command(about = "Manage xevion.dev content remotely (projects, tags, settings)")]
 #[command(version)]
-pub struct Cli {
-    #[command(subcommand)]
-    pub command: Option<Command>,
-
-    /// Address(es) to listen on (TCP or Unix socket)
-    #[arg(long, env = "LISTEN_ADDR", value_delimiter = ',')]
-    pub listen: Vec<ListenAddr>,
-
-    /// Downstream SSR server URL
-    #[arg(long, env = "DOWNSTREAM_URL")]
-    pub downstream: Option<String>,
-
-    /// Trust X-Request-ID header from specified source
-    #[arg(long, env = "TRUST_REQUEST_ID")]
-    pub trust_request_id: Option<String>,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Command {
-    /// Seed the database with sample data
-    Seed,
-
-    /// API client for managing content remotely
-    Api(Box<ApiArgs>),
-}
-
-#[derive(Parser, Debug)]
 pub struct ApiArgs {
     /// Named API target from the config (defaults to the config's `default`)
     #[arg(long, env = "XEVION_API", global = true)]
