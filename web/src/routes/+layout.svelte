@@ -38,8 +38,13 @@
 
   let { children, data } = $props();
 
-  // Randomly choose background component on mount (stable, doesn't change after initial load)
-  let backgroundComponent = $state<"clouds" | "dots" | null>(null);
+  // Background is chosen server-side (see +layout.server.ts) and arrives in the
+  // SSR payload, so it's present on the first paint. Captured once, on purpose:
+  // it stays fixed even as `data` changes across navigations.
+  // svelte-ignore state_referenced_locally
+  let backgroundComponent = $state<"clouds" | "dots" | null>(
+    data?.background ?? null,
+  );
 
   const defaultMetadata = {
     title: "Xevion.dev",
@@ -97,18 +102,6 @@
   });
 
   onMount(() => {
-    // Detect if this is a page reload (F5 or CTRL+F5) vs initial load or SPA navigation
-    const navigation = performance.getEntriesByType(
-      "navigation",
-    )[0] as PerformanceNavigationTiming;
-    const isReload = navigation?.type === "reload";
-
-    // Randomize on reload OR if not yet set (initial load)
-    // SPA navigation doesn't trigger onMount, so background stays stable
-    if (isReload || backgroundComponent === null) {
-      backgroundComponent = Math.random() < 0.5 ? "clouds" : "dots";
-    }
-
     // Initialize theme store
     themeStore.init();
 

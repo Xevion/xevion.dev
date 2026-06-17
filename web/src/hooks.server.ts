@@ -5,7 +5,6 @@ import { initLogger } from "$lib/logger";
 import { requestContext } from "$lib/server/context";
 import { preCacheCollections } from "$lib/server/icons";
 import { getLogger } from "@logtape/logtape";
-import { minify } from "html-minifier-terser";
 import { PostHog } from "posthog-node";
 
 await initLogger();
@@ -41,32 +40,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     return new Response(undefined, { status: 404 });
   }
 
-  return requestContext.run({ requestId: requestId ?? undefined }, async () => {
-    const response = await resolve(event, {
-      transformPageChunk: !dev
-        ? ({ html }) =>
-            minify(html, {
-              collapseBooleanAttributes: true,
-              collapseWhitespace: true,
-              conservativeCollapse: true,
-              decodeEntities: true,
-              html5: true,
-              ignoreCustomComments: [/^\[/],
-              minifyCSS: true,
-              minifyJS: true,
-              removeAttributeQuotes: true,
-              removeComments: true,
-              removeOptionalTags: false,
-              removeRedundantAttributes: true,
-              removeScriptTypeAttributes: true,
-              removeStyleLinkTypeAttributes: true,
-              sortAttributes: true,
-              sortClassName: true,
-            })
-        : undefined,
-    });
-
-    return response;
+  return requestContext.run({ requestId: requestId ?? undefined }, () => {
+    return resolve(event);
   });
 };
 

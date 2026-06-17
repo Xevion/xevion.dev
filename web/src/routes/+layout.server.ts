@@ -33,6 +33,9 @@ export const load: LayoutServerLoad = async ({ url, fetch }) => {
     // Seeded once per request and serialized into the payload, so relative-time
     // rendering (timeAgo) is identical across SSR and client hydration.
     now: Date.now(),
+    // Chosen server-side so the background is in the SSR payload and present on
+    // the first paint.
+    background: (Math.random() < 0.5 ? "clouds" : "dots") as "clouds" | "dots",
     metadata: {
       title: settings.identity.siteTitle,
       description: settings.identity.bio.split("\n")[0],
