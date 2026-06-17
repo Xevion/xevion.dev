@@ -44,6 +44,10 @@ RUN bun install --frozen-lockfile
 # Build frontend with environment variables
 COPY web/ ./
 ARG VITE_OG_R2_BASE_URL
+# Public origin baked into prerendered pages (error pages, /pgp) for og:url +
+# canonical, since the runtime X-Forwarded-Host fix can't reach static HTML.
+# Defaults to https://xevion.dev in code when unset.
+ARG VITE_SITE_ORIGIN
 RUN bunx svelte-kit sync && bunx panda codegen && bun run build
 
 # Pre-compress static assets (gzip, brotli, zstd)

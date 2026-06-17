@@ -83,11 +83,6 @@
   });
 </script>
 
-<svelte:head>
-  <title>{project.name} | Xevion</title>
-  <meta name="description" content={project.shortDescription} />
-</svelte:head>
-
 <main
   class={cx(
     "page-main",

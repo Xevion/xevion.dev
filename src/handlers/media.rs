@@ -119,7 +119,7 @@ pub async fn upload_media_handler(
         };
 
         let video_key = format!("{r2_base_path}/original.{original_ext}");
-        r2.put_object(&video_key, data.clone(), &content_type)
+        r2.put_object(&video_key, data.clone(), &content_type, None)
             .await
             .map_err(|e| AppError::Internal(format!("Failed to upload video to storage: {e}")))?;
 
@@ -195,6 +195,7 @@ async fn upload_image_variants(
         &format!("{base_path}/thumb.webp"),
         processed.thumb.data.clone(),
         "image/webp",
+        None,
     )
     .await?;
 
@@ -202,6 +203,7 @@ async fn upload_image_variants(
         &format!("{base_path}/medium.webp"),
         processed.medium.data.clone(),
         "image/webp",
+        None,
     )
     .await?;
 
@@ -209,6 +211,7 @@ async fn upload_image_variants(
         &format!("{base_path}/full.webp"),
         processed.full.data.clone(),
         "image/webp",
+        None,
     )
     .await?;
 
@@ -224,6 +227,7 @@ async fn upload_image_variants(
         &format!("{base_path}/original.{original_ext}"),
         processed.original.data.clone(),
         &processed.original.mime,
+        None,
     )
     .await?;
 

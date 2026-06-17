@@ -4,8 +4,9 @@ import { error } from "@sveltejs/kit";
 import type { ApiProjectDetail } from "$lib/bindings";
 import type { JSONContent } from "@tiptap/core";
 import { renderDetailContent } from "$lib/tiptap/render.server";
+import { getOGImageUrl } from "$lib/og-types";
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, url }) => {
   const result = await apiFetch<ApiProjectDetail>(
     `/api/projects/${params.slug}`,
     { fetch },
@@ -28,5 +29,23 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
   // know how many preceded it, so count the h2s the renderer collected.
   const sectionCount = toc.filter((item) => item.level === 2).length;
 
-  return { project, html, toc, sectionCount };
+  // Cache-bust the per-project OG card on every edit: the R2 object is overwritten
+  // in place at og/project/{id}.png, so the URL must change for caches to refetch.
+  const version = Date.parse(project.updatedAt);
+
+  return {
+    project,
+    html,
+    toc,
+    sectionCount,
+    metadata: {
+      title: `${project.name} | Xevion`,
+      description: project.shortDescription,
+      ogImage: getOGImageUrl(
+        { type: "project", id: project.id },
+        Number.isNaN(version) ? undefined : version,
+      ),
+      url: `${url.origin}${url.pathname}`,
+    },
+  };
 };

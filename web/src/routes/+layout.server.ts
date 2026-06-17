@@ -16,6 +16,14 @@ const DEFAULT_SETTINGS: ApiSiteSettings = {
   socialLinks: [],
 };
 
+// Prerendered pages (error pages, /pgp) are rendered at build time, where
+// SvelteKit's synthetic `http://sveltekit-prerender` origin would otherwise be
+// frozen into absolute URLs (og:url, canonical). Substitute the real public
+// origin so those static pages carry correct links. SSR pages keep the request
+// origin, which the Rust proxy rewrites to the public host via X-Forwarded-Host
+// (see XEV-986) — the header fix cannot reach already-prerendered HTML.
+const SITE_ORIGIN = import.meta.env.VITE_SITE_ORIGIN ?? "https://xevion.dev";
+
 export const load: LayoutServerLoad = async ({ url, fetch }) => {
   let settings: ApiSiteSettings;
 
@@ -27,6 +35,8 @@ export const load: LayoutServerLoad = async ({ url, fetch }) => {
     const result = await apiFetch<ApiSiteSettings>("/api/settings", { fetch });
     settings = result.unwrapOr(DEFAULT_SETTINGS);
   }
+
+  const origin = building ? SITE_ORIGIN : url.origin;
 
   return {
     settings,
@@ -40,7 +50,9 @@ export const load: LayoutServerLoad = async ({ url, fetch }) => {
       title: settings.identity.siteTitle,
       description: settings.identity.bio.split("\n")[0],
       ogImage: getOGImageUrl({ type: "index" }),
-      url: url.toString(),
+      // Query-less canonical: filtered views (e.g. `?tag=`) consolidate to the
+      // bare path rather than splitting crawl/share signals.
+      url: `${origin}${url.pathname}`,
     },
   };
 };

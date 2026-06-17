@@ -54,7 +54,12 @@
     url: "https://xevion.dev",
   };
 
-  const metadata = $derived(data?.metadata ?? defaultMetadata);
+  // Read from $page.data, not the layout's own `data`, so a page that returns its
+  // own `metadata` (e.g. project pages) overrides the generic site card. Pages
+  // that don't inherit the layout's metadata via SvelteKit's data merge.
+  const metadata = $derived(
+    $page.data?.metadata ?? data?.metadata ?? defaultMetadata,
+  );
 
   // Check if current route is admin (admin has its own layout/background)
   const isAdminRoute = $derived($page.url.pathname.startsWith("/admin"));
@@ -134,6 +139,7 @@
   <!-- Primary Meta Tags -->
   <title>{metadata.title}</title>
   <meta name="description" content={metadata.description} />
+  <link rel="canonical" href={metadata.url} />
 
   <!-- Open Graph Meta Tags -->
   <meta property="og:type" content="website" />

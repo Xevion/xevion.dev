@@ -55,10 +55,13 @@ impl R2Client {
         key: &str,
         body: Vec<u8>,
         content_type: &str,
+        cache_control: Option<&str>,
     ) -> Result<(), String> {
-        self.op
-            .write_with(key, body)
-            .content_type(content_type)
+        let mut write = self.op.write_with(key, body).content_type(content_type);
+        if let Some(cache_control) = cache_control {
+            write = write.cache_control(cache_control);
+        }
+        write
             .await
             .map_err(|e| format!("Failed to put object to R2: {e}"))?;
 

@@ -200,6 +200,7 @@ pub async fn create_project_handler(
     }
 
     state.isr_cache.invalidate("/").await;
+    crate::og::spawn_project_og(state.clone(), project.id);
 
     Ok((
         StatusCode::CREATED,
@@ -358,6 +359,7 @@ pub async fn update_project_handler(
             .invalidate(&format!("/projects/{}", existing_project.slug))
             .await;
     }
+    crate::og::spawn_project_og(state.clone(), project.id);
 
     Ok(Json(project.to_api_admin_project(tags, media)?))
 }
@@ -397,6 +399,7 @@ pub async fn delete_project_handler(
         .isr_cache
         .invalidate(&format!("/projects/{}", project.slug))
         .await;
+    crate::og::spawn_delete_project_og(project.id);
 
     Ok(Json(project.to_api_admin_project(tags, media)?))
 }
