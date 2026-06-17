@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use crate::cli::ProjectContentCommand;
 use crate::cli::client::{ApiClient, check_response, json as decode_json};
 use crate::cli::error::CliError;
@@ -6,6 +8,33 @@ use crate::markdown;
 use crate::pm::{Anchor, Doc, DocOp, Locator, Node};
 
 type CliResult = Result<(), CliError>;
+
+/// Read the whole of stdin as a UTF-8 string. The `-` sentinel on every
+/// authoring input routes here so a document can be *piped* in
+/// (`… | xevion projects content set slug --file -`) instead of being crammed
+/// into a shell-quoted argument or staged in a temp file — sidestepping the
+/// quoting traps (apostrophes ending single-quoted args, `$`/`` ` ``/`\`/`!`
+/// in double-quoted args) and fish's lack of heredocs.
+fn read_stdin() -> Result<String, CliError> {
+    let mut buf = String::new();
+    std::io::stdin()
+        .read_to_string(&mut buf)
+        .map_err(|source| CliError::Io {
+            path: "<stdin>".into(),
+            source,
+        })?;
+    Ok(buf)
+}
+
+/// Resolve an inline-content flag (`--md`/`--node`): the literal `-` means
+/// "read the content from stdin", anything else is used verbatim.
+fn or_stdin(value: String) -> Result<String, CliError> {
+    if value == "-" {
+        read_stdin()
+    } else {
+        Ok(value)
+    }
+}
 
 /// Run a `projects content` subcommand.
 pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) -> CliResult {
@@ -73,9 +102,10 @@ pub async fn run(client: ApiClient, command: ProjectContentCommand, json: bool) 
 fn body_blocks(md: Option<String>, node: Option<String>) -> Result<Vec<Node>, CliError> {
     match (md, node) {
         (Some(md), _) => {
+            let md = or_stdin(md)?;
             markdown::to_blocks(&md).map_err(|e| CliError::invalid(format!("--md: {e}")))
         }
-        (None, Some(node)) => Ok(vec![parse_node(&node)?]),
+        (None, Some(node)) => Ok(vec![parse_node(&or_stdin(node)?)?]),
         (None, None) => unreachable!("clap requires one of --md or --node"),
     }
 }
@@ -180,12 +210,20 @@ async fn set(
     json: bool,
     quiet: bool,
 ) -> CliResult {
-    let raw = std::fs::read_to_string(file).map_err(|source| CliError::Io {
-        path: file.into(),
-        source,
-    })?;
+    let raw = if file == "-" {
+        read_stdin()?
+    } else {
+        std::fs::read_to_string(file).map_err(|source| CliError::Io {
+            path: file.into(),
+            source,
+        })?
+    };
     let value: serde_json::Value = serde_json::from_str(&raw).map_err(|source| CliError::Json {
-        path: file.to_string(),
+        path: if file == "-" {
+            "<stdin>".into()
+        } else {
+            file.to_string()
+        },
         source,
     })?;
     let response = client

@@ -340,10 +340,10 @@ pub enum ProjectContentCommand {
         /// Position: start | end | before:<loc> | after:<loc> | prepend:<loc> | append:<loc>
         #[arg(long, default_value = "end")]
         at: String,
-        /// Block(s) as Markdown, e.g. '## Heading' or '- a bullet'
+        /// Block(s) as Markdown, e.g. '## Heading' or '- a bullet'; '-' reads stdin
         #[arg(long, conflicts_with = "node", allow_hyphen_values = true)]
         md: Option<String>,
-        /// Raw ProseMirror node JSON (escape hatch), e.g. '{"type":"paragraph",...}'
+        /// Raw ProseMirror node JSON (escape hatch); '-' reads stdin (pipe to dodge quoting)
         #[arg(long, required_unless_present = "md")]
         node: Option<String>,
         /// Print only the confirmation line, not the re-rendered document
@@ -358,10 +358,10 @@ pub enum ProjectContentCommand {
         reference: String,
         /// Block locator: a path like .3 or .3.0, or a block id
         locator: String,
-        /// Replacement as Markdown; multiple blocks replace the target then follow it
+        /// Replacement as Markdown; multiple blocks replace the target then follow it; '-' reads stdin
         #[arg(long, conflicts_with = "node", allow_hyphen_values = true)]
         md: Option<String>,
-        /// Raw ProseMirror node JSON (escape hatch), keeps the target's position and id
+        /// Raw ProseMirror node JSON (escape hatch), keeps the target's id; '-' reads stdin
         #[arg(long, required_unless_present = "md")]
         node: Option<String>,
         /// Print only the confirmation line, not the re-rendered document
@@ -396,12 +396,12 @@ pub enum ProjectContentCommand {
         quiet: bool,
     },
 
-    /// Replace the entire document from a JSON file
+    /// Replace the entire document from a JSON file (or stdin)
     Set {
         /// Project slug or UUID
         #[arg(name = "ref")]
         reference: String,
-        /// Path to a file holding the full ProseMirror document as JSON
+        /// Path to a JSON file holding the full ProseMirror document; '-' reads stdin
         #[arg(long)]
         file: String,
         /// Print only the confirmation line, not the re-rendered document
