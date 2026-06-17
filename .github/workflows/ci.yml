@@ -81,6 +81,11 @@ jobs:
       - name: Build
         working-directory: web
         run: bunx --bun vite build
+      # `vite build` is Rollup-only; this exercises dev-mode dep pre-bundling,
+      # which is where a plugin/Vite peer mismatch actually breaks.
+      - name: Verify dev dependency optimization
+        working-directory: web
+        run: bunx --bun vite optimize --force
 
   rust-tests:
     name: Rust Tests

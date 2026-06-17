@@ -15,6 +15,13 @@
       "groupName": "frontend dependencies"
     },
     {
+      "description": "Update the peer-coupled SvelteKit/Vite toolchain together, including majors.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["vite", "svelte", "@sveltejs/**"],
+      "groupName": "sveltekit/vite toolchain",
+      "separateMajorMinor": false
+    },
+    {
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "github actions",
