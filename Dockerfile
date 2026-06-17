@@ -101,9 +101,13 @@ COPY web/entrypoint.ts ./web/
 # Environment configuration
 # RUST_LOG - optional, overrides LOG_LEVEL with full tracing filter syntax
 # LOG_JSON - defaults to true in Docker, false outside
+# PUBLIC_HOSTS - allowlist for per-domain origin/ISR keying; override to add
+#   hosts (e.g. "xevion.dev,walters.to"). Without it the proxy runs permissive
+#   (HTTP origins), which would emit http:// og:url in production.
 ENV PORT=8080 \
     LOG_LEVEL=info \
     LOG_JSON=true \
+    PUBLIC_HOSTS=xevion.dev \
     TZ=Etc/UTC
 
 EXPOSE 8080

@@ -42,6 +42,10 @@ const bunProc = spawn({
     SOCKET_PATH: BUN_SOCKET,
     LOG_JSON,
     UPSTREAM_URL: API_SOCKET,
+    // Derive event.url (and thus og:url / canonical) from the origin the Rust
+    // proxy validated and forwarded, instead of the internal unix-socket host.
+    HOST_HEADER: "x-forwarded-host",
+    PROTOCOL_HEADER: "x-forwarded-proto",
   },
   stdout: "inherit",
   stderr: "inherit",

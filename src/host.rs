@@ -79,6 +79,13 @@ impl HostConfig {
         &self.canonical
     }
 
+    /// The public URL scheme. Allowlisted hosts are always served over HTTPS
+    /// (TLS terminates at the edge); permissive dev mode stays on HTTP so
+    /// `localhost` origins resolve to `http://localhost:<port>`.
+    pub const fn scheme(&self) -> &'static str {
+        if self.permissive { "http" } else { "https" }
+    }
+
     /// Resolve the trusted public host for a request from its headers.
     ///
     /// Prefers `X-Forwarded-Host` (set by the proxy), falling back to `Host`.
@@ -199,5 +206,14 @@ mod tests {
     fn permissive_mode_without_host_uses_canonical() {
         let config = HostConfig::new(&[], "localhost");
         assert_eq!(config.resolve(&HeaderMap::new()), "localhost");
+    }
+
+    #[test]
+    fn scheme_is_https_when_allowlisted_and_http_in_permissive_mode() {
+        assert_eq!(
+            HostConfig::new(&["xevion.dev"], "xevion.dev").scheme(),
+            "https"
+        );
+        assert_eq!(HostConfig::new(&[], "localhost").scheme(), "http");
     }
 }

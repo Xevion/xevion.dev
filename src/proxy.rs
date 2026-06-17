@@ -108,11 +108,17 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
     let mut forward_headers = HeaderMap::new();
     let mut is_authenticated = false;
 
-    // Forward the validated public host so Bun can render a per-domain origin.
-    // forward_headers is built fresh, so any client-supplied value is dropped.
+    // Forward the validated public host + scheme so Bun (via its adapter's
+    // HOST_HEADER/PROTOCOL_HEADER) can rebuild event.url with a per-domain
+    // origin. forward_headers is built fresh, so any client-supplied value is
+    // dropped.
     if let Ok(host_value) = axum::http::HeaderValue::from_str(&host) {
         forward_headers.insert("x-forwarded-host", host_value);
     }
+    forward_headers.insert(
+        "x-forwarded-proto",
+        HeaderValue::from_static(state.host_config.scheme()),
+    );
 
     // Forward request ID to Bun (set by RequestIdLayer)
     if let Some(request_id) = req.extensions().get::<crate::middleware::RequestId>()
@@ -278,6 +284,10 @@ async fn refresh_cache_entry(state: Arc<AppState>, host: String, path_with_query
     if let Ok(host_value) = HeaderValue::from_str(&host) {
         forward_headers.insert("x-forwarded-host", host_value);
     }
+    forward_headers.insert(
+        "x-forwarded-proto",
+        HeaderValue::from_static(state.host_config.scheme()),
+    );
 
     let cache_key = cache::cache_key_for_target(&host, &path_with_query);
 
