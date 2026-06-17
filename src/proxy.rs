@@ -96,11 +96,23 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
         return response;
     }
 
-    let path_with_query = cache::cache_key(path, query);
+    let path_with_query = cache::request_target(path, query);
+
+    // Resolve the trusted public host (allowlist-gated) and key the cache by it,
+    // so each public domain gets its own SSR variant instead of sharing the
+    // first-rendered origin.
+    let host = state.host_config.resolve(&request_headers);
+    let cache_key = cache::cache_key_for_target(&host, &path_with_query);
 
     // Build trusted headers to forward to downstream
     let mut forward_headers = HeaderMap::new();
     let mut is_authenticated = false;
+
+    // Forward the validated public host so Bun can render a per-domain origin.
+    // forward_headers is built fresh, so any client-supplied value is dropped.
+    if let Ok(host_value) = axum::http::HeaderValue::from_str(&host) {
+        forward_headers.insert("x-forwarded-host", host_value);
+    }
 
     // Forward request ID to Bun (set by RequestIdLayer)
     if let Some(request_id) = req.extensions().get::<crate::middleware::RequestId>()
@@ -138,7 +150,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
 
     let use_cache = !is_authenticated && cache::is_cacheable_path(path);
 
-    if use_cache && let Some(cached) = state.isr_cache.get(&path_with_query).await {
+    if use_cache && let Some(cached) = state.isr_cache.get(&cache_key).await {
         let fresh_duration = state.isr_cache.config.fresh_duration;
         let stale_duration = state.isr_cache.config.stale_duration;
 
@@ -153,11 +165,12 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
             tracing::debug!(cache = "stale", age_ms, "ISR cache hit (stale, refreshing)");
 
             // Spawn background refresh if not already refreshing
-            if state.isr_cache.start_refresh(&path_with_query) {
+            if state.isr_cache.start_refresh(&cache_key) {
                 let state_clone = state.clone();
+                let host_clone = host.clone();
                 let path_clone = path_with_query.clone();
                 tokio::spawn(async move {
-                    refresh_cache_entry(state_clone, path_clone).await;
+                    refresh_cache_entry(state_clone, host_clone, path_clone).await;
                 });
             }
 
@@ -178,7 +191,7 @@ pub async fn isr_handler(State(state): State<Arc<AppState>>, req: Request) -> Re
                 let cached_response = CachedResponse::new(status, headers.clone(), body.clone());
                 state
                     .isr_cache
-                    .insert(path_with_query.clone(), cached_response)
+                    .insert(cache_key.clone(), cached_response)
                     .await;
                 tracing::debug!(
                     cache = "miss",
@@ -255,11 +268,20 @@ fn serve_cached_response(
     }
 }
 
-/// Background task to refresh a stale cache entry
-async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
-    let forward_headers = HeaderMap::new();
+/// Background task to refresh a stale cache entry.
+///
+/// The validated `host` must be carried through so the re-render produces the
+/// same per-domain origin; rendering with an empty header set would poison the
+/// cached origin on every stale refresh.
+async fn refresh_cache_entry(state: Arc<AppState>, host: String, path_with_query: String) {
+    let mut forward_headers = HeaderMap::new();
+    if let Ok(host_value) = HeaderValue::from_str(&host) {
+        forward_headers.insert("x-forwarded-host", host_value);
+    }
 
-    match proxy_to_bun(&cache_key, state.clone(), forward_headers).await {
+    let cache_key = cache::cache_key_for_target(&host, &path_with_query);
+
+    match proxy_to_bun(&path_with_query, state.clone(), forward_headers).await {
         Ok((status, headers, body)) => {
             if status.is_success() {
                 let cached_response = CachedResponse::new(status, headers, body);
@@ -267,10 +289,11 @@ async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
                     .isr_cache
                     .insert(cache_key.clone(), cached_response)
                     .await;
-                tracing::debug!(path = %cache_key, "Cache entry refreshed");
+                tracing::debug!(host = %host, path = %path_with_query, "Cache entry refreshed");
             } else {
                 tracing::warn!(
-                    path = %cache_key,
+                    host = %host,
+                    path = %path_with_query,
                     status = status.as_u16(),
                     "Background refresh returned non-success status, keeping stale entry"
                 );
@@ -278,7 +301,8 @@ async fn refresh_cache_entry(state: Arc<AppState>, cache_key: String) {
         }
         Err(err) => {
             tracing::warn!(
-                path = %cache_key,
+                host = %host,
+                path = %path_with_query,
                 error = %err,
                 "Background refresh failed, keeping stale entry"
             );

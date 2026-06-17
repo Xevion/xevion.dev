@@ -139,6 +139,13 @@ pub async fn run(
         "ISR cache initialized"
     );
 
+    // Resolve the public-host allowlist used for per-domain ISR caching/origin
+    let host_config = crate::host::HostConfig::from_env();
+    tracing::info!(
+        canonical = %host_config.canonical(),
+        "Public host config initialized"
+    );
+
     // Initialize icon cache
     let icon_cache = Arc::new(IconCache::new());
     tracing::debug!("Icon cache initialized");
@@ -160,6 +167,7 @@ pub async fn run(
         icon_cache,
         event_sender,
         cli_auth: crate::cli_auth::CliAuthRegistry::new(),
+        host_config,
     });
 
     // Regenerate common OGP images on startup

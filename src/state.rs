@@ -6,7 +6,8 @@ use std::sync::Arc;
 #[cfg(feature = "server")]
 use crate::{
     auth::SessionManager, cache::IsrCache, cli_auth::CliAuthRegistry, events::EventSender,
-    health::HealthChecker, http::HttpClient, icon_cache::IconCache, tarpit::TarpitState,
+    health::HealthChecker, host::HostConfig, http::HttpClient, icon_cache::IconCache,
+    tarpit::TarpitState,
 };
 
 /// Application state shared across all handlers
@@ -22,6 +23,8 @@ pub struct AppState {
     pub icon_cache: Arc<IconCache>,
     pub event_sender: EventSender,
     pub cli_auth: CliAuthRegistry,
+    /// Allowlist-gated public-host resolver for per-domain SSR output.
+    pub host_config: HostConfig,
 }
 
 /// Errors that can occur during proxying to Bun

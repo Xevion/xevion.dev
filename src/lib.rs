@@ -38,6 +38,8 @@ pub mod github;
 #[cfg(feature = "server")]
 pub mod health;
 #[cfg(feature = "server")]
+pub mod host;
+#[cfg(feature = "server")]
 pub mod http;
 #[cfg(feature = "server")]
 pub mod icon_cache;

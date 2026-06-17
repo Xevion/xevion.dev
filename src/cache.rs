@@ -204,10 +204,23 @@ impl IsrCache {
         self.refreshing.remove(path);
     }
 
-    /// Invalidate a single cached path
+    /// Invalidate a cached request target across every public host.
+    ///
+    /// Keys are `{host}{path}[?query]` (see [`cache_key`]); the host never
+    /// contains `/`, so the first `/` begins the request target. Callers pass a
+    /// bare target (e.g. `/` or `/projects/foo`), and every host's variant of
+    /// that exact target is dropped.
     pub async fn invalidate(&self, path: &str) {
-        self.cache.invalidate(path).await;
-        tracing::debug!(path = %path, "Cache entry invalidated");
+        let mut invalidated = 0u32;
+        for (key, _) in &self.cache {
+            if let Some(idx) = key.find('/')
+                && &key[idx..] == path
+            {
+                self.cache.invalidate(key.as_str()).await;
+                invalidated += 1;
+            }
+        }
+        tracing::debug!(path = %path, invalidated, "Cache entries invalidated");
     }
 }
 
@@ -220,12 +233,27 @@ pub fn is_cacheable_path(path: &str) -> bool {
         && !path.starts_with("/.")
 }
 
-/// Normalize a path into a cache key (includes query string).
-pub fn cache_key(path: &str, query: Option<&str>) -> String {
+/// Build the downstream request target (path + query) sent to Bun.
+pub fn request_target(path: &str, query: Option<&str>) -> String {
     match query {
         Some(q) if !q.is_empty() => format!("{path}?{q}"),
         _ => path.to_string(),
     }
+}
+
+/// Build the ISR cache key for a validated public host and request target.
+///
+/// The key is `{host}{target}` — since a hostname never contains `/` and a
+/// request target always starts with `/`, the first `/` unambiguously separates
+/// the two. Keying by host gives each public domain its own cached SSR variant;
+/// the host allowlist (see [`crate::host`]) keeps the cardinality finite.
+pub fn cache_key(host: &str, path: &str, query: Option<&str>) -> String {
+    cache_key_for_target(host, &request_target(path, query))
+}
+
+/// Build the ISR cache key from an already-computed request target.
+pub fn cache_key_for_target(host: &str, target: &str) -> String {
+    format!("{host}{target}")
 }
 
 #[cfg(test)]
@@ -248,12 +276,70 @@ mod tests {
     }
 
     #[test]
+    fn test_request_target() {
+        assert_eq!(request_target("/", None), "/");
+        assert_eq!(request_target("/", Some("")), "/");
+        assert_eq!(request_target("/", Some("tag=rust")), "/?tag=rust");
+        assert_eq!(request_target("/some-page", None), "/some-page");
+    }
+
+    #[test]
     fn test_cache_key() {
-        assert_eq!(cache_key("/", None), "/");
-        assert_eq!(cache_key("/", Some("")), "/");
-        assert_eq!(cache_key("/", Some("tag=rust")), "/?tag=rust");
-        assert_eq!(cache_key("/", Some("utm_source=x")), "/?utm_source=x");
-        assert_eq!(cache_key("/some-page", None), "/some-page");
+        assert_eq!(cache_key("xevion.dev", "/", None), "xevion.dev/");
+        assert_eq!(cache_key("xevion.dev", "/", Some("")), "xevion.dev/");
+        assert_eq!(
+            cache_key("xevion.dev", "/", Some("tag=rust")),
+            "xevion.dev/?tag=rust"
+        );
+        assert_eq!(
+            cache_key("walters.to", "/some-page", None),
+            "walters.to/some-page"
+        );
+        // Same target under different hosts yields distinct keys.
+        assert_ne!(
+            cache_key("xevion.dev", "/", None),
+            cache_key("walters.to", "/", None)
+        );
+    }
+
+    #[tokio::test]
+    async fn invalidate_clears_target_across_hosts() {
+        let cache = IsrCache::new(IsrCacheConfig::default());
+        let body = axum::body::Bytes::from_static(b"x");
+        let resp = || CachedResponse::new(StatusCode::OK, HeaderMap::new(), body.clone());
+
+        cache
+            .insert(cache_key("xevion.dev", "/", None), resp())
+            .await;
+        cache
+            .insert(cache_key("walters.to", "/", None), resp())
+            .await;
+        cache
+            .insert(cache_key("xevion.dev", "/projects/foo", None), resp())
+            .await;
+
+        cache.invalidate("/").await;
+
+        // Both hosts' homepage variants are gone.
+        assert!(
+            cache
+                .get(&cache_key("xevion.dev", "/", None))
+                .await
+                .is_none()
+        );
+        assert!(
+            cache
+                .get(&cache_key("walters.to", "/", None))
+                .await
+                .is_none()
+        );
+        // A different target is untouched.
+        assert!(
+            cache
+                .get(&cache_key("xevion.dev", "/projects/foo", None))
+                .await
+                .is_some()
+        );
     }
 
     #[tokio::test]
