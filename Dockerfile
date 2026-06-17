@@ -1,11 +1,21 @@
-# ========== Stage 1: Cargo Chef Base ==========
+# syntax=docker/dockerfile:1.7
+
+# Railway's Dockerfile builder persists BuildKit cache mounts only when the mount
+# id is prefixed with `s/<service-id>-`, and it validates that prefix by static
+# parse BEFORE build args expand — so the service id must be a literal here, not
+# `${RAILWAY_SERVICE_ID}` (the variable form is rejected as "missing the cacheKey
+# prefix"; it only "works" in Railpack/local builds that skip this validation).
+# This is the `server` service id; it's stable for the service's life.
+# https://docs.railway.com/builds/dockerfiles#cache-mounts
+
+# Stage 1: cargo-chef base
 FROM rust:1.95-alpine AS chef
 WORKDIR /build
 
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static && \
     cargo install cargo-chef --locked
 
-# ========== Stage 2: Recipe Planner ==========
+# Stage 2: recipe planner
 FROM chef AS planner
 
 COPY Cargo.toml Cargo.lock ./
@@ -13,24 +23,7 @@ COPY src/ ./src/
 
 RUN cargo chef prepare --recipe-path recipe.json
 
-# ========== Stage 3: Rust Builder ==========
-FROM chef AS builder
-
-# Cook dependencies (cached until Cargo.toml/Cargo.lock change)
-COPY --from=planner /build/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
-# Copy source and build
-COPY Cargo.toml Cargo.lock ./
-COPY src/ ./src/
-
-# Create placeholder for embedded assets (will be replaced in final build)
-RUN mkdir -p web/build/client && \
-    echo "placeholder" > web/build/client/.gitkeep
-
-RUN cargo build --release
-
-# ========== Stage 4: Frontend Builder ==========
+# Stage 3: frontend builder
 FROM oven/bun:1 AS frontend
 WORKDIR /build
 
@@ -53,12 +46,16 @@ RUN bunx svelte-kit sync && bunx panda codegen && bun run build
 # Pre-compress static assets (gzip, brotli, zstd)
 RUN bun run scripts/compress-assets.ts
 
-# ========== Stage 5: Final Rust Build (with embedded assets) ==========
+# Stage 4: final Rust build (with embedded assets)
 FROM chef AS final-builder
 
-# Cook dependencies (cached from earlier)
+# Cook dependencies into the shared cargo target/registry cache mounts. The mount
+# ids are keyed by service so Railway persists incremental artifacts across builds.
 COPY --from=planner /build/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-target,target=/build/target,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
 
 # Copy source
 COPY Cargo.toml Cargo.lock ./
@@ -73,12 +70,17 @@ COPY --from=frontend /build/build/client ./web/build/client
 COPY --from=frontend /build/build/prerendered ./web/build/prerendered
 COPY --from=frontend /build/build/env.js ./web/build/env.js
 
-# Build with real assets (use sqlx offline mode). Only the server binary ships
-# in the image; the `xevion` CLI is a developer tool, not a runtime dependency.
+# Build with real assets (sqlx offline mode). target/ is a cache mount, so the
+# compiled binary doesn't land in the layer — copy it out to a real path for the
+# runtime stage. Only the server binary ships; the `xevion` CLI is dev-only.
 ENV SQLX_OFFLINE=true
-RUN cargo build --release --bin xevion-server
+RUN --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=s/36ae7bd0-8406-42e9-bb51-ba96d9f7261e-cargo-target,target=/build/target,sharing=locked \
+    cargo build --release --bin xevion-server && \
+    cp target/release/xevion-server /build/xevion-server
 
-# ========== Stage 6: Runtime ==========
+# Stage 5: runtime
 FROM oven/bun:1-alpine AS runtime
 WORKDIR /app
 
@@ -86,7 +88,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 # Copy Rust server binary
-COPY --from=final-builder /build/target/release/xevion-server ./xevion-server
+COPY --from=final-builder /build/xevion-server ./xevion-server
 
 # Copy Bun SSR server and client assets (including fonts for OG images)
 COPY --from=frontend /build/build/server ./web/build/server
