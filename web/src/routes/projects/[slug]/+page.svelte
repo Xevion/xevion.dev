@@ -8,6 +8,7 @@
   import ProjectGallery from "$lib/components/project/ProjectGallery.svelte";
   import ProjectToc from "$lib/components/project/ProjectToc.svelte";
   import ProjectTocOverlay from "$lib/components/project/ProjectTocOverlay.svelte";
+  import { createTocSpy } from "$lib/components/project/toc-spy.svelte";
   import RelatedProjects from "$lib/components/project/RelatedProjects.svelte";
   import Breadcrumb from "$lib/components/project/Breadcrumb.svelte";
   import ProjectDetailHeader from "$lib/components/project/ProjectDetailHeader.svelte";
@@ -25,6 +26,10 @@
   const accentInk = $derived(readableInk(accent));
   // The Gallery §-heading continues the prose section numbering.
   const galleryN = $derived(data.sectionCount + 1);
+
+  // Single scroll-spy drives the active heading for both the desktop rail and
+  // the mobile overlay (see toc-spy.svelte.ts).
+  const tocSpy = createTocSpy(() => data.toc);
 
   // Mark this project as the morph target so back-navigation reverses into its card.
   $effect(() => {
@@ -122,7 +127,7 @@
         <div class={railCol}>
           <ProjectMetaRail {project} onLink={trackLink} />
           {#if data.toc.length > 1}
-            <ProjectToc toc={data.toc} />
+            <ProjectToc toc={data.toc} activeId={tocSpy.activeId} />
           {/if}
         </div>
       </div>
@@ -132,7 +137,7 @@
       {/if}
 
       {#if data.toc.length > 1}
-        <ProjectTocOverlay toc={data.toc} />
+        <ProjectTocOverlay toc={data.toc} activeId={tocSpy.activeId} />
       {/if}
     </div>
   </div>

@@ -2,43 +2,10 @@
   import { css, cx } from "styled-system/css";
   import type { TocItem } from "$lib/tiptap/render.server";
 
-  let { toc }: { toc: TocItem[] } = $props();
-
-  // Active heading drives the scroll-spy highlight.
-  let activeId = $state("");
-
-  // Track which headings sit inside a band near the top of the viewport; the
-  // active one is the topmost of those by document order. When the band is empty
-  // (scrolled between headings), keep the last active rather than clearing.
-  $effect(() => {
-    // Seed with the first heading so the rail isn't blank before the first
-    // observer callback fires.
-    if (!activeId) activeId = toc[0]?.id ?? "";
-    const els = toc
-      .map((item) => document.getElementById(item.id))
-      .filter((el): el is HTMLElement => el !== null);
-    if (els.length === 0) return;
-
-    const order = toc.map((item) => item.id);
-    let visible: string[] = [];
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (!visible.includes(entry.target.id))
-              visible.push(entry.target.id);
-          } else {
-            visible = visible.filter((id) => id !== entry.target.id);
-          }
-        }
-        const top = order.find((id) => visible.includes(id));
-        if (top) activeId = top;
-      },
-      { rootMargin: "-80px 0px -65% 0px", threshold: 0 },
-    );
-    els.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  });
+  // Presentational: the active heading is computed by the page-level scroll-spy
+  // (see toc-spy.svelte.ts) and passed in, so the desktop rail and the mobile
+  // overlay share one source of truth and one scroll listener.
+  let { toc, activeId }: { toc: TocItem[]; activeId: string } = $props();
 
   const link = css({
     display: "block",

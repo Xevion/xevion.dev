@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { css } from "styled-system/css";
+  import { css, cx } from "styled-system/css";
   import IconList from "~icons/lucide/list";
   import type { TocItem } from "$lib/tiptap/render.server";
 
@@ -7,7 +7,8 @@
   // on a native <dialog> (showModal), matching Lightbox — top layer, focus trap,
   // Esc-to-close, and an inert background for free. Desktop uses the sticky
   // in-rail ProjectToc instead, so the trigger is hidden above 760px.
-  let { toc }: { toc: TocItem[] } = $props();
+  // `activeId` comes from the page-level scroll-spy (see toc-spy.svelte.ts).
+  let { toc, activeId }: { toc: TocItem[]; activeId: string } = $props();
 
   let open = $state(false);
   let dialog = $state<HTMLDialogElement | null>(null);
@@ -64,6 +65,10 @@
     cursor: "pointer",
     _hover: { color: "var(--accent)" },
   });
+  const jumpItemActive = css({
+    color: "var(--accent)",
+    fontWeight: "600",
+  });
 </script>
 
 <button
@@ -99,8 +104,9 @@
     {#each toc as item (item.id)}
       <li>
         <button
-          class={jumpItem}
+          class={cx(jumpItem, item.id === activeId && jumpItemActive)}
           style="padding-left: {item.level === 2 ? 0 : 16}px"
+          aria-current={item.id === activeId ? "true" : undefined}
           onclick={() => jump(item.id)}
         >
           {item.text}
