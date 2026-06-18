@@ -26,6 +26,7 @@ pub fn is_static_asset(path: &str) -> bool {
         || path.ends_with(".css")
         || path.ends_with(".js")
         || path.ends_with(".map")
+        || path.ends_with(".webmanifest")
 }
 
 /// Check if a path represents a page route (not an asset)
@@ -130,4 +131,33 @@ pub fn serve_error_page(status: StatusCode) -> Response {
 /// Validate hex color format (6 characters, no hash, no alpha)
 pub fn validate_hex_color(color: &str) -> bool {
     color.len() == 6 && color.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Root-level shipped files served by a dedicated route rather than the
+    /// generic `is_static_asset` embedded-serving path (see `routes.rs`).
+    const ROUTE_SERVED: &[&str] = &["keybase.txt", "publickey.asc"];
+
+    /// Every file shipped at the root of the embedded client bundle must be
+    /// reachable: either `is_static_asset` recognizes its extension (so the proxy
+    /// serves it from `CLIENT_ASSETS`) or a dedicated route serves it.
+    ///
+    /// The expectation is derived from the actually-shipped file set, not from the
+    /// allow-list, so it catches the easy mistake of dropping a file into
+    /// `web/static/` without teaching the gate about its extension — which is
+    /// exactly how `site.webmanifest` 404'd despite being embedded.
+    #[test]
+    fn every_shipped_root_asset_is_reachable() {
+        for file in crate::assets::CLIENT_ASSETS.files() {
+            let name = file.path().to_str().expect("asset path is valid UTF-8");
+            assert!(
+                is_static_asset(&format!("/{name}")) || ROUTE_SERVED.contains(&name),
+                "shipped static asset /{name} is unreachable: add its extension to \
+                 is_static_asset() or a dedicated route in routes.rs",
+            );
+        }
+    }
 }

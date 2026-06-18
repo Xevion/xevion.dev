@@ -20,6 +20,8 @@ pub mod media;
 #[cfg(feature = "server")]
 pub mod projects;
 #[cfg(feature = "server")]
+pub mod seo;
+#[cfg(feature = "server")]
 pub mod sessions;
 #[cfg(feature = "server")]
 pub mod settings;
@@ -44,6 +46,8 @@ pub use icons::*;
 pub use media::*;
 #[cfg(feature = "server")]
 pub use projects::*;
+#[cfg(feature = "server")]
+pub use seo::*;
 #[cfg(feature = "server")]
 pub use sessions::*;
 #[cfg(feature = "server")]

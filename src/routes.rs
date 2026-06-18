@@ -112,6 +112,8 @@ pub fn build_base_router() -> Router<Arc<AppState>> {
             "/_app/{*path}",
             get(assets::serve_embedded_asset).head(assets::serve_embedded_asset),
         )
+        .route("/robots.txt", get(handlers::robots_handler))
+        .route("/sitemap.xml", get(handlers::sitemap_handler))
         .route("/pgp", get(handlers::handle_pgp_route))
         .route("/publickey.asc", get(handlers::serve_pgp_key))
         .route("/pgp.asc", get(handlers::serve_pgp_key))

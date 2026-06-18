@@ -309,6 +309,34 @@ pub async fn get_public_projects(pool: &PgPool) -> Result<Vec<DbProject>, sqlx::
     .await
 }
 
+/// One public project URL for the sitemap: its `slug` and a `lastmod` that is the
+/// more recent of the authored edit (`updated_at`) and the last synced repo
+/// activity (`last_github_activity`). Postgres `GREATEST` ignores NULLs, so the
+/// `lastmod` falls back to `updated_at` for projects that have never synced.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct SitemapEntry {
+    pub slug: String,
+    pub lastmod: OffsetDateTime,
+}
+
+/// Public project entries for the sitemap, mirroring `get_public_projects`'
+/// non-hidden visibility filter.
+pub async fn list_sitemap_entries(pool: &PgPool) -> Result<Vec<SitemapEntry>, sqlx::Error> {
+    query_as!(
+        SitemapEntry,
+        r#"
+        SELECT
+            slug,
+            GREATEST(updated_at, last_github_activity) AS "lastmod!"
+        FROM projects
+        WHERE hidden = false
+        ORDER BY GREATEST(updated_at, last_github_activity) DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn get_public_projects_with_tags(
     pool: &PgPool,
 ) -> Result<Vec<(DbProject, Vec<DbTag>, Vec<DbProjectMedia>)>, sqlx::Error> {

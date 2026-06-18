@@ -10,6 +10,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { telemetry } from "$lib/telemetry";
   import { featuredSlugs } from "$lib/project-display";
+  import { homepageJsonLdScript } from "$lib/structured-data";
   import type { PageData } from "./$types";
   import type { ApiAdminProject } from "$lib/bindings";
   import MaterialSymbolsVpnKey from "~icons/material-symbols/vpn-key";
@@ -19,6 +20,16 @@
   let { data }: { data: PageData } = $props();
   const projects = $derived(data.projects);
   const socialLinks = $derived(data.socialLinks);
+
+  // Site-wide Person + WebSite structured data. Origin comes from the canonical
+  // metadata.url (already corrected for prerender/proxy), not the raw request.
+  const jsonLd = $derived(
+    homepageJsonLdScript(
+      data.settings.identity,
+      data.socialLinks,
+      new URL(data.metadata.url).origin,
+    ),
+  );
 
   const visibleSocialLinks = $derived(
     socialLinks.filter((link) => link.visible),
@@ -122,6 +133,12 @@
 
   const columnClass = css({ maxW: "42rem", w: "full", px: "6" });
 </script>
+
+<svelte:head>
+  <!-- JSON-LD requires raw injection; payload is admin-sourced and <-escaped -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html jsonLd}
+</svelte:head>
 
 <main
   class={cx(
