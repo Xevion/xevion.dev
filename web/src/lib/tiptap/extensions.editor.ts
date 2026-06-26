@@ -8,6 +8,7 @@ import {
   Details,
   Figure,
   Gloss,
+  HighlightableCode,
   Sidenote,
   starterKitOptions,
   uniqueIdOptions,
@@ -28,6 +29,7 @@ const lowlight = createLowlight(common);
 export const editorExtensions: Extensions = [
   StarterKit.configure({ ...starterKitOptions, codeBlock: false }),
   CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+  HighlightableCode,
   UniqueID.configure(uniqueIdOptions),
   Figure,
   Gloss,

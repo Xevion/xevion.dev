@@ -1,13 +1,19 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import type { Readable } from "svelte/store";
-  import { createEditor, Editor, EditorContent } from "svelte-tiptap";
+  import {
+    createEditor,
+    Editor,
+    EditorContent,
+    BubbleMenu,
+  } from "svelte-tiptap";
   import type { JSONContent } from "@tiptap/core";
   import { DragHandle } from "@tiptap/extension-drag-handle";
   import { offset } from "@floating-ui/dom";
   import { editorExtensions } from "$lib/tiptap/extensions.editor";
   import { SlashCommand } from "$lib/tiptap/slash-command.svelte";
   import { codeLanguages } from "$lib/tiptap/languages";
+  import { codeTokens } from "$lib/tiptap/code-tokens";
   import { css, cx } from "styled-system/css";
   import { flex } from "styled-system/patterns";
   import { labelClass, helpTextClass } from "$lib/styles/admin";
@@ -75,22 +81,65 @@
       : "text",
   );
 
+  // Bubble-menu state: which inline mark is under the cursor and its attrs.
+  const linkActive = $derived(editor ? $editor.isActive("link") : false);
+  const codeActive = $derived(editor ? $editor.isActive("code") : false);
+  const currentHref = $derived(
+    editor
+      ? (($editor.getAttributes("link").href as string | undefined) ?? "")
+      : "",
+  );
+  const inlineLang = $derived(
+    editor
+      ? (($editor.getAttributes("code").lang as string | null) ?? "text")
+      : "text",
+  );
+  const inlineToken = $derived(
+    editor
+      ? (($editor.getAttributes("code").token as string | null) ?? "")
+      : "",
+  );
+
   function setCodeLanguage(language: string) {
     $editor.chain().focus().updateAttributes("codeBlock", { language }).run();
   }
 
-  function setLink() {
-    const previous = $editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Link URL", previous ?? "");
-    if (url === null) return;
-    if (url === "") {
-      $editor.chain().focus().extendMarkRange("link").unsetLink().run();
+  // Inline-mark editing (link href, inline-code language/token) lives in the
+  // bubble menu. The toolbar "Link" button only seeds a link the bubble then
+  // edits — replacing the old window.prompt, whose empty-prefill branch deleted
+  // the link on a code+link span (the prompt came back empty there).
+  // Requires the authority slashes (`http://`, not `http:`) so it matches the
+  // server validator (pm.rs `LINK_SCHEMES`) exactly — an editor that accepted
+  // `http:foo` would pass a link the write path then rejects.
+  const LINK_SCHEME = /^(https?:\/\/|mailto:)/i;
+  // Seeded over a fresh selection; the bubble's input completes it. Treated as
+  // empty on commit so an untouched seed removes itself instead of shipping a
+  // dead bare-scheme link.
+  const LINK_SEED = "https://";
+
+  function startLink() {
+    // An active link already shows the bubble (shouldShow), so there's nothing to
+    // seed — the user edits it there.
+    if ($editor.isActive("link")) return;
+    if ($editor.state.selection.empty) {
+      toast.error("Select text to turn into a link");
       return;
     }
-    // Mirror the server sanitizer's allowed schemes. The public page strips a
-    // bad href, but the editor renders authored links live, so reject anything
-    // other than http(s)/mailto here too (no javascript:/data: in the surface).
-    if (!/^(https?:|mailto:)/i.test(url)) {
+    $editor.chain().focus().setLink({ href: LINK_SEED }).run();
+  }
+
+  function applyLink(href: string) {
+    const trimmed = href.trim();
+    // A cleared field or an untouched seed means "no link".
+    if (trimmed === "" || trimmed === LINK_SEED) {
+      removeLink();
+      return;
+    }
+    // Unchanged — skip the transaction so a stray blur doesn't churn undo history.
+    if (trimmed === currentHref) return;
+    // Mirror the server sanitizer's allowed schemes — the editor renders authored
+    // links live, so reject anything but http(s)/mailto here too.
+    if (!LINK_SCHEME.test(trimmed)) {
       toast.error("Links must start with http://, https://, or mailto:");
       return;
     }
@@ -98,7 +147,35 @@
       .chain()
       .focus()
       .extendMarkRange("link")
-      .setLink({ href: url })
+      .setLink({ href: trimmed })
+      .run();
+  }
+
+  function removeLink() {
+    $editor.chain().focus().extendMarkRange("link").unsetLink().run();
+  }
+
+  // A code span is either grammar-highlighted (`lang`) or painted as a single
+  // token kind (`token`), so setting one clears the other; "text"/"" clears both
+  // back to a plain inline-code span.
+  function setInlineLang(lang: string) {
+    const attrs =
+      lang === "text" ? { lang: null, token: null } : { lang, token: null };
+    $editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .updateAttributes("code", attrs)
+      .run();
+  }
+
+  function setInlineToken(token: string) {
+    const attrs = token === "" ? { token: null } : { token, lang: null };
+    $editor
+      .chain()
+      .focus()
+      .extendMarkRange("code")
+      .updateAttributes("code", attrs)
       .run();
   }
 
@@ -132,6 +209,46 @@
     borderColor: "admin.border",
     cursor: "pointer",
     _focus: { outline: "none", borderColor: "admin.accent" },
+  });
+
+  const bubbleClass = css({
+    display: "flex",
+    flexDirection: "column",
+    gap: "1",
+    p: "1.5",
+    rounded: "md",
+    borderWidth: "1px",
+    borderColor: "admin.border",
+    bg: "admin.surface",
+    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.18)",
+    zIndex: 50,
+  });
+
+  const bubbleRowClass = flex({ align: "center", gap: "1" });
+
+  const bubbleInputClass = css({
+    px: "1.5",
+    py: "0.5",
+    w: "13rem",
+    rounded: "sm",
+    fontSize: "xs",
+    fontFamily: "mono",
+    color: "admin.text",
+    bg: "admin.bgSecondary",
+    borderWidth: "1px",
+    borderColor: "admin.border",
+    _focus: { outline: "none", borderColor: "admin.accent" },
+  });
+
+  const bubbleIconButtonClass = css({
+    px: "1.5",
+    py: "0.5",
+    rounded: "sm",
+    fontSize: "sm",
+    lineHeight: "1",
+    color: "admin.textSecondary",
+    cursor: "pointer",
+    _hover: { bg: "admin.surfaceHover", color: "admin.text" },
   });
 
   const toolbarButtons: Array<{
@@ -208,7 +325,7 @@
             label: "Link",
             title: "Set link",
             isActive: () => $editor.isActive("link"),
-            run: setLink,
+            run: startLink,
           },
           {
             label: "―",
@@ -344,6 +461,64 @@
     >
       {#if editor}
         <EditorContent editor={$editor} />
+        <BubbleMenu
+          editor={$editor}
+          class={bubbleClass}
+          options={{ placement: "top" }}
+          shouldShow={(props) =>
+            props.editor.isActive("link") || props.editor.isActive("code")}
+        >
+          {#if linkActive}
+            <div class={bubbleRowClass}>
+              <input
+                type="text"
+                class={bubbleInputClass}
+                placeholder="https://…"
+                value={currentHref}
+                onkeydown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyLink(e.currentTarget.value);
+                  }
+                }}
+                onblur={(e) => applyLink(e.currentTarget.value)}
+              />
+              <button
+                type="button"
+                title="Remove link"
+                class={bubbleIconButtonClass}
+                onclick={removeLink}
+              >
+                ×
+              </button>
+            </div>
+          {/if}
+          {#if codeActive}
+            <div class={bubbleRowClass}>
+              <select
+                title="Inline code language"
+                class={languageSelectClass}
+                value={inlineLang}
+                onchange={(e) => setInlineLang(e.currentTarget.value)}
+              >
+                {#each codeLanguages as lang (lang.id)}
+                  <option value={lang.id}>{lang.label}</option>
+                {/each}
+              </select>
+              <select
+                title="Inline code token"
+                class={languageSelectClass}
+                value={inlineToken}
+                onchange={(e) => setInlineToken(e.currentTarget.value)}
+              >
+                <option value="">— token —</option>
+                {#each codeTokens as token (token.id)}
+                  <option value={token.id}>{token.label}</option>
+                {/each}
+              </select>
+            </div>
+          {/if}
+        </BubbleMenu>
       {/if}
     </div>
   </div>

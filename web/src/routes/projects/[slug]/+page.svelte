@@ -197,4 +197,62 @@
   :global(.dark .project-detail .rd-codeblock .shiki span) {
     color: var(--shiki-dark) !important;
   }
+
+  /* Inline code highlighting. The prose `code` rule already supplies the box;
+     these only colorize the tokens. Lang-mode (Shiki structure:"inline") emits
+     classless <span style="color;--shiki-dark"> runs, so dark mode swaps to the
+     --shiki-dark value — scoped to :not([class]) so it never touches the token
+     spans below. The inline light color outranks the rule, hence !important. */
+  :global(.dark .project-detail .rd-inline-code span:not([class])) {
+    color: var(--shiki-dark) !important;
+  }
+
+  /* Token-mode: a single author-declared kind. Colors track the github-light /
+     github-dark palette so `{:.fn}` matches what `{:lang}` would paint. */
+  :global(.project-detail .rd-inline-code .tk-keyword) {
+    color: #cf222e;
+  }
+  :global(.project-detail .rd-inline-code .tk-fn) {
+    color: #8250df;
+  }
+  :global(.project-detail .rd-inline-code .tk-type) {
+    color: #953800;
+  }
+  :global(.project-detail .rd-inline-code .tk-string) {
+    color: #0a3069;
+  }
+  :global(.project-detail .rd-inline-code .tk-number),
+  :global(.project-detail .rd-inline-code .tk-const),
+  :global(.project-detail .rd-inline-code .tk-flag) {
+    color: #0550ae;
+  }
+  :global(.project-detail .rd-inline-code .tk-var) {
+    color: #1f2328;
+  }
+  :global(.project-detail .rd-inline-code .tk-comment) {
+    color: #6e7781;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-keyword) {
+    color: #ff7b72;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-fn) {
+    color: #d2a8ff;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-type) {
+    color: #ffa657;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-string) {
+    color: #a5d6ff;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-number),
+  :global(.dark .project-detail .rd-inline-code .tk-const),
+  :global(.dark .project-detail .rd-inline-code .tk-flag) {
+    color: #79c0ff;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-var) {
+    color: #e6edf3;
+  }
+  :global(.dark .project-detail .rd-inline-code .tk-comment) {
+    color: #8b949e;
+  }
 </style>

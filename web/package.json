@@ -10,6 +10,8 @@
     "prepare": "panda codegen && svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "clean": "rm -rf .svelte-kit build node_modules",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -30,6 +32,7 @@
     "@logtape/logtape": "^2.0.0",
     "@resvg/resvg-js": "^2.6.2",
     "@tiptap/core": "^3.26.0",
+    "@tiptap/extension-code": "^3.26.0",
     "@tiptap/extension-code-block-lowlight": "^3.26.0",
     "@tiptap/extension-drag-handle": "^3.26.1",
     "@tiptap/extension-unique-id": "^3.26.1",
@@ -78,6 +81,7 @@
     "svelte-check": "^4.3.5",
     "typescript-eslint": "^8.53.0",
     "unplugin-icons": "^23.0.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.9"
   }
 }

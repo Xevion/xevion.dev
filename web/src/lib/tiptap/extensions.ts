@@ -1,4 +1,5 @@
 import StarterKit from "@tiptap/starter-kit";
+import Code from "@tiptap/extension-code";
 import { UniqueID } from "@tiptap/extension-unique-id";
 import { Node, Mark } from "@tiptap/core";
 import { customAlphabet } from "nanoid";
@@ -18,6 +19,9 @@ export const starterKitOptions: StarterKitOptions = {
     openOnClick: false,
     HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
   },
+  // The inline `code` mark is replaced by HighlightableCode (below) in both
+  // extension sets — it relaxes `excludes` and carries the highlight attrs.
+  code: false,
 };
 
 /**
@@ -223,6 +227,33 @@ export const Details = Node.create({
 });
 
 /**
+ * The inline `code` mark, replacing StarterKit's default with two changes:
+ *
+ * - `excludes: ""` (the default is `"_"`, which excludes every other mark) so a
+ *   code span can coexist with a `link` or emphasis. The default silently
+ *   destroyed authored code+link spans the moment they hit the editor, since the
+ *   schema forbade the combination the permissive Rust model (src/pm.rs) allows.
+ * - `lang`/`token` attrs that drive inline syntax highlighting — `lang` selects a
+ *   Shiki grammar (the span renders as an inline code block), `token` names one
+ *   author-declared kind (a semantic color). Declaring them on the schema is what
+ *   lets them survive `Node.fromJSON` in the SSR renderer (read in
+ *   `markMapping.code`) and round-trip through `data-*` in the editor.
+ *
+ * Shared by both extension sets, replacing StarterKit's `code` (disabled via
+ * `starterKitOptions`), so the two never drift.
+ */
+export const HighlightableCode = Code.extend({
+  excludes: "",
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      lang: dataAttr("lang"),
+      token: dataAttr("token"),
+    };
+  },
+});
+
+/**
  * Canonical schema used by the server-side renderer (render.server.ts). The
  * single source of truth for what nodes/attrs a detail document may contain.
  * StarterKit's default `codeBlock` supplies the `codeBlock` node (with a
@@ -235,6 +266,7 @@ export const Details = Node.create({
  */
 export const tiptapExtensions: Extensions = [
   StarterKit.configure(starterKitOptions),
+  HighlightableCode,
   UniqueID.configure(uniqueIdOptions),
   Figure,
   Gloss,

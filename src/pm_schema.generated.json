@@ -38,5 +38,16 @@
     "orderedList",
     "paragraph",
     "sidenote"
+  ],
+  "codeTokens": [
+    "comment",
+    "const",
+    "flag",
+    "fn",
+    "keyword",
+    "number",
+    "string",
+    "type",
+    "var"
   ]
 }

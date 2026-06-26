@@ -4,6 +4,16 @@ import GithubSlugger from "github-slugger";
 import type { JSONContent } from "@tiptap/core";
 import { tiptapExtensions } from "./extensions";
 import { getHighlighter } from "./shiki.server";
+import { codeTokenIds } from "./code-tokens";
+
+/**
+ * Cap on the length of a `lang`-highlighted inline-code run. Inline code is short
+ * by nature; beyond this the span renders as plain escaped <code> rather than
+ * running through Shiki, so a pathological run can't stall SSR. The model enforces
+ * its own (higher) write-path bound — this is the renderer's independent guard for
+ * content that might reach it unvalidated.
+ */
+const MAX_INLINE_HIGHLIGHT_CHARS = 2000;
 
 /** A heading entry for the on-page table of contents (h2/h3). */
 export interface TocItem {
@@ -155,6 +165,44 @@ export async function renderDetailContent(
             ? `<figcaption class="rd-figure-cap">${escapeHtml(caption)}</figcaption>`
             : "";
           return `<figure class="rd-figure">${media}${cap}</figure>`;
+        },
+      },
+      markMapping: {
+        // Inline code highlighting. `lang` runs the span through Shiki with
+        // `structure: "inline"` — the code-block tokens minus the <pre>/.line
+        // wrappers — while `token` paints a single author-declared kind via a
+        // `.tk-*` class. A code mark with neither stays a plain <code>.
+        code: ({ mark, node, children }) => {
+          const inner = Array.isArray(children)
+            ? children.join("")
+            : (children ?? "");
+          // Attrs are author/model data, not guaranteed strings — a non-string
+          // lang/token is treated as absent rather than coerced into markup.
+          const lang =
+            typeof mark.attrs?.lang === "string" ? mark.attrs.lang : null;
+          const token =
+            typeof mark.attrs?.token === "string" ? mark.attrs.token : null;
+          // A nested mark (a link around this code) renders HTML into `inner`;
+          // re-tokenizing the raw text would discard it, so only highlight a
+          // standalone text run — escaped text never contains a literal "<".
+          const nested = inner.includes("<");
+          if (nested || (!lang && !token)) {
+            return `<code>${inner}</code>`;
+          }
+          const raw = (node.text ?? node.textContent ?? "") as string;
+          if (token && codeTokenIds.has(token)) {
+            return `<code class="rd-inline-code"><span class="tk-${token}">${escapeHtml(raw)}</span></code>`;
+          }
+          if (lang && raw.length <= MAX_INLINE_HIGHLIGHT_CHARS) {
+            const grammar = loadedLangs.has(lang) ? lang : "text";
+            const spans = highlighter.codeToHtml(raw, {
+              lang: grammar,
+              themes: { light: "github-light", dark: "github-dark" },
+              structure: "inline",
+            });
+            return `<code class="rd-inline-code">${spans}</code>`;
+          }
+          return `<code>${inner}</code>`;
         },
       },
     },

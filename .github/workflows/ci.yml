@@ -78,6 +78,9 @@ jobs:
       - name: Type check
         working-directory: web
         run: bun run check --fail-on-warnings
+      - name: Test
+        working-directory: web
+        run: bun run test
       - name: Build
         working-directory: web
         run: bunx --bun vite build

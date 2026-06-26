@@ -67,6 +67,11 @@ pub enum PmError {
     NonTextWithText(String),
     /// A `link` mark whose href uses a disallowed scheme.
     BadLinkScheme(String),
+    /// A `code` mark whose `token` attr names a kind outside the vocabulary.
+    BadCodeToken(String),
+    /// A `code`-marked text run longer than [`MAX_CODE_TEXT_CHARS`] characters —
+    /// bounded so a single inline span can't blow up the SSR highlighter.
+    CodeTooLong(usize),
 }
 
 impl std::fmt::Display for PmError {
@@ -98,6 +103,13 @@ impl std::fmt::Display for PmError {
             Self::BadLinkScheme(href) => {
                 write!(f, "link uses a disallowed URL scheme: \"{href}\"")
             }
+            Self::BadCodeToken(kind) => {
+                write!(f, "unknown inline-code token kind: \"{kind}\"")
+            }
+            Self::CodeTooLong(len) => write!(
+                f,
+                "inline-code text is too long: {len} characters (max {MAX_CODE_TEXT_CHARS})"
+            ),
         }
     }
 }
@@ -237,6 +249,21 @@ const MARKS: &[&str] = &[
 /// SSR sanitizer's `allowedSchemes`.
 const LINK_SCHEMES: &[&str] = &["http://", "https://", "mailto:"];
 
+/// Token kinds a `code` mark's `token` attr may name (author-declared semantic
+/// highlighting, distinct from grammar-derived `lang` highlighting). Each maps to
+/// a `TextMate` scope the SSR renderer colors from the active theme, so declared
+/// tokens share the syntax palette. Mirrored in the editor picker and the content
+/// docs — a closed vocabulary, unlike the permissive `lang` attr.
+const CODE_TOKEN_KINDS: &[&str] = &[
+    "keyword", "fn", "type", "string", "number", "const", "var", "flag", "comment",
+];
+
+/// Upper bound on the length (in characters) of a `code`-marked text run. Inline
+/// code is short by nature; a span beyond this is abuse, not authoring, so it's
+/// rejected on the write path — the model-side companion to the renderer's own
+/// highlight cap, so a pathological span can neither be stored nor stall SSR.
+const MAX_CODE_TEXT_CHARS: usize = 4096;
+
 impl NodeSpec {
     /// The schema entry for a node type, if it's in the allow-list.
     fn lookup(name: &str) -> Option<&'static Self> {
@@ -287,7 +314,24 @@ impl Mark {
         if self.r#type == "link" {
             self.validate_link()?;
         }
+        if self.r#type == "code" {
+            self.validate_code()?;
+        }
         Ok(())
+    }
+
+    /// A `code` mark's optional `token` attr must name a known kind. The `lang`
+    /// attr is intentionally unchecked — the renderer degrades an unknown grammar
+    /// to plain text, mirroring how `codeBlock` treats its `language`.
+    fn validate_code(&self) -> Result<(), PmError> {
+        match self.attrs.get("token") {
+            // Absent, or explicitly cleared — the editor nulls a token to drop it.
+            None | Some(Value::Null) => Ok(()),
+            Some(Value::String(kind)) if CODE_TOKEN_KINDS.contains(&kind.as_str()) => Ok(()),
+            // A bad string keeps its text in the error; a non-string is rendered.
+            Some(Value::String(kind)) => Err(PmError::BadCodeToken(kind.clone())),
+            Some(other) => Err(PmError::BadCodeToken(other.to_string())),
+        }
     }
 
     fn validate_link(&self) -> Result<(), PmError> {
@@ -337,6 +381,15 @@ impl Node {
         }
         for mark in &self.marks {
             mark.validate()?;
+        }
+
+        // Bound a code-marked run's length: it feeds the SSR highlighter, so an
+        // unbounded span is a denial-of-service vector (the renderer caps too).
+        if self.marks.iter().any(|mark| mark.r#type == "code") {
+            let len = self.text.as_deref().unwrap_or_default().chars().count();
+            if len > MAX_CODE_TEXT_CHARS {
+                return Err(PmError::CodeTooLong(len));
+            }
         }
 
         for child in &self.content {
@@ -1139,6 +1192,122 @@ mod tests {
             ]}
         ]}));
         assert_eq!(v.validate_document(), Err(PmError::MarksInCodeBlock));
+    }
+
+    #[test]
+    fn validate_rejects_unknown_code_token() {
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": "x", "marks": [
+                    { "type": "code", "attrs": { "token": "bogus" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(
+            v.validate_document(),
+            Err(PmError::BadCodeToken("bogus".into()))
+        );
+    }
+
+    #[test]
+    fn validate_accepts_known_code_token() {
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": "Arc", "marks": [
+                    { "type": "code", "attrs": { "token": "type" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(v.validate_document(), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_non_string_code_token() {
+        // A present-but-non-string `token` is malformed, not "absent" — reject it
+        // rather than letting `as_str()` quietly skip the vocabulary check.
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": "x", "marks": [
+                    { "type": "code", "attrs": { "token": 42 } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(
+            v.validate_document(),
+            Err(PmError::BadCodeToken("42".into()))
+        );
+    }
+
+    #[test]
+    fn validate_accepts_null_code_token() {
+        // The editor clears a token by setting it to JSON null; that means "no
+        // token", so it must validate (the `lang` still drives highlighting).
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": "x", "marks": [
+                    { "type": "code", "attrs": { "token": null, "lang": "rust" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(v.validate_document(), Ok(()));
+    }
+
+    #[test]
+    fn validate_rejects_overlong_code_text() {
+        // A code-marked run feeds the SSR highlighter; cap its length on the write
+        // path so an absurd span can't be stored (defense paired with the renderer).
+        let huge = "x".repeat(MAX_CODE_TEXT_CHARS + 1);
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": huge, "marks": [
+                    { "type": "code", "attrs": { "lang": "rust" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(
+            v.validate_document(),
+            Err(PmError::CodeTooLong(MAX_CODE_TEXT_CHARS + 1))
+        );
+    }
+
+    #[test]
+    fn validate_accepts_code_text_at_limit() {
+        let big = "x".repeat(MAX_CODE_TEXT_CHARS);
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": big, "marks": [
+                    { "type": "code", "attrs": { "lang": "rust" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(v.validate_document(), Ok(()));
+    }
+
+    #[test]
+    fn validate_accepts_overlong_text_without_code_mark() {
+        // The bound is specific to code-marked runs — long prose in a single text
+        // node is legitimate and must not be rejected.
+        let huge = "x".repeat(MAX_CODE_TEXT_CHARS + 1);
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": huge }
+            ]}
+        ]}));
+        assert_eq!(v.validate_document(), Ok(()));
+    }
+
+    #[test]
+    fn validate_accepts_arbitrary_code_lang() {
+        // `lang` is permissive: an unknown grammar degrades to plain at render
+        // time, so the model never rejects it (unlike the closed `token` set).
+        let v = node(json!({ "type": "doc", "content": [
+            { "type": "paragraph", "content": [
+                { "type": "text", "text": "let x = 1", "marks": [
+                    { "type": "code", "attrs": { "lang": "totally-made-up" } }
+                ]}
+            ]}
+        ]}));
+        assert_eq!(v.validate_document(), Ok(()));
     }
 
     #[test]
@@ -2585,7 +2754,7 @@ mod block_id_tests {
 /// more, no less.
 #[cfg(test)]
 mod schema_sync {
-    use super::{Group, MARKS, NODES};
+    use super::{CODE_TOKEN_KINDS, Group, MARKS, NODES};
     use std::collections::BTreeSet;
 
     #[derive(serde::Deserialize)]
@@ -2594,6 +2763,8 @@ mod schema_sync {
         marks: Vec<String>,
         #[serde(rename = "idTypes")]
         id_types: Vec<String>,
+        #[serde(rename = "codeTokens")]
+        code_tokens: Vec<String>,
     }
 
     fn tiptap() -> TiptapSchema {
@@ -2640,6 +2811,23 @@ mod schema_sync {
             rust_blocks, editor_id_types,
             "block-group nodes drifted from the editor's unique-id types; update \
              the uniqueId config or NODES, then regenerate pm_schema.generated.json"
+        );
+    }
+
+    #[test]
+    fn code_token_vocab_matches_editor() {
+        let tiptap = tiptap();
+
+        // The inline-code `token` kinds the model validates (CODE_TOKEN_KINDS)
+        // must equal the set the editor picker and renderer offer (code-tokens.ts)
+        // — otherwise a token authored in one is rejected or unstyled in the other.
+        let rust_tokens: BTreeSet<&str> = CODE_TOKEN_KINDS.iter().copied().collect();
+        let editor_tokens: BTreeSet<&str> = tiptap.code_tokens.iter().map(String::as_str).collect();
+        assert_eq!(
+            rust_tokens, editor_tokens,
+            "inline-code token vocabulary drifted between pm.rs CODE_TOKEN_KINDS and \
+             web/src/lib/tiptap/code-tokens.ts; reconcile and regenerate \
+             pm_schema.generated.json"
         );
     }
 }

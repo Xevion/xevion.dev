@@ -22,6 +22,7 @@ import {
   uniqueIdOptions,
 } from "../src/lib/tiptap/extensions";
 import { editorExtensions } from "../src/lib/tiptap/extensions.editor";
+import { codeTokens } from "../src/lib/tiptap/code-tokens";
 
 interface SchemaNames {
   nodes: string[];
@@ -65,10 +66,15 @@ if (schemaOnly.length) {
   );
 }
 
-const out = { ...server, idTypes };
+// The inline-code token vocabulary isn't part of the TipTap schema (it's an app
+// enum), but it's mirrored in Rust (CODE_TOKEN_KINDS in src/pm.rs), so emit it
+// here too — the Rust schema_sync test asserts the two sides match.
+const tokenKinds = codeTokens.map((token) => token.id).sort();
+
+const out = { ...server, idTypes, codeTokens: tokenKinds };
 const outPath = join(import.meta.dir, "../../src/pm_schema.generated.json");
 writeFileSync(outPath, `${JSON.stringify(out, null, 2)}\n`);
 
 console.log(
-  `Wrote ${outPath}\n  nodes: ${server.nodes.join(", ")}\n  marks: ${server.marks.join(", ")}\n  idTypes: ${idTypes.join(", ")}`,
+  `Wrote ${outPath}\n  nodes: ${server.nodes.join(", ")}\n  marks: ${server.marks.join(", ")}\n  idTypes: ${idTypes.join(", ")}\n  codeTokens: ${tokenKinds.join(", ")}`,
 );

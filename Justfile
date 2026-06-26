@@ -40,9 +40,10 @@ dev-json:
 db *flags:
 	tempo db {{flags}}
 
-# Run all tests
+# Run all tests (Rust + frontend Vitest)
 test:
 	cargo nextest run
+	bun run --cwd web test
 
 # Run database migrations (starts DB container first)
 migrate:

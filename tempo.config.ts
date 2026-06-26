@@ -121,6 +121,7 @@ export default defineConfig({
         "format-apply": "bunx prettier --write .",
         lint: "bun run lint",
         "type-check": "bun run check --fail-on-warnings",
+        test: "bun run test",
         build: "bunx --bun vite build",
       },
       autoFix: {
@@ -217,15 +218,19 @@ export default defineConfig({
         ctx.fail(err instanceof Error ? err.message : String(err));
       }
     },
-    // PM schema allow-list: TipTap node/mark names → JSON the Rust drift test
-    // (pm::schema_sync) include_str!s. Regenerate when the extension files change.
+    // PM schema allow-list: TipTap node/mark names (+ the inline-code token vocab
+    // from code-tokens.ts) → JSON the Rust drift test (pm::schema_sync)
+    // include_str!s. Regenerate when any source the dump script reads changes.
     {
       label: "pm schema allow-list",
-      sources: { dir: "web/src/lib/tiptap", pattern: "extensions*.ts" },
+      sources: {
+        dir: "web/src/lib/tiptap",
+        pattern: "{extensions*,code-tokens}.ts",
+      },
       artifacts: { dir: "src", pattern: "pm_schema.generated.json" },
       regenerate: "bun run --cwd web dump-schema",
       reason:
-        "Rust pm::schema_sync asserts NODES/MARKS == getSchema(extensions)",
+        "Rust pm::schema_sync asserts NODES/MARKS/codeTokens == the editor schema",
     },
   ],
   hooks: {

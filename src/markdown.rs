@@ -227,16 +227,23 @@ impl Converter {
     }
 
     /// Append an inline code span: a text run carrying the `code` mark on top of
-    /// any active marks. Its own run, never merged with adjacent text.
+    /// any active marks. Its own run, never merged with adjacent text. A trailing
+    /// `{:lang}` / `{:.token}` hint is peeled off into the mark's attrs.
     fn append_code(&mut self, code: &str) {
         self.ensure_inline_container();
+        let (text, hint) = split_code_hint(code);
+        let mut code_mark = Mark::new("code");
+        if let Some(hint) = hint {
+            let (key, value) = hint.into_attr();
+            code_mark.attrs.insert(key.to_string(), Value::from(value));
+        }
         let mut marks = self.marks.clone();
-        marks.push(Mark::new("code"));
+        marks.push(code_mark);
         self.stack
             .last_mut()
             .expect("a container is open")
             .content
-            .push(Node::text(code, marks));
+            .push(Node::text(text, marks));
     }
 
     fn push_inline(&mut self, node: Node) {
@@ -300,6 +307,67 @@ impl Converter {
 /// to h4.
 fn shift_heading(level: HeadingLevel) -> u8 {
     (level as u8 + 1).min(4)
+}
+
+/// A highlight hint peeled off a code span's trailing `{:…}` suffix: either a
+/// Shiki grammar (`lang`) or an author-declared semantic token (`token`). The two
+/// map to the `code` mark's `lang` / `token` attrs respectively.
+enum Hint<'a> {
+    Lang(&'a str),
+    Token(&'a str),
+}
+
+impl<'a> Hint<'a> {
+    /// The `(attr-key, value)` this hint writes onto the `code` mark.
+    const fn into_attr(self) -> (&'static str, &'a str) {
+        match self {
+            Self::Lang(value) => ("lang", value),
+            Self::Token(value) => ("token", value),
+        }
+    }
+}
+
+/// Split an inline-code span into its content and an optional trailing highlight
+/// hint, following Shiki's tailing-curly-colon convention: `…{:lang}` requests a
+/// grammar (`lang` attr), `…{:.kind}` a semantic token color (`token` attr). Only
+/// the value's *shape* is checked here — the write path validates `token` against
+/// the vocabulary, and `lang` is permissive (an unknown grammar degrades to plain
+/// at render). A span with no well-formed suffix is returned verbatim, so literal
+/// braces survive; the raw `--node` path is the escape hatch for a literal `{:…}`.
+fn split_code_hint(code: &str) -> (&str, Option<Hint<'_>>) {
+    let Some(inner) = code.strip_suffix('}') else {
+        return (code, None);
+    };
+    let Some(open) = inner.rfind("{:") else {
+        return (code, None);
+    };
+    let text = &code[..open];
+    let spec = &inner[open + 2..];
+    if text.is_empty() {
+        return (code, None);
+    }
+    // `{:.kind}` is a semantic token; a bare `{:lang}` a grammar. A dotted spec can
+    // never also match the `lang` arm — the leading `.` fails `is_hint_value` — so
+    // the two checks don't overlap and an empty spec falls through to literal.
+    if let Some(kind) = spec.strip_prefix('.')
+        && is_hint_value(kind)
+    {
+        return (text, Some(Hint::Token(kind)));
+    }
+    if is_hint_value(spec) {
+        return (text, Some(Hint::Lang(spec)));
+    }
+    (code, None)
+}
+
+/// A highlight hint's value is a short identifier — alphanumerics plus the
+/// punctuation a few language ids carry (`c++`, `objective-c`). Anything else
+/// means the trailing `{:…}` wasn't a hint, so the span stays literal.
+fn is_hint_value(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '+' | '#'))
 }
 
 #[cfg(test)]
@@ -429,6 +497,151 @@ mod tests {
                       "marks": [{ "type": "link", "attrs": { "href": "https://example.com" } }] }
                 ]
             }])
+        );
+    }
+
+    // The `{:…}` test inputs trip the nursery format-arg heuristic; they are
+    // literal Markdown, not format strings.
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_language_suffix_sets_lang_attr() {
+        // Tailing-curly-colon: `…{:lang}` highlights the span as that grammar.
+        assert_eq!(
+            blocks("run `let x = 1{:ts}` now"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "run " },
+                    { "type": "text", "text": "let x = 1",
+                      "marks": [{ "type": "code", "attrs": { "lang": "ts" } }] },
+                    { "type": "text", "text": " now" }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_token_suffix_sets_token_attr() {
+        // A leading dot (`{:.kind}`) marks an author-declared semantic token.
+        assert_eq!(
+            blocks("`Arc{:.type}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "Arc",
+                      "marks": [{ "type": "code", "attrs": { "token": "type" } }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    fn inline_code_without_curly_colon_stays_literal() {
+        // `{foo}` lacks the `:` sigil, so the braces are part of the code text and
+        // the span carries a bare `code` mark.
+        assert_eq!(
+            blocks("`obj{foo}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "obj{foo}", "marks": [{ "type": "code" }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_unknown_suffix_becomes_lang() {
+        // Any shape-valid bare suffix is taken as a `lang` — the renderer degrades
+        // an unknown grammar to plain — so `{:foo}` is consumed, not left literal.
+        assert_eq!(
+            blocks("`obj{:foo}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "obj",
+                      "marks": [{ "type": "code", "attrs": { "lang": "foo" } }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_suffix_only_stays_literal() {
+        // Nothing precedes the suffix, so there's nothing to highlight — the span
+        // stays literal and an empty `text` node (which the schema rejects) is
+        // never produced.
+        assert_eq!(
+            blocks("`{:rust}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "{:rust}", "marks": [{ "type": "code" }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_empty_token_kind_stays_literal() {
+        // `{:.}` carries the token sigil but names no kind, so it isn't a hint.
+        assert_eq!(
+            blocks("`x{:.}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "x{:.}", "marks": [{ "type": "code" }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_multiple_suffixes_takes_last() {
+        // Only the trailing `{:…}` is the hint; an earlier one stays code text.
+        assert_eq!(
+            blocks("`a{:b}{:rust}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "a{:b}",
+                      "marks": [{ "type": "code", "attrs": { "lang": "rust" } }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_non_ascii_suffix_stays_literal() {
+        // Hint values are ASCII identifiers; a non-ASCII spec isn't a hint, and the
+        // byte-offset split must stay on a char boundary around the multibyte char.
+        assert_eq!(
+            blocks("`x{:rüst}`"),
+            json!([{
+                "type": "paragraph",
+                "content": [
+                    { "type": "text", "text": "x{:rüst}", "marks": [{ "type": "code" }] }
+                ]
+            }])
+        );
+    }
+
+    #[test]
+    #[allow(clippy::literal_string_with_formatting_args)]
+    fn inline_code_markdown_bad_token_fails_validation() {
+        // A Markdown-authored `{:.kind}` carries through verbatim as a `token`; an
+        // unknown kind is then rejected on the write path, not silently dropped.
+        let mut doc = Node::element("doc");
+        doc.content = to_blocks("`x{:.bogus}`").expect("converts");
+        assert_eq!(
+            doc.validate_document(),
+            Err(crate::pm::PmError::BadCodeToken("bogus".into()))
         );
     }
 
