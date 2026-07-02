@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.24
+# syntax=docker/dockerfile:1.25
 
 # Railway's Dockerfile builder persists BuildKit cache mounts only when the mount
 # id is prefixed with `s/<service-id>-`, and it validates that prefix by static
