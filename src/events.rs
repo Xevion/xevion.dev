@@ -38,6 +38,8 @@ pub enum EventType {
     TagDeleted,
     #[serde(rename = "settings.updated")]
     SettingsUpdated,
+    #[serde(rename = "resume.updated")]
+    ResumeUpdated,
     #[serde(rename = "github.sync_completed")]
     GithubSyncCompleted,
     #[serde(rename = "github.sync_failed")]
@@ -65,6 +67,7 @@ impl EventType {
             Self::TagUpdated => "tag.updated",
             Self::TagDeleted => "tag.deleted",
             Self::SettingsUpdated => "settings.updated",
+            Self::ResumeUpdated => "resume.updated",
             Self::GithubSyncCompleted => "github.sync_completed",
             Self::GithubSyncFailed => "github.sync_failed",
             Self::GithubRateLimited => "github.rate_limited",

@@ -2,13 +2,13 @@
   import { page } from "$app/stores";
   import Button from "$lib/components/admin/Button.svelte";
   import Input from "$lib/components/admin/Input.svelte";
-  import { getSettings, updateSettings } from "$lib/api";
+  import { getSettings, updateSettings, uploadResume } from "$lib/api";
   import { getLogger } from "@logtape/logtape";
   import { toast } from "$lib/toast";
   import type { ApiSiteSettings } from "$lib/bindings";
 
   const logger = getLogger(["admin", "settings"]);
-  import { css } from "styled-system/css";
+  import { css, cx } from "styled-system/css";
   import { flex, hstack, grid } from "styled-system/patterns";
   import {
     pageTitleClass,
@@ -16,19 +16,27 @@
     adminCardClass,
     sectionHeadingClass,
     settingsTab,
+    helpTextClass,
   } from "$lib/styles/admin";
+  import IconCloudUpload from "~icons/lucide/cloud-upload";
+  import IconLoader from "~icons/lucide/loader-2";
 
-  type Tab = "identity" | "social";
+  type Tab = "identity" | "social" | "resume";
 
   let settings = $state<ApiSiteSettings | null>(null);
   let loading = $state(true);
   let saving = $state(false);
+  let uploadingResume = $state(false);
+  let isDraggingResume = $state(false);
+  let resumeInputRef = $state<HTMLInputElement | null>(null);
 
   // Read tab from URL, default to "identity"
   let activeTab = $derived.by(() => {
     const params = $page.params as { tab?: string };
     const tab = params.tab as Tab | undefined;
-    return tab && ["identity", "social"].includes(tab) ? tab : "identity";
+    return tab && ["identity", "social", "resume"].includes(tab)
+      ? tab
+      : "identity";
   });
 
   // Form state - will be populated when settings load
@@ -82,6 +90,60 @@
     }
   }
 
+  async function uploadResumeFile(file: File) {
+    if (file.type !== "application/pdf") {
+      toast.error("Only PDF files are supported");
+      return;
+    }
+
+    uploadingResume = true;
+    const result = await uploadResume(file);
+    if (result.isErr) {
+      logger.error("Failed to upload resume", { error: result.error });
+      toast.error(result.error.message);
+    } else if (settings && formData) {
+      settings.identity.resumeUrl = result.value.resumeUrl;
+      settings.identity.resumeUploadedAt = result.value.resumeUploadedAt;
+      formData.identity.resumeUrl = result.value.resumeUrl;
+      formData.identity.resumeUploadedAt = result.value.resumeUploadedAt;
+      toast.success("Resume uploaded successfully!");
+    }
+    uploadingResume = false;
+  }
+
+  function handleResumeInputChange(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) uploadResumeFile(file);
+    input.value = "";
+  }
+
+  function handleResumeDragEnter(e: DragEvent) {
+    e.preventDefault();
+    isDraggingResume = true;
+  }
+
+  function handleResumeDragLeave(e: DragEvent) {
+    e.preventDefault();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const { clientX: x, clientY: y } = e;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      isDraggingResume = false;
+    }
+  }
+
+  function handleResumeDragOver(e: DragEvent) {
+    e.preventDefault();
+    isDraggingResume = true;
+  }
+
+  function handleResumeDrop(e: DragEvent) {
+    e.preventDefault();
+    isDraggingResume = false;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadResumeFile(file);
+  }
+
   // Tab styling now uses shared settingsTab cva recipe from admin styles
 </script>
 
@@ -125,6 +187,15 @@
           })}
         >
           Social Links
+        </a>
+        <a
+          href="/admin/settings/resume"
+          data-sveltekit-replacestate
+          class={settingsTab({
+            state: activeTab === "resume" ? "active" : "inactive",
+          })}
+        >
+          Resume
         </a>
       </nav>
     </div>
@@ -278,6 +349,122 @@
               </div>
             {/each}
           </div>
+        </div>
+      {:else if activeTab === "resume"}
+        <div class={css({ spaceY: "4" })}>
+          <h3 class={sectionHeadingClass}>Resume</h3>
+          <p class={css({ fontSize: "sm", color: "admin.textMuted", mb: "4" })}>
+            Upload the PDF served at <code>/resume</code>. Uploading a new file
+            replaces the current one.
+          </p>
+
+          {#if formData.identity.resumeUrl}
+            <p class={css({ fontSize: "sm" })}>
+              Current:
+              <a
+                href={formData.identity.resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class={css({ color: "admin.accent" })}>View resume</a
+              >
+              {#if formData.identity.resumeUploadedAt}
+                <span class={css({ color: "admin.textMuted" })}>
+                  (uploaded {new Date(
+                    formData.identity.resumeUploadedAt,
+                  ).toLocaleString()})
+                </span>
+              {/if}
+            </p>
+          {:else}
+            <p class={css({ fontSize: "sm", color: "admin.textMuted" })}>
+              No resume uploaded yet.
+            </p>
+          {/if}
+
+          <div
+            role="button"
+            tabindex="0"
+            class={cx(
+              css({
+                rounded: "lg",
+                borderWidth: "2px",
+                borderStyle: "dashed",
+                p: "6",
+                textAlign: "center",
+                cursor: uploadingResume ? "default" : "pointer",
+                transition: "colors",
+              }),
+              isDraggingResume
+                ? css({ borderColor: "admin.accent", bg: "admin.accent/10" })
+                : css({
+                    borderColor: "admin.border",
+                    bg: "admin.bgSecondary",
+                    _hover: uploadingResume
+                      ? {}
+                      : { borderColor: "admin.textMuted", bg: "admin.surface" },
+                  }),
+            )}
+            ondragenter={handleResumeDragEnter}
+            ondragleave={handleResumeDragLeave}
+            ondragover={handleResumeDragOver}
+            ondrop={handleResumeDrop}
+            onclick={() => !uploadingResume && resumeInputRef?.click()}
+            onkeydown={(e) =>
+              e.key === "Enter" && !uploadingResume && resumeInputRef?.click()}
+          >
+            {#if uploadingResume}
+              <IconLoader
+                class={css({
+                  w: "6",
+                  h: "6",
+                  mb: "2",
+                  mx: "auto",
+                  color: "admin.textMuted",
+                  animation: "spin",
+                })}
+              />
+              <p class={css({ fontSize: "sm", color: "admin.text" })}>
+                Uploading...
+              </p>
+            {:else}
+              <IconCloudUpload
+                class={cx(
+                  css({ w: "6", h: "6", mb: "2", mx: "auto" }),
+                  isDraggingResume
+                    ? css({ color: "admin.accent" })
+                    : css({ color: "admin.textMuted" }),
+                )}
+              />
+              <p class={css({ fontSize: "sm", color: "admin.text" })}>
+                {isDraggingResume
+                  ? "Drop PDF here"
+                  : "Drop a PDF here or click to upload"}
+              </p>
+              <p
+                class={css({
+                  fontSize: "xs",
+                  color: "admin.textMuted",
+                  mt: "1",
+                })}
+              >
+                PDF only
+              </p>
+            {/if}
+          </div>
+
+          <input
+            bind:this={resumeInputRef}
+            type="file"
+            accept="application/pdf"
+            disabled={uploadingResume}
+            class={css({ display: "none" })}
+            onchange={handleResumeInputChange}
+          />
+
+          <p class={helpTextClass}>
+            Replacing the resume takes effect immediately — no need to press
+            Save.
+          </p>
         </div>
       {/if}
     </div>

@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS: ApiSiteSettings = {
     displayName: "Ryan Walters",
     occupation: "Software Engineer",
     bio: "Software engineer and developer",
+    resumeUrl: null,
+    resumeUploadedAt: null,
   },
   socialLinks: [],
 };

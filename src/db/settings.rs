@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use ts_rs::TS;
 use uuid::Uuid;
+
+const R2_BASE_URL: &str = "https://media.xevion.dev";
 
 // Site settings models
 
@@ -11,6 +14,8 @@ pub struct DbSiteIdentity {
     pub occupation: String,
     pub bio: String,
     pub site_title: String,
+    pub resume_r2_key: Option<String>,
+    pub resume_uploaded_at: Option<OffsetDateTime>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -33,6 +38,8 @@ pub struct ApiSiteIdentity {
     pub occupation: String,
     pub bio: String,
     pub site_title: String,
+    pub resume_url: Option<String>,
+    pub resume_uploaded_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -93,6 +100,13 @@ impl DbSiteIdentity {
             occupation: self.occupation.clone(),
             bio: self.bio.clone(),
             site_title: self.site_title.clone(),
+            resume_url: self
+                .resume_r2_key
+                .as_ref()
+                .map(|key| format!("{R2_BASE_URL}/{key}")),
+            resume_uploaded_at: self
+                .resume_uploaded_at
+                .and_then(|t| t.format(&Rfc3339).ok()),
         }
     }
 }
@@ -117,7 +131,7 @@ pub async fn get_site_settings(pool: &PgPool) -> Result<ApiSiteSettings, sqlx::E
     let identity = sqlx::query_as!(
         DbSiteIdentity,
         r#"
-        SELECT display_name, occupation, bio, site_title
+        SELECT display_name, occupation, bio, site_title, resume_r2_key, resume_uploaded_at
         FROM site_identity
         WHERE id = 1
         "#
@@ -153,12 +167,36 @@ pub async fn update_site_identity(
         UPDATE site_identity
         SET display_name = $1, occupation = $2, bio = $3, site_title = $4
         WHERE id = 1
-        RETURNING display_name, occupation, bio, site_title
+        RETURNING display_name, occupation, bio, site_title, resume_r2_key, resume_uploaded_at
         "#,
         req.display_name,
         req.occupation,
         req.bio,
         req.site_title
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// Current resume R2 key, if a resume has been uploaded.
+pub async fn get_resume_key(pool: &PgPool) -> Result<Option<String>, sqlx::Error> {
+    let row = sqlx::query!("SELECT resume_r2_key FROM site_identity WHERE id = 1")
+        .fetch_one(pool)
+        .await?;
+    Ok(row.resume_r2_key)
+}
+
+/// Records a newly uploaded resume's R2 key and marks it as just-uploaded.
+pub async fn update_resume(pool: &PgPool, r2_key: &str) -> Result<DbSiteIdentity, sqlx::Error> {
+    sqlx::query_as!(
+        DbSiteIdentity,
+        r#"
+        UPDATE site_identity
+        SET resume_r2_key = $1, resume_uploaded_at = now()
+        WHERE id = 1
+        RETURNING display_name, occupation, bio, site_title, resume_r2_key, resume_uploaded_at
+        "#,
+        r2_key
     )
     .fetch_one(pool)
     .await

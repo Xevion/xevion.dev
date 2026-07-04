@@ -432,7 +432,6 @@ export default defineConfig({
         const USER = "xevion";
         const PASS = "dev";
         const DB = "xevion";
-        const PORT = "5432";
         const ENV_FILE = ".env";
 
         const docker = (...args: string[]) =>
@@ -450,8 +449,15 @@ export default defineConfig({
           return out ? JSON.parse(out) : null;
         };
 
+        // Reads back whatever host port Docker bound for 5432, whether it
+        // was pinned at creation or auto-assigned via `-p 127.0.0.1::5432`.
+        const getHostPort = () => {
+          const out = docker("port", NAME, "5432");
+          return out.split("\n")[0]?.split(":").pop() || "5432";
+        };
+
         const updateEnv = async () => {
-          const url = `postgresql://${USER}:${PASS}@localhost:${PORT}/${DB}`;
+          const url = `postgresql://${USER}:${PASS}@localhost:${getHostPort()}/${DB}`;
           try {
             let content = await readFile(ENV_FILE, "utf8");
             content = content.includes("DATABASE_URL=")
@@ -477,7 +483,7 @@ export default defineConfig({
             "-e",
             `POSTGRES_DB=${DB}`,
             "-p",
-            `${PORT}:5432`,
+            "127.0.0.1::5432",
             "postgres:16-alpine",
           ]);
           console.error(ctx.fmt.c.catGreen("created"));
@@ -531,8 +537,16 @@ export default defineConfig({
         if (!container) {
           create();
         } else if (container.State !== "running") {
-          ctx.run(["docker", "start", NAME]);
-          console.error(ctx.fmt.c.catGreen("started"));
+          try {
+            ctx.run(["docker", "start", NAME]);
+            console.error(ctx.fmt.c.catGreen("started"));
+          } catch {
+            // Likely pinned to a host port another container now holds;
+            // drop it and recreate with a Docker-assigned free port.
+            console.error("existing container failed to start, recreating");
+            ctx.run(["docker", "rm", "-f", NAME]);
+            create();
+          }
         } else {
           console.error(ctx.fmt.c.catGreen("running"));
         }

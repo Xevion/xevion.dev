@@ -4,6 +4,7 @@ import type {
   ApiTag,
   ApiTagWithCount,
   AdminStats,
+  ApiSiteIdentity,
   ApiSiteSettings,
   ApiProjectMedia,
   ApiSession,
@@ -260,6 +261,17 @@ export async function updateSettings(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
+  });
+}
+
+export async function uploadResume(
+  file: File,
+): Promise<Result<ApiSiteIdentity, ApiError>> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return clientApiFetch<ApiSiteIdentity>("/api/settings/resume", {
+    method: "POST",
+    body: formData,
   });
 }
 

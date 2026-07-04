@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE site_identity\n        SET display_name = $1, occupation = $2, bio = $3, site_title = $4\n        WHERE id = 1\n        RETURNING display_name, occupation, bio, site_title\n        ",
+  "query": "\n        UPDATE site_identity\n        SET display_name = $1, occupation = $2, bio = $3, site_title = $4\n        WHERE id = 1\n        RETURNING display_name, occupation, bio, site_title, resume_r2_key, resume_uploaded_at\n        ",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,28 @@
             "name": "site_title"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "resume_r2_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "site_identity",
+            "name": "resume_r2_key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "resume_uploaded_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "site_identity",
+            "name": "resume_uploaded_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -60,8 +82,10 @@
       false,
       false,
       false,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "9a1787fbc71a970af3a6dbcd1b4e355d86116211aead48f44626fb5d066df41d"
+  "hash": "53a08ef49b067a08b7567807b833d2c0c666935a08c1ce30a1129060b975942d"
 }

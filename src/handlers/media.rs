@@ -158,7 +158,7 @@ pub async fn upload_media_handler(
 }
 
 /// Extract file from multipart form data
-async fn extract_file(
+pub(crate) async fn extract_file(
     multipart: &mut Multipart,
 ) -> Result<Option<(String, String, Vec<u8>)>, String> {
     while let Some(field) = multipart

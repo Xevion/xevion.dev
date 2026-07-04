@@ -99,6 +99,7 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/settings",
             get(handlers::get_settings_handler).put(handlers::update_settings_handler),
         )
+        .route("/settings/resume", post(handlers::upload_resume_handler))
         .route("/icons/{*path}", get(handlers::serve_icon_handler))
         .fallback(api_404_and_method_handler)
 }
