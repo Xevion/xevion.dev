@@ -44,12 +44,13 @@ class TelemetryClient {
         ui_host: "https://us.posthog.com", // For toolbar links
         capture_pageview: false, // We handle page views manually
         capture_pageleave: true,
-        autocapture: true,
+        autocapture: false,
         persistence: "localStorage",
-        // Session replay config
-        session_recording: {
-          recordCrossOriginIframes: true,
-        },
+        disable_session_recording: true,
+        disable_surveys: true,
+        capture_performance: false,
+        capture_dead_clicks: false,
+        capture_exceptions: false,
       });
 
       this.enabled = true;
