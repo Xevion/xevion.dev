@@ -1,4 +1,8 @@
-import type { ApiSiteIdentity, ApiSocialLink } from "$lib/bindings";
+import type {
+  ApiProjectDetail,
+  ApiSiteIdentity,
+  ApiSocialLink,
+} from "$lib/bindings";
 
 /**
  * Build the site-wide `Person` + `WebSite` JSON-LD `<script>` element for the
@@ -43,5 +47,52 @@ export function homepageJsonLdScript(
   };
 
   const json = JSON.stringify([person, website]).replaceAll("<", "\\u003c");
+  return `<script type="application/ld+json">${json}</script>`;
+}
+
+/**
+ * Build a project detail page's `SoftwareSourceCode` + `BreadcrumbList`
+ * JSON-LD `<script>` element.
+ *
+ * `codeRepository` is derived the same way as the visible repo link
+ * (`ProjectMetaRail.svelte`): `githubRepo` is stored as `owner/repo`, not a
+ * full URL. `programmingLanguage` is every tag name, per the decided scope
+ * (tags mix languages and domains on this site; not filtered here).
+ */
+export function projectJsonLdScript(
+  project: ApiProjectDetail,
+  origin: string,
+): string {
+  const softwareSourceCode = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    name: project.name,
+    description: project.shortDescription,
+    ...(project.githubRepo
+      ? { codeRepository: `https://github.com/${project.githubRepo}` }
+      : {}),
+    ...(project.tags.length > 0
+      ? { programmingLanguage: project.tags.map((tag) => tag.name) }
+      : {}),
+  };
+
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: origin },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: project.name,
+        item: `${origin}/projects/${project.slug}`,
+      },
+    ],
+  };
+
+  const json = JSON.stringify([softwareSourceCode, breadcrumb]).replaceAll(
+    "<",
+    "\\u003c",
+  );
   return `<script type="application/ld+json">${json}</script>`;
 }

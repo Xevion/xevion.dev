@@ -153,19 +153,36 @@
   <link rel="canonical" href={metadata.url} />
 
   <!-- Open Graph Meta Tags -->
-  <meta property="og:type" content="website" />
+  <meta property="og:type" content={metadata.type ?? "website"} />
   <meta property="og:url" content={metadata.url} />
   <meta property="og:title" content={metadata.title} />
   <meta property="og:description" content={metadata.description} />
   <meta property="og:image" content={metadata.ogImage} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  {#if metadata.imageAlt}
+    <meta property="og:image:alt" content={metadata.imageAlt} />
+  {/if}
+  {#if metadata.type === "article"}
+    {#if metadata.publishedTime}
+      <meta
+        property="article:published_time"
+        content={metadata.publishedTime}
+      />
+    {/if}
+    {#if metadata.modifiedTime}
+      <meta property="article:modified_time" content={metadata.modifiedTime} />
+    {/if}
+  {/if}
 
   <!-- Twitter Card Meta Tags -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={metadata.title} />
   <meta name="twitter:description" content={metadata.description} />
   <meta name="twitter:image" content={metadata.ogImage} />
+  {#if metadata.imageAlt}
+    <meta name="twitter:image:alt" content={metadata.imageAlt} />
+  {/if}
 </svelte:head>
 
 <!-- Persistent background layer - only for public routes -->

@@ -45,7 +45,11 @@ export const load: PageServerLoad = async ({ params, fetch, url }) => {
         { type: "project", id: project.id },
         Number.isNaN(version) ? undefined : version,
       ),
+      imageAlt: `${project.name} preview`,
       url: `${url.origin}${url.pathname}`,
+      type: "article" as const,
+      publishedTime: project.createdAt,
+      modifiedTime: project.updatedAt,
     },
   };
 };

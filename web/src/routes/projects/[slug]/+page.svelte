@@ -12,6 +12,7 @@
   import RelatedProjects from "$lib/components/project/RelatedProjects.svelte";
   import Breadcrumb from "$lib/components/project/Breadcrumb.svelte";
   import ProjectDetailHeader from "$lib/components/project/ProjectDetailHeader.svelte";
+  import { projectJsonLdScript } from "$lib/structured-data";
   import type { PageData } from "./$types";
   import type { ApiRelatedProject } from "$lib/bindings";
   import { css, cx } from "styled-system/css";
@@ -19,6 +20,12 @@
 
   let { data }: { data: PageData } = $props();
   const project = $derived(data.project);
+
+  // SoftwareSourceCode + BreadcrumbList structured data. Origin comes from the
+  // canonical metadata.url, matching the homepage's Person/WebSite pattern.
+  const jsonLd = $derived(
+    projectJsonLdScript(project, new URL(data.metadata.url).origin),
+  );
 
   // Author-set accent flows to descendants via the --accent CSS var (set below);
   // --accent-ink is the legible text color for solid-accent fills.
@@ -82,6 +89,12 @@
     "@media (max-width: 760px)": { position: "static", order: "-1" },
   });
 </script>
+
+<svelte:head>
+  <!-- JSON-LD requires raw injection; payload is admin-sourced and <-escaped -->
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html jsonLd}
+</svelte:head>
 
 <main
   class={cx(
