@@ -1,5 +1,5 @@
-// Auto-generated barrel file — do not edit manually.
-// Regenerate with: just bindings
+// Auto-generated barrel file -- do not edit manually.
+// Regenerate with: tempo bindings
 export type { AdminStats } from "./AdminStats";
 export type { ApiAdminProject } from "./ApiAdminProject";
 export type { ApiEvent } from "./ApiEvent";
