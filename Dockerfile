@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.24
+# syntax=docker/dockerfile:1.26
 
 # Railway's Dockerfile builder persists BuildKit cache mounts only when the mount
 # id is prefixed with `s/<service-id>-`, and it validates that prefix by static
@@ -9,7 +9,7 @@
 # https://docs.railway.com/builds/dockerfiles#cache-mounts
 
 # Stage 1: cargo-chef base
-FROM rust:1.95-alpine AS chef
+FROM rust:1.98-alpine AS chef
 WORKDIR /build
 
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static && \
