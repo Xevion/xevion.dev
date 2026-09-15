@@ -75,7 +75,7 @@
     "eslint-plugin-svelte": "^3.14.0",
     "globals": "^17.0.0",
     "prettier": "^3.8.0",
-    "prettier-plugin-svelte": "^3.4.1",
+    "prettier-plugin-svelte": "^4.0.0",
     "svelte": "^5.46.4",
     "svelte-adapter-bun": "npm:@xevion/svelte-adapter-bun@^1.0.1",
     "svelte-check": "^4.3.5",
