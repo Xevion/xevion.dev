@@ -13,49 +13,62 @@ import type { TerminalCast } from "./TerminalCast";
  * project's full `ProseMirror` JSON. Feeds both the admin editor and the public
  * `/projects/{slug}` page.
  */
-export type ApiProjectDetail = { 
-/**
- * Last authored edit (RFC 3339), for a "last edited" signal in the editor.
- */
-updatedAt: string, 
-/**
- * `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
- */
-detailContent?: unknown, 
-/**
- * Authored CLI-hero transcript; absent for non-CLI projects.
- */
-terminalCast?: TerminalCast, 
-/**
- * Curated related projects in authored order (resolved server-side from the
- * `project_relations` table). Empty when none are authored.
- */
-related: Array<ApiRelatedProject>, tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, 
-/**
- * Overall public visibility. Admin-only signal; public responses never
- * include hidden projects in the first place.
- */
-hidden: boolean, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
-/**
- * Authored primary label; the rail's "Type" slot.
- */
-projectType?: string, 
-/**
- * When true the page hides repo links and shows the closed-source callout;
- * the repo is still synced for activity.
- */
-private: boolean, 
-/**
- * Explicit accent hex; frontend falls back to `#71717a` when absent.
- */
-accentColor?: string, 
-/**
- * Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
- * sync-health signal, distinct from `lastActivity`.
- */
-githubSyncedAt?: string, 
-/**
- * Most recent GitHub sync failure; absent when healthy. Lets the admin UI
- * flag a repo whose sync is broken.
- */
-githubSyncError?: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };
+export type ApiProjectDetail = {
+  /**
+   * Last authored edit (RFC 3339), for a "last edited" signal in the editor.
+   */
+  updatedAt: string;
+  /**
+   * `ProseMirror`/`TipTap` document JSON, or null when the project has no detail page.
+   */
+  detailContent?: unknown;
+  /**
+   * Authored CLI-hero transcript; absent for non-CLI projects.
+   */
+  terminalCast?: TerminalCast;
+  /**
+   * Curated related projects in authored order (resolved server-side from the
+   * `project_relations` table). Empty when none are authored.
+   */
+  related: Array<ApiRelatedProject>;
+  tags: Array<ApiTag>;
+  media: Array<ApiProjectMedia>;
+  status: ProjectStatus;
+  /**
+   * Overall public visibility. Admin-only signal; public responses never
+   * include hidden projects in the first place.
+   */
+  hidden: boolean;
+  githubRepo?: string;
+  demoUrl?: string;
+  createdAt: string;
+  lastActivity: string;
+  /**
+   * Authored primary label; the rail's "Type" slot.
+   */
+  projectType?: string;
+  /**
+   * When true the page hides repo links and shows the closed-source callout;
+   * the repo is still synced for activity.
+   */
+  private: boolean;
+  /**
+   * Explicit accent hex; frontend falls back to `#71717a` when absent.
+   */
+  accentColor?: string;
+  /**
+   * Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
+   * sync-health signal, distinct from `lastActivity`.
+   */
+  githubSyncedAt?: string;
+  /**
+   * Most recent GitHub sync failure; absent when healthy. Lets the admin UI
+   * flag a repo whose sync is broken.
+   */
+  githubSyncError?: string;
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription: string;
+  links: Array<ApiProjectLink>;
+};

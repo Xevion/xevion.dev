@@ -1,5 +1,7 @@
 .svelte-kit
-build
+.wrangler
 node_modules
 styled-system
-src/lib/bindings
+dist
+drizzle/meta
+worker-configuration.d.ts

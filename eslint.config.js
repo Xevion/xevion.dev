@@ -37,6 +37,12 @@ export default ts.config(
     },
   },
   {
-    ignores: ["build/", ".svelte-kit/", "dist/", "styled-system/"],
+    ignores: [
+      ".svelte-kit/",
+      ".wrangler/",
+      "dist/",
+      "styled-system/",
+      "worker-configuration.d.ts",
+    ],
   },
 );

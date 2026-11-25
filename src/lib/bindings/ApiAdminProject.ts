@@ -3,32 +3,45 @@ import type { ApiProjectMedia } from "./ApiProjectMedia";
 import type { ApiTag } from "./ApiTag";
 import type { ProjectStatus } from "./ProjectStatus";
 
-export type ApiAdminProject = { tags: Array<ApiTag>, media: Array<ApiProjectMedia>, status: ProjectStatus, 
-/**
- * Overall public visibility. Admin-only signal; public responses never
- * include hidden projects in the first place.
- */
-hidden: boolean, githubRepo?: string, demoUrl?: string, createdAt: string, lastActivity: string, 
-/**
- * Authored primary label; the rail's "Type" slot.
- */
-projectType?: string, 
-/**
- * When true the page hides repo links and shows the closed-source callout;
- * the repo is still synced for activity.
- */
-private: boolean, 
-/**
- * Explicit accent hex; frontend falls back to `#71717a` when absent.
- */
-accentColor?: string, 
-/**
- * Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
- * sync-health signal, distinct from `lastActivity`.
- */
-githubSyncedAt?: string, 
-/**
- * Most recent GitHub sync failure; absent when healthy. Lets the admin UI
- * flag a repo whose sync is broken.
- */
-githubSyncError?: string, id: string, slug: string, name: string, shortDescription: string, links: Array<ApiProjectLink>, };
+export type ApiAdminProject = {
+  tags: Array<ApiTag>;
+  media: Array<ApiProjectMedia>;
+  status: ProjectStatus;
+  /**
+   * Overall public visibility. Admin-only signal; public responses never
+   * include hidden projects in the first place.
+   */
+  hidden: boolean;
+  githubRepo?: string;
+  demoUrl?: string;
+  createdAt: string;
+  lastActivity: string;
+  /**
+   * Authored primary label; the rail's "Type" slot.
+   */
+  projectType?: string;
+  /**
+   * When true the page hides repo links and shows the closed-source callout;
+   * the repo is still synced for activity.
+   */
+  private: boolean;
+  /**
+   * Explicit accent hex; frontend falls back to `#71717a` when absent.
+   */
+  accentColor?: string;
+  /**
+   * Last successful GitHub poll (RFC 3339); absent until first sync. Admin-only
+   * sync-health signal, distinct from `lastActivity`.
+   */
+  githubSyncedAt?: string;
+  /**
+   * Most recent GitHub sync failure; absent when healthy. Lets the admin UI
+   * flag a repo whose sync is broken.
+   */
+  githubSyncError?: string;
+  id: string;
+  slug: string;
+  name: string;
+  shortDescription: string;
+  links: Array<ApiProjectLink>;
+};

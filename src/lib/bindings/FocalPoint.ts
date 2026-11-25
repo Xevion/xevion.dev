@@ -1,1 +1,1 @@
-export type FocalPoint = { x: number, y: number, };
+export type FocalPoint = { x: number; y: number };
