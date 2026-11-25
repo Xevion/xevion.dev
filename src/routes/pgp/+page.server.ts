@@ -4,9 +4,11 @@ import { prefersRawContent } from "#lib/server/negotiation.ts";
 import { publicKey } from "#lib/server/static-text.ts";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = ({ request }) => {
-  // curl and friends that explicitly ask for text/html still get the key, not the page.
+export const load: PageServerLoad = ({ request, isDataRequest }) => {
+  // curl and friends that explicitly ask for text/html still get the key, not the page. A data
+  // request is the client router navigating here, and it sends `Accept: */*`.
   if (
+    !isDataRequest &&
     prefersRawContent(
       request.headers.get("user-agent"),
       request.headers.get("accept"),
