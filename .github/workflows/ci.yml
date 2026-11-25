@@ -13,46 +13,11 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-  SQLX_OFFLINE: "true"
-
 jobs:
-  rust-quality:
-    name: Rust Quality
+  quality:
+    name: Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-      - uses: taiki-e/install-action@cargo-machete
-
-      # Rust's include_dir!/include_bytes! macros need web/build/ at compile time.
-      # Minimal stubs let cargo check/clippy compile without a full frontend build.
-      - name: Create web/build stubs
-        run: |
-          mkdir -p web/build/client web/build/prerendered/errors
-          echo "" > web/build/env.js
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-      - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
-      - name: Check for unused dependencies
-        run: cargo machete
-
-  frontend-quality:
-    name: Frontend Quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,149 +26,18 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
-        working-directory: web
         run: bun install --frozen-lockfile
-      - name: Sync SvelteKit
-        working-directory: web
-        run: bunx svelte-kit sync
-      - name: PandaCSS codegen
-        working-directory: web
-        run: bunx panda codegen
+      - name: Generate Worker types
+        run: bun run gen
       - name: Check formatting
-        working-directory: web
         run: bunx prettier --check .
       - name: Lint
-        working-directory: web
-        run: bun run lint
+        run: bunx eslint .
       - name: Type check
-        working-directory: web
         run: bun run check --fail-on-warnings
       - name: Test
-        working-directory: web
         run: bun run test
       - name: Build
-        working-directory: web
-        run: bunx --bun vite build
-      # `vite build` is Rollup-only; this exercises dev-mode dep pre-bundling,
-      # which is where a plugin/Vite peer mismatch actually breaks.
-      - name: Verify dev dependency optimization
-        working-directory: web
-        run: bunx --bun vite optimize --force
-
-  rust-tests:
-    name: Rust Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: xevion
-          POSTGRES_PASSWORD: ci
-          POSTGRES_DB: xevion
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://xevion:ci@localhost:5432/xevion
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: sqlx-cli,cargo-nextest
-      - name: Create web/build stubs
-        run: |
-          mkdir -p web/build/client web/build/prerendered/errors
-          echo "" > web/build/env.js
-      - name: Run migrations
-        run: sqlx migrate run
-        env:
-          SQLX_OFFLINE: "false"
-      - name: Verify sqlx offline cache
-        run: cargo sqlx prepare --check
-        env:
-          SQLX_OFFLINE: "false"
-      - name: Run tests
-        run: cargo nextest run
-
-  binding-verification:
-    name: Binding Verification
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-      - name: Create web/build stubs
-        run: |
-          mkdir -p web/build/client web/build/prerendered/errors
-          echo "" > web/build/env.js
-      - name: Regenerate ts-rs bindings
-        run: cargo test export_bindings_
-      - name: Check for stale bindings
-        run: git diff --exit-code web/src/lib/bindings/
-
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: docker/setup-buildx-action@v3
-      - name: Build image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: taiki-e/install-action@cargo-audit
-      # RUSTSEC-2023-0071: rsa timing sidechannel, no fix available (transitive via sqlx)
-      - name: Rust security audit
-        run: cargo audit --ignore RUSTSEC-2023-0071
-      - name: Run zizmor 🌈
-        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
-        with:
-          advanced-security: false
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.35.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: 0
-      - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && hashFiles('trivy-results.sarif') != ''
-        with:
-          sarif_file: trivy-results.sarif
+        run: bun run build
+      - name: Build CLI
+        run: bun run cli:build

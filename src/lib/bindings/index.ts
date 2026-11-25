@@ -2,7 +2,6 @@
 // Regenerate with: tempo bindings
 export type { AdminStats } from "./AdminStats";
 export type { ApiAdminProject } from "./ApiAdminProject";
-export type { ApiEvent } from "./ApiEvent";
 export type { ApiMediaVariant } from "./ApiMediaVariant";
 export type { ApiMediaVariants } from "./ApiMediaVariants";
 export type { ApiProject } from "./ApiProject";
@@ -18,8 +17,6 @@ export type { ApiSocialLink } from "./ApiSocialLink";
 export type { ApiTag } from "./ApiTag";
 export type { ApiTagWithCount } from "./ApiTagWithCount";
 export type { ApiVideoOriginal } from "./ApiVideoOriginal";
-export type { EventLevel } from "./EventLevel";
-export type { EventType } from "./EventType";
 export type { FocalPoint } from "./FocalPoint";
 export type { MediaMetadata } from "./MediaMetadata";
 export type { MediaType } from "./MediaType";

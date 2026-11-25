@@ -1,5 +1,5 @@
-import publicKey from "../../../static/publickey.asc?raw";
-import keybaseProof from "../../../static/keybase.txt?raw";
+import publicKey from "./assets/publickey.asc?raw";
+import keybaseProof from "./assets/keybase.txt?raw";
 
 export { publicKey, keybaseProof };
 

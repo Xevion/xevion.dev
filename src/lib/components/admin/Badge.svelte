@@ -2,10 +2,9 @@
   import { cx } from "styled-system/css";
   import { badge } from "styled-system/recipes";
   import type { ProjectStatus } from "#lib/bindings/index.ts";
-  import type { EventLevel } from "#lib/bindings/index.ts";
 
   interface Props {
-    variant?: ProjectStatus | EventLevel | "default";
+    variant?: ProjectStatus | "info" | "warning" | "error" | "default";
     class?: string;
     children?: import("svelte").Snippet;
   }

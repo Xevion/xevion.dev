@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { render } from "svelte/server";
 import type { Db } from "./db/index.ts";
 import { projects } from "./db/schema.ts";
-import { renderPng } from "./og-render.ts";
 import OgImage from "#lib/components/OgImage.svelte";
 import { getAppLogger } from "#lib/logger.ts";
 import { loadOGFonts } from "#lib/og-fonts.ts";
@@ -80,6 +79,8 @@ export async function renderOgCard(
   const { body } = render(OgImage, {
     props: { ...content, type: spec.type },
   });
+  // Loaded lazily: the build analyses server modules in Node, which cannot import the WASM.
+  const { renderPng } = await import("./og-render.ts");
   return renderPng(body, fonts);
 }
 
