@@ -14,7 +14,7 @@
   import type { JSONContent } from "@tiptap/core";
   import type { CreateProjectData, TagWithIcon } from "#lib/admin-types.ts";
   import type { ApiError } from "#lib/errors.ts";
-  import type { Result } from "true-myth/result";
+  import type { Result } from "neverthrow";
   import { getLogger } from "@logtape/logtape";
   import { toast } from "#lib/toast.ts";
 
@@ -25,7 +25,7 @@
     availableTags: TagWithIcon[];
     onsubmit: (
       data: CreateProjectData,
-    ) => Promise<Result<ApiAdminProject, ApiError>>;
+    ) => PromiseLike<Result<ApiAdminProject, ApiError>>;
     ondelete?: () => void;
     submitLabel?: string;
   }
@@ -116,9 +116,13 @@
       demoUrl: demoUrl || undefined,
       tagIds: selectedTagIds,
       detailContent: detailContent ?? undefined,
+      projectType: project?.projectType,
+      terminalCast: project?.terminalCast,
+      accentColor: project?.accentColor,
+      relatedIds: project?.related.map((r) => r.id) ?? [],
     });
 
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to submit project", { error: result.error });
       fieldErrors = result.error.fieldErrors ?? {};
       toast.error(result.error.message);

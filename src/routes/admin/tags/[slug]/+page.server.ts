@@ -1,35 +1,21 @@
 import type { PageServerLoad } from "./$types";
-import { apiFetch } from "#lib/api.server.ts";
-import { error } from "@sveltejs/kit";
-import type { ApiTag, ApiAdminProject } from "#lib/bindings/index.ts";
-
-interface TagWithProjectsResponse {
-  tag: ApiTag;
-  projects: ApiAdminProject[];
-}
-
-interface RelatedTagResponse extends ApiTag {
-  cooccurrenceCount: number;
-}
+import { loadApi } from "#lib/server/admin-load.ts";
+import type {
+  ApiAdminProject,
+  ApiRelatedTag,
+  ApiTag,
+} from "#lib/bindings/index.ts";
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
-  const { slug } = params;
+  const slug = encodeURIComponent(params.slug);
 
-  // Fetch tag with projects
-  const tagResult = await apiFetch<TagWithProjectsResponse>(
-    `/api/tags/${slug}`,
-    { fetch },
-  );
-  const tagData = tagResult.unwrapOrElse((apiErr) => {
-    throw error(apiErr.status || 404, apiErr.statusText || "Tag not found");
-  });
-
-  // Fetch related tags
-  const relatedResult = await apiFetch<RelatedTagResponse[]>(
-    `/api/tags/${slug}/related`,
-    { fetch },
-  );
-  const relatedTags = relatedResult.unwrapOr([]);
+  const [tagData, relatedTags] = await Promise.all([
+    loadApi<{ tag: ApiTag; projects: ApiAdminProject[] }>(
+      fetch,
+      `/api/tags/${slug}`,
+    ),
+    loadApi<ApiRelatedTag[]>(fetch, `/api/tags/${slug}/related`),
+  ]);
 
   return {
     tag: tagData.tag,

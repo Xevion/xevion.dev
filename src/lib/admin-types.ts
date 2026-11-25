@@ -4,6 +4,7 @@
 import type { ApiTag } from "#lib/bindings/index.ts";
 import type { ProjectStatus } from "#lib/bindings/index.ts";
 import type { JSONContent } from "@tiptap/core";
+import type { TerminalCast } from "#lib/bindings/index.ts";
 
 // Frontend alias
 export type TagWithIcon = ApiTag;
@@ -20,6 +21,11 @@ export interface CreateProjectData {
   demoUrl?: string;
   tagIds: string[];
   detailContent?: JSONContent | null;
+  // Carried through unchanged: updates replace the whole project, so omitting these would clear them.
+  projectType?: string;
+  terminalCast?: TerminalCast;
+  accentColor?: string;
+  relatedIds: string[];
 }
 
 export interface UpdateProjectData extends CreateProjectData {

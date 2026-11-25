@@ -7,7 +7,7 @@
   import TagChip from "#lib/components/TagChip.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import { updateAdminTag, deleteAdminTag } from "#lib/api.ts";
-  import { goto, invalidateAll } from "$app/navigation";
+  import { goto, refreshAll } from "$app/navigation";
   import type { PageData } from "./$types";
   import IconArrowLeft from "~icons/lucide/arrow-left";
   import IconExternalLink from "~icons/lucide/external-link";
@@ -56,7 +56,7 @@
       icon: icon || undefined,
       color: color,
     });
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to update tag", { error: result.error });
       fieldErrors = result.error.fieldErrors ?? {};
       toast.error(result.error.message);
@@ -67,9 +67,11 @@
     // If slug changed, navigate to new URL
     const newSlug = slug.trim() || data.tag.slug;
     if (newSlug !== data.tag.slug) {
-      await goto(`/admin/tags/${newSlug}`, { replaceState: true });
+      await goto(`/admin/tags/${encodeURIComponent(newSlug)}`, {
+        replaceState: true,
+      });
     } else {
-      await invalidateAll();
+      await refreshAll();
     }
     saving = false;
   }
@@ -94,7 +96,7 @@
     if (!deleteConfirmReady) return;
 
     const result = await deleteAdminTag(data.tag.id);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to delete tag", { error: result.error });
       toast.error(result.error.message);
       return;

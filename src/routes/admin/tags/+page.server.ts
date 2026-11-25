@@ -1,15 +1,11 @@
 import type { PageServerLoad } from "./$types";
-import { apiFetch } from "#lib/api.server.ts";
+import { loadApi } from "#lib/server/admin-load.ts";
 import type { ApiTagWithCount } from "#lib/bindings/index.ts";
 
 export const load: PageServerLoad = async ({ fetch }) => {
-  const result = await apiFetch<ApiTagWithCount[]>("/api/tags", { fetch });
-  const tags = result.unwrapOr([]);
-
-  // Sort by project count descending (popularity)
-  const sortedTags = [...tags].sort((a, b) => b.projectCount - a.projectCount);
+  const tags = await loadApi<ApiTagWithCount[]>(fetch, "/api/tags");
 
   return {
-    tags: sortedTags,
+    tags: [...tags].sort((a, b) => b.projectCount - a.projectCount),
   };
 };

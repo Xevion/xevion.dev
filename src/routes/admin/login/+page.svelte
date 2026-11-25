@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import { safeNextPath } from "#lib/redirects.ts";
   import { page } from "$app/state";
   import Button from "#lib/components/admin/Button.svelte";
   import Input from "#lib/components/admin/Input.svelte";
@@ -22,13 +23,18 @@
     loading = true;
 
     try {
-      const success = await authStore.login(username, password);
+      const failure = await authStore.login(username, password);
 
-      if (success) {
-        const nextUrl = page.url.searchParams.get("next") || "/admin";
-        goto(nextUrl);
-      } else {
+      if (!failure) {
+        const nextUrl =
+          safeNextPath(page.url.searchParams.get("next")) ?? "/admin";
+        await goto(nextUrl, { refreshAll: true });
+      } else if (failure.status === 429) {
+        error = "Too many attempts. Try again later.";
+      } else if (failure.status === 401) {
         error = "Invalid username or password";
+      } else {
+        error = failure.message;
       }
     } catch (err) {
       error = "An error occurred during login";

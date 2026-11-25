@@ -12,7 +12,7 @@
   import IconPlus from "~icons/lucide/plus";
   import IconX from "~icons/lucide/x";
   import IconInfo from "~icons/lucide/info";
-  import { invalidateAll } from "$app/navigation";
+  import { refreshAll } from "$app/navigation";
   import { getLogger } from "@logtape/logtape";
   import { toast } from "#lib/toast.ts";
   import { css, cx } from "styled-system/css";
@@ -83,14 +83,14 @@
       color: createColor,
     };
     const result = await createAdminTag(createData);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to create tag", { error: result.error });
       createFieldErrors = result.error.fieldErrors ?? {};
       toast.error(result.error.message);
       creating = false;
       return;
     }
-    await invalidateAll();
+    await refreshAll();
     createName = "";
     createSlug = "";
     createIcon = "";
@@ -139,12 +139,12 @@
     if (!deleteTarget || !deleteConfirmReady) return;
 
     const result = await deleteAdminTag(deleteTarget.id);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to delete tag", { error: result.error });
       toast.error(result.error.message);
       return;
     }
-    await invalidateAll();
+    await refreshAll();
     deleteModalOpen = false;
     deleteTarget = null;
     deleteConfirmReady = false;

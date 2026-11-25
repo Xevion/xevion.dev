@@ -25,7 +25,7 @@
     if (isLoginPage || !authStore.isAuthenticated) return;
 
     const result = await getAdminStats();
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to load stats", { error: result.error });
     } else {
       stats = result.value;

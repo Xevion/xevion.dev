@@ -1,121 +1,73 @@
 import type {
   ApiAdminProject,
-  ApiEvent,
   ApiTag,
   ApiTagWithCount,
   AdminStats,
   ApiSiteIdentity,
   ApiSiteSettings,
+  ApiProjectDetail,
   ApiProjectMedia,
+  ApiRelatedTag,
   ApiSession,
-  EventLevel,
 } from "#lib/bindings/index.ts";
+import { ResultAsync, ok, err, type Result } from "neverthrow";
 import type {
   CreateProjectData,
   UpdateProjectData,
   CreateTagData,
   UpdateTagData,
 } from "./admin-types";
-import { ApiError } from "./errors";
-import { ok, err } from "true-myth/result";
-import type { Result } from "true-myth/result";
+import { apiRequest } from "./api-client";
+import { NETWORK_ERROR, toApiError, type ApiError } from "./errors";
 
-async function clientApiFetch<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<Result<T, ApiError>> {
-  try {
-    const response = await fetch(path, {
-      ...init,
-      credentials: "same-origin",
-    });
-
-    if (!response.ok) {
-      return err(await ApiError.fromResponse(response));
-    }
-
-    return ok(await response.json());
-  } catch (error) {
-    return err(ApiError.network(error));
-  }
+export function getAdminProjects(): ResultAsync<ApiAdminProject[], ApiError> {
+  return apiRequest<ApiAdminProject[]>("/api/projects", "GET");
 }
 
-export async function getAdminProjects(): Promise<
-  Result<ApiAdminProject[], ApiError>
-> {
-  return clientApiFetch<ApiAdminProject[]>("/api/projects");
-}
-
-export async function getAdminProject(
+export function getAdminProject(
   id: string,
-): Promise<Result<ApiAdminProject | null, ApiError>> {
-  const result = await clientApiFetch<ApiAdminProject>(`/api/projects/${id}`);
-  if (result.isErr) {
-    return ApiError.isNotFound(result.error) ? ok(null) : err(result.error);
-  }
-  return ok(result.value);
+): ResultAsync<ApiProjectDetail, ApiError> {
+  return apiRequest<ApiProjectDetail>(`/api/projects/${id}`, "GET");
 }
 
-export async function createAdminProject(
+export function createAdminProject(
   data: CreateProjectData,
-): Promise<Result<ApiAdminProject, ApiError>> {
-  return clientApiFetch<ApiAdminProject>("/api/projects", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+): ResultAsync<ApiAdminProject, ApiError> {
+  return apiRequest<ApiAdminProject>("/api/projects", "POST", data);
 }
 
-export async function updateAdminProject(
+export function updateAdminProject(
   data: UpdateProjectData,
-): Promise<Result<ApiAdminProject, ApiError>> {
-  return clientApiFetch<ApiAdminProject>(`/api/projects/${data.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+): ResultAsync<ApiAdminProject, ApiError> {
+  const { id, ...body } = data;
+  return apiRequest<ApiAdminProject>(`/api/projects/${id}`, "PUT", body);
 }
 
-export async function deleteAdminProject(
+export function deleteAdminProject(
   id: string,
-): Promise<Result<ApiAdminProject, ApiError>> {
-  return clientApiFetch<ApiAdminProject>(`/api/projects/${id}`, {
-    method: "DELETE",
-  });
+): ResultAsync<ApiAdminProject, ApiError> {
+  return apiRequest<ApiAdminProject>(`/api/projects/${id}`, "DELETE");
 }
 
-export async function getAdminTags(): Promise<
-  Result<ApiTagWithCount[], ApiError>
-> {
-  return clientApiFetch<ApiTagWithCount[]>("/api/tags");
+export function getAdminTags(): ResultAsync<ApiTagWithCount[], ApiError> {
+  return apiRequest<ApiTagWithCount[]>("/api/tags", "GET");
 }
 
-export async function createAdminTag(
+export function createAdminTag(
   data: CreateTagData,
-): Promise<Result<ApiTag, ApiError>> {
-  return clientApiFetch<ApiTag>("/api/tags", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+): ResultAsync<ApiTag, ApiError> {
+  return apiRequest<ApiTag>("/api/tags", "POST", data);
 }
 
-export async function updateAdminTag(
+export function updateAdminTag(
   data: UpdateTagData,
-): Promise<Result<ApiTag, ApiError>> {
-  return clientApiFetch<ApiTag>(`/api/tags/${data.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+): ResultAsync<ApiTag, ApiError> {
+  const { id, ...body } = data;
+  return apiRequest<ApiTag>(`/api/tags/${id}`, "PUT", body);
 }
 
-export async function deleteAdminTag(
-  id: string,
-): Promise<Result<void, ApiError>> {
-  return clientApiFetch<void>(`/api/tags/${id}`, {
-    method: "DELETE",
-  });
+export function deleteAdminTag(id: string): ResultAsync<unknown, ApiError> {
+  return apiRequest<unknown>(`/api/tags/${id}`, "DELETE");
 }
 
 export interface TagWithProjects {
@@ -123,198 +75,126 @@ export interface TagWithProjects {
   projects: ApiAdminProject[];
 }
 
-export async function getAdminTagBySlug(
+export function getAdminTagBySlug(
   slug: string,
-): Promise<Result<TagWithProjects | null, ApiError>> {
-  const result = await clientApiFetch<TagWithProjects>(`/api/tags/${slug}`);
-  if (result.isErr) {
-    return ApiError.isNotFound(result.error) ? ok(null) : err(result.error);
-  }
-  return ok(result.value);
+): ResultAsync<TagWithProjects, ApiError> {
+  return apiRequest<TagWithProjects>(`/api/tags/${slug}`, "GET");
 }
 
-export interface RelatedTag extends ApiTag {
-  cooccurrenceCount: number;
-}
-
-export async function getRelatedTags(
+export function getRelatedTags(
   slug: string,
-): Promise<Result<RelatedTag[], ApiError>> {
-  return clientApiFetch<RelatedTag[]>(`/api/tags/${slug}/related`);
+): ResultAsync<ApiRelatedTag[], ApiError> {
+  return apiRequest<ApiRelatedTag[]>(`/api/tags/${slug}/related`, "GET");
 }
 
-export async function uploadProjectMedia(
+export function getProjectMedia(
+  projectId: string,
+): ResultAsync<ApiProjectMedia[], ApiError> {
+  return apiRequest<ApiProjectMedia[]>(
+    `/api/projects/${projectId}/media`,
+    "GET",
+  );
+}
+
+export function uploadProjectMedia(
   projectId: string,
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<Result<ApiProjectMedia, ApiError>> {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-    formData.append("file", file);
+  blurhash?: string,
+): ResultAsync<ApiProjectMedia, ApiError> {
+  return ResultAsync.fromSafePromise(
+    new Promise<Result<ApiProjectMedia, ApiError>>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append("file", file);
+      if (blurhash) formData.append("blurhash", blurhash);
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    };
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      xhr.onload = () => {
+        let json: unknown = null;
         try {
-          const data = JSON.parse(xhr.responseText) as ApiProjectMedia;
-          resolve(ok(data));
+          json = JSON.parse(xhr.responseText);
         } catch {
-          resolve(
-            err(new ApiError(xhr.status, xhr.statusText, "Invalid response")),
-          );
+          // not JSON
         }
-        return;
-      }
-
-      // Non-2xx: read the JSON error body for message + field errors.
-      let message: string | undefined;
-      let fieldErrors: Record<string, string> | undefined;
-      try {
-        const body = JSON.parse(xhr.responseText);
-        if (body && typeof body === "object") {
-          if (typeof body.error === "string") message = body.error;
-          if (
-            body.fieldErrors &&
-            typeof body.fieldErrors === "object" &&
-            !Array.isArray(body.fieldErrors)
-          ) {
-            fieldErrors = body.fieldErrors as Record<string, string>;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (json && typeof json === "object" && "data" in json) {
+            resolve(ok((json as { data: ApiProjectMedia }).data));
+          } else {
+            resolve(
+              err({
+                status: xhr.status,
+                code: "INVALID_RESPONSE",
+                message: "Malformed response body",
+              }),
+            );
           }
+          return;
         }
-      } catch {
-        // Body is not JSON — fall back to statusText.
-      }
-      resolve(
-        err(new ApiError(xhr.status, xhr.statusText, message, fieldErrors)),
-      );
-    };
+        resolve(err(toApiError(xhr.status, json)));
+      };
 
-    xhr.onerror = () => resolve(err(ApiError.network("Network error")));
+      xhr.onerror = () => resolve(err(NETWORK_ERROR));
 
-    xhr.open("POST", `/api/projects/${projectId}/media`);
-    xhr.withCredentials = true;
-    xhr.send(formData);
-  });
+      xhr.open("POST", `/api/projects/${projectId}/media`);
+      xhr.withCredentials = true;
+      xhr.send(formData);
+    }),
+  ).andThen((r) => r);
 }
 
-export async function deleteProjectMedia(
+export function deleteProjectMedia(
   projectId: string,
   mediaId: string,
-): Promise<Result<ApiProjectMedia, ApiError>> {
-  return clientApiFetch<ApiProjectMedia>(
+): ResultAsync<unknown, ApiError> {
+  return apiRequest<unknown>(
     `/api/projects/${projectId}/media/${mediaId}`,
-    { method: "DELETE" },
+    "DELETE",
   );
 }
 
-export async function reorderProjectMedia(
+export function reorderProjectMedia(
   projectId: string,
   mediaIds: string[],
-): Promise<Result<ApiProjectMedia[], ApiError>> {
-  return clientApiFetch<ApiProjectMedia[]>(
+): ResultAsync<ApiProjectMedia[], ApiError> {
+  return apiRequest<ApiProjectMedia[]>(
     `/api/projects/${projectId}/media/reorder`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mediaIds }),
-    },
+    "PUT",
+    { mediaIds },
   );
 }
 
-export async function getAdminEvents(params?: {
-  limit?: number;
-  offset?: number;
-  level?: EventLevel;
-  entityType?: string;
-  eventType?: string;
-}): Promise<Result<ApiEvent[], ApiError>> {
-  const search = new URLSearchParams();
-  if (params?.limit != null) search.set("limit", String(params.limit));
-  if (params?.offset != null) search.set("offset", String(params.offset));
-  if (params?.level) search.set("level", params.level);
-  if (params?.entityType) search.set("entityType", params.entityType);
-  if (params?.eventType) search.set("eventType", params.eventType);
-  const qs = search.toString();
-  return clientApiFetch<ApiEvent[]>(`/api/events${qs ? `?${qs}` : ""}`);
+export function getAdminStats(): ResultAsync<AdminStats, ApiError> {
+  return apiRequest<AdminStats>("/api/stats", "GET");
 }
 
-export async function getAdminStats(): Promise<Result<AdminStats, ApiError>> {
-  return clientApiFetch<AdminStats>("/api/stats");
+export function getSettings(): ResultAsync<ApiSiteSettings, ApiError> {
+  return apiRequest<ApiSiteSettings>("/api/settings", "GET");
 }
 
-export async function getSettings(): Promise<
-  Result<ApiSiteSettings, ApiError>
-> {
-  return clientApiFetch<ApiSiteSettings>("/api/settings");
-}
-
-export async function updateSettings(
+export function updateSettings(
   settings: ApiSiteSettings,
-): Promise<Result<ApiSiteSettings, ApiError>> {
-  return clientApiFetch<ApiSiteSettings>("/api/settings", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(settings),
-  });
+): ResultAsync<ApiSiteSettings, ApiError> {
+  return apiRequest<ApiSiteSettings>("/api/settings", "PUT", settings);
 }
 
-export async function uploadResume(
+export function uploadResume(
   file: File,
-): Promise<Result<ApiSiteIdentity, ApiError>> {
+): ResultAsync<ApiSiteIdentity, ApiError> {
   const formData = new FormData();
   formData.append("file", file);
-  return clientApiFetch<ApiSiteIdentity>("/api/settings/resume", {
-    method: "POST",
-    body: formData,
-  });
+  return apiRequest<ApiSiteIdentity>("/api/settings/resume", "POST", formData);
 }
 
-export async function getSessions(): Promise<Result<ApiSession[], ApiError>> {
-  return clientApiFetch<ApiSession[]>("/api/sessions");
+export function getSessions(): ResultAsync<ApiSession[], ApiError> {
+  return apiRequest<ApiSession[]>("/api/sessions", "GET");
 }
 
-export async function revokeSession(
-  id: string,
-): Promise<Result<void, ApiError>> {
-  return clientApiFetch<void>(`/api/sessions/${id}`, { method: "DELETE" });
-}
-
-/** Details of a pending device-authorization request, for the approval page. */
-export interface DeviceAuthInfo {
-  userCode: string;
-  label?: string | null;
-  expiresAt: string;
-}
-
-export async function getDeviceAuthInfo(
-  requestId: string,
-): Promise<Result<DeviceAuthInfo, ApiError>> {
-  return clientApiFetch<DeviceAuthInfo>(`/api/auth/device/info/${requestId}`);
-}
-
-export async function approveDeviceAuth(
-  requestId: string,
-  userCode: string,
-): Promise<Result<{ success: boolean }, ApiError>> {
-  return clientApiFetch<{ success: boolean }>("/api/auth/device/approve", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ requestId, userCode }),
-  });
-}
-
-export async function denyDeviceAuth(
-  requestId: string,
-): Promise<Result<{ success: boolean }, ApiError>> {
-  return clientApiFetch<{ success: boolean }>("/api/auth/device/deny", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ requestId }),
-  });
+export function revokeSession(id: string): ResultAsync<unknown, ApiError> {
+  return apiRequest<unknown>(`/api/sessions/${id}`, "DELETE");
 }

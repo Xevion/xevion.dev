@@ -1,7 +1,13 @@
 import { getLogger } from "@logtape/logtape";
 import { telemetry } from "#lib/telemetry/index.ts";
+import { apiRequest } from "#lib/api-client.ts";
+import type { ApiError } from "#lib/errors.ts";
 
 const logger = getLogger(["admin", "auth"]);
+
+interface SessionInfo {
+  username: string;
+}
 
 class AuthStore {
   private static STORAGE_KEY = "admin_session_active";
@@ -18,65 +24,46 @@ class AuthStore {
     }
   }
 
-  async login(username: string, password: string): Promise<boolean> {
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
+  /** Resolves to null on success, or the failure so the caller can tell bad credentials from rate limiting. */
+  async login(username: string, password: string): Promise<ApiError | null> {
+    const result = await apiRequest<SessionInfo>(
+      "/api/login",
+      "POST",
+      { username, password },
+      { redirectOnUnauthorized: false },
+    );
+    if (result.isErr()) return result.error;
 
-      if (response.ok) {
-        const data = await response.json();
-        this.isAuthenticated = true;
-        this.username = data.username;
-        sessionStorage.setItem(AuthStore.STORAGE_KEY, "true");
-        telemetry.identifyAdmin(data.username);
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      logger.error("Login failed", { error });
-      return false;
-    }
+    this.setSession(result.value.username);
+    telemetry.identifyAdmin(result.value.username);
+    return null;
   }
 
   async logout(): Promise<void> {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      logger.error("Logout failed", { error });
-    } finally {
-      this.isAuthenticated = false;
-      this.username = null;
-      sessionStorage.removeItem(AuthStore.STORAGE_KEY);
-      telemetry.reset();
+    const result = await apiRequest<null>("/api/logout", "POST", undefined, {
+      redirectOnUnauthorized: false,
+    });
+    if (result.isErr()) {
+      logger.error("Logout failed", { error: result.error });
     }
+    this.isAuthenticated = false;
+    this.username = null;
+    sessionStorage.removeItem(AuthStore.STORAGE_KEY);
+    telemetry.reset();
   }
 
   async checkSession(): Promise<boolean> {
-    try {
-      const response = await fetch("/api/session", {
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const session = await response.json();
-        this.isAuthenticated = true;
-        this.username = session.username;
-        return true;
-      }
-    } catch (error) {
-      logger.error("Session check failed", { error });
+    const result = await apiRequest<SessionInfo>(
+      "/api/session",
+      "GET",
+      undefined,
+      { redirectOnUnauthorized: false },
+    );
+    if (result.isOk()) {
+      this.isAuthenticated = true;
+      this.username = result.value.username;
+      return true;
     }
-
     this.isAuthenticated = false;
     this.username = null;
     return false;

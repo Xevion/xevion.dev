@@ -4,8 +4,6 @@
   import ProjectForm from "#lib/components/admin/ProjectForm.svelte";
   import Modal from "#lib/components/admin/Modal.svelte";
   import { updateAdminProject, deleteAdminProject } from "#lib/api.ts";
-  import { ApiError } from "#lib/errors.ts";
-  import { err } from "true-myth/result";
   import type {
     UpdateProjectData,
     CreateProjectData,
@@ -42,7 +40,7 @@
   async function confirmDelete() {
     if (!data.project || !deleteConfirmReady) return;
     const result = await deleteAdminProject(data.project.id);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to delete project", { error: result.error });
       toast.error(result.error.message);
       return;
@@ -51,16 +49,12 @@
   }
 
   async function handleSubmit(formData: CreateProjectData) {
-    if (!data.project) {
-      return err(new ApiError(404, "Not Found", "Project not found"));
-    }
-
     const updateData: UpdateProjectData = {
       ...formData,
       id: data.project.id,
     };
     const result = await updateAdminProject(updateData);
-    if (result.isOk) {
+    if (result.isOk()) {
       goto(resolve("admin/projects"));
     }
     return result;

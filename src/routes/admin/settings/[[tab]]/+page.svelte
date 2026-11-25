@@ -53,7 +53,7 @@
 
   async function loadSettings() {
     const result = await getSettings();
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to load settings", { error: result.error });
     } else {
       settings = result.value;
@@ -72,7 +72,7 @@
     saving = true;
     fieldErrors = {};
     const result = await updateSettings(formData);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to save settings", { error: result.error });
       fieldErrors = result.error.fieldErrors ?? {};
       toast.error(result.error.message);
@@ -98,7 +98,7 @@
 
     uploadingResume = true;
     const result = await uploadResume(file);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to upload resume", { error: result.error });
       toast.error(result.error.message);
     } else if (settings && formData) {

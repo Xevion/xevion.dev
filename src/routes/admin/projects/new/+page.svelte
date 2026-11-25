@@ -12,7 +12,7 @@
 
   async function handleSubmit(formData: CreateProjectData) {
     const result = await createAdminProject(formData);
-    if (result.isOk) {
+    if (result.isOk()) {
       goto(resolve("admin/projects"));
     }
     return result;
