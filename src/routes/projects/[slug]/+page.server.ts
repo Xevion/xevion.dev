@@ -2,7 +2,9 @@ import { error } from "@sveltejs/kit";
 import { waitUntil } from "cloudflare:workers";
 import { getAppLogger } from "#lib/logger.ts";
 import { getOGImageUrl } from "#lib/og-types.ts";
+import type { JSONContent } from "@tiptap/core";
 import { prepareContent } from "#lib/server/content.ts";
+import { renderDetailContent } from "#lib/tiptap/render.server.ts";
 import { toApiProjectDetail } from "#lib/server/project-mapping.ts";
 import { getProjectBundle } from "#lib/server/project-views.ts";
 import { storeRenderedContent } from "#lib/server/projects.ts";
@@ -38,10 +40,17 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
         ),
       );
     } catch (cause) {
-      logger.error("stored content failed to render", {
+      // Imported documents predate the stricter validator; render them as-is (output is still
+      // sanitized) rather than showing an empty page until they are re-saved.
+      logger.warn("stored content failed validation", {
         projectId: row.id,
         cause: String(cause),
       });
+      const rendered = await renderDetailContent(
+        row.detailContent as JSONContent,
+      );
+      html = rendered.html;
+      toc = rendered.toc;
     }
   }
 
