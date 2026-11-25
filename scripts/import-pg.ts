@@ -11,6 +11,7 @@ import { SQL } from "bun";
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { hashPassword } from "../src/lib/server/crypto.ts";
+import { SqlScript } from "./sql.ts";
 
 const { values: args } = parseArgs({
   options: {
@@ -30,38 +31,8 @@ if (!password || password.length < 8)
 
 const pg = new SQL(url);
 
-type Value = string | number | boolean | null | Date | object | undefined;
-
-function literal(value: Value): string {
-  if (value === null || value === undefined) return "NULL";
-  if (typeof value === "boolean") return value ? "1" : "0";
-  if (typeof value === "number" || typeof value === "bigint")
-    return String(value);
-  if (value instanceof Date) return String(Math.floor(value.getTime() / 1000));
-  if (typeof value === "object") return quote(JSON.stringify(value));
-  return quote(value);
-}
-
-function quote(text: string): string {
-  return `'${text.replaceAll("'", "''")}'`;
-}
-
-// D1 rejects a single statement over 100 KB.
-const STATEMENT_LIMIT = 100_000;
-const statements: string[] = [];
-
-function insert(table: string, row: Record<string, Value>, verb = "INSERT") {
-  const columns = Object.keys(row);
-  const sql = `${verb} INTO \`${table}\` (${columns.map((c) => `\`${c}\``).join(", ")}) VALUES (${columns
-    .map((c) => literal(row[c]))
-    .join(", ")});`;
-  if (sql.length > STATEMENT_LIMIT) {
-    throw new Error(
-      `${table} row exceeds D1's statement limit (${sql.length} bytes)`,
-    );
-  }
-  statements.push(sql);
-}
+const script = new SqlScript();
+const insert = script.insert.bind(script);
 
 const jsonOrNull = (value: unknown) =>
   value === null || value === undefined
@@ -191,9 +162,6 @@ for (const s of sessions) {
 
 await pg.close();
 
-// Imported pages render lazily on first view; the deferred check keeps insert order flexible.
-writeFileSync(
-  args.out,
-  ["PRAGMA defer_foreign_keys = true;", ...statements, ""].join("\n"),
-);
-console.error(`wrote ${statements.length} statements to ${args.out}`);
+// Imported pages render lazily on first view.
+writeFileSync(args.out, script.toString());
+console.error(`wrote ${script.statements.length} statements to ${args.out}`);
