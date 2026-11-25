@@ -18,6 +18,7 @@ export type ApiErrorCode =
   | "UNSUPPORTED_MEDIA_TYPE"
   | "RATE_LIMITED"
   | "BAD_GATEWAY"
+  | "SERVICE_UNAVAILABLE"
   | "INTERNAL";
 
 const STATUS_CODES: Record<number, ApiErrorCode> = {
@@ -30,6 +31,7 @@ const STATUS_CODES: Record<number, ApiErrorCode> = {
   412: "PRECONDITION_FAILED",
   415: "UNSUPPORTED_MEDIA_TYPE",
   429: "RATE_LIMITED",
+  503: "SERVICE_UNAVAILABLE",
 };
 
 /** Throws a SvelteKit error carrying a machine-readable code (and optional per-field messages). */

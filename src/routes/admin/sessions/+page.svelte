@@ -1,13 +1,13 @@
 <script lang="ts">
   import Button from "#lib/components/admin/Button.svelte";
   import Modal from "#lib/components/admin/Modal.svelte";
-  import { getSessions, revokeSession } from "#lib/api.ts";
+  import { enhance } from "$app/forms";
   import type { ApiSession } from "#lib/bindings/index.ts";
   import IconMonitor from "~icons/lucide/monitor";
   import IconTerminal from "~icons/lucide/terminal";
   import IconAlert from "~icons/lucide/alert-circle";
-  import { getLogger } from "@logtape/logtape";
   import { toast } from "#lib/toast.ts";
+  import type { PageProps } from "./$types";
   import { timeAgo, timeAgoExact, formatDateTime } from "#lib/time.ts";
   import { css, cx } from "styled-system/css";
   import { hstack, vstack } from "styled-system/patterns";
@@ -18,48 +18,20 @@
     adminCardClass,
   } from "#lib/styles/admin.ts";
 
-  const logger = getLogger(["admin", "sessions"]);
-
-  let sessions = $state<ApiSession[]>([]);
-  let loading = $state(true);
+  let { data }: PageProps = $props();
 
   let revokeModalOpen = $state(false);
   let revokeTarget = $state<ApiSession | null>(null);
-
-  async function load() {
-    loading = true;
-    const result = await getSessions();
-    if (result.isErr) {
-      logger.error("Failed to load sessions", { error: result.error });
-      toast.error(result.error.message);
-      loading = false;
-      return;
-    }
-    sessions = result.value;
-    loading = false;
-  }
-
-  $effect(() => {
-    load();
-  });
+  let revokeForm = $state<HTMLFormElement>();
+  const sessions = $derived(data.sessions);
 
   function initiateRevoke(session: ApiSession) {
     revokeTarget = session;
     revokeModalOpen = true;
   }
 
-  async function confirmRevoke() {
-    if (!revokeTarget) return;
-    const result = await revokeSession(revokeTarget.id);
-    if (result.isErr) {
-      logger.error("Failed to revoke session", { error: result.error });
-      toast.error(result.error.message);
-      return;
-    }
-    toast.success("Session revoked");
-    revokeModalOpen = false;
-    revokeTarget = null;
-    await load();
+  function confirmRevoke() {
+    revokeForm?.requestSubmit();
   }
 
   function title(session: ApiSession): string {
@@ -82,9 +54,7 @@
     </p>
   </div>
 
-  {#if loading}
-    <p class={css({ color: "admin.textMuted" })}>Loading…</p>
-  {:else if sessions.length === 0}
+  {#if sessions.length === 0}
     <p class={css({ color: "admin.textMuted" })}>No active sessions.</p>
   {:else}
     <div class={css({ spaceY: "3" })}>
@@ -148,6 +118,22 @@
     </div>
   {/if}
 </div>
+
+<form
+  method="POST"
+  action="?/revoke"
+  bind:this={revokeForm}
+  use:enhance={() =>
+    async ({ result, update }) => {
+      await update();
+      if (result.type === "success") toast.success("Session revoked");
+      else if (result.type === "failure")
+        toast.error(String(result.data?.message ?? "Failed to revoke session"));
+      revokeTarget = null;
+    }}
+>
+  <input type="hidden" name="id" value={revokeTarget?.id ?? ""} />
+</form>
 
 <Modal
   bind:open={revokeModalOpen}

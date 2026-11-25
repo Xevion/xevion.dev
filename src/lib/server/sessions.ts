@@ -150,3 +150,15 @@ export async function deleteExpiredSessions(db: Db): Promise<number> {
     .returning({ id: sessions.id });
   return deleted.length;
 }
+
+export async function getSessionExpiry(
+  db: Db,
+  sessionId: string,
+): Promise<Date | null> {
+  const row = await db
+    .select({ expiresAt: sessions.expiresAt })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .get();
+  return row?.expiresAt ?? null;
+}
