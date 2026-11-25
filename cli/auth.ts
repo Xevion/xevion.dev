@@ -222,6 +222,61 @@ async function session(ctx: Context): Promise<void> {
   }
 }
 
+/** Read one line from the terminal without echoing it. */
+function promptHidden(question: string): Promise<string> {
+  const stdin = process.stdin;
+  if (!stdin.isTTY) {
+    throw CliError.invalid("password prompts need an interactive terminal");
+  }
+  process.stderr.write(question);
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf8");
+  return new Promise((resolve, reject) => {
+    let value = "";
+    const finish = (error?: CliError) => {
+      stdin.off("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      process.stderr.write("\n");
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const onData = (chunk: string) => {
+      for (const char of chunk) {
+        if (char === "\r" || char === "\n") return finish();
+        if (char === "\u0003") return finish(CliError.invalid("cancelled"));
+        if (char === "\u007f" || char === "\b") value = value.slice(0, -1);
+        else if (char >= " ") value += char;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+async function changePassword(ctx: Context): Promise<void> {
+  const config = loadConfig(ctx);
+  const { name, entry } = config.resolve(ctx.api);
+  const client = new ApiClient(entry.url, entry.token);
+
+  const currentPassword = await promptHidden("Current password: ");
+  const newPassword = await promptHidden("New password: ");
+  if ((await promptHidden("Repeat new password: ")) !== newPassword) {
+    throw CliError.invalid("the new passwords do not match");
+  }
+
+  const { revokedSessions } = await client.post<{ revokedSessions: number }>(
+    "/api/password",
+    { currentPassword, newPassword },
+  );
+  if (ctx.json) {
+    output.printJson({ target: name, changed: true, revokedSessions });
+  } else {
+    output.success(`Password changed for target '${name}'`);
+    output.info(`Signed out ${revokedSessions} browser session(s)`);
+  }
+}
+
 /** Report a target mutation: a stable machine action under --json, a sentence otherwise. */
 function confirmTarget(
   action: "default" | "added" | "removed" | "renamed",
@@ -321,6 +376,12 @@ export const authCommands: CommandNode[] = [
     name: "session",
     description: "Check current session status",
     run: (_p, ctx) => session(ctx),
+  },
+  {
+    name: "password",
+    description:
+      "Change the account password (prompts; signs out other browser sessions)",
+    run: (_p, ctx) => changePassword(ctx),
   },
   {
     name: "targets",

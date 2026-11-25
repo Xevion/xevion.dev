@@ -1,5 +1,10 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { createUser, hasAnyUser } from "#lib/server/auth.ts";
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  createUser,
+  hasAnyUser,
+} from "#lib/server/auth.ts";
 import { isUniqueViolation } from "#lib/server/db/index.ts";
 import { createSession } from "#lib/server/sessions.ts";
 import { setSessionCookie } from "#lib/server/session-cookie.ts";
@@ -7,9 +12,6 @@ import { getAppLogger } from "#lib/logger.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 const logger = getAppLogger("auth");
-
-const MIN_PASSWORD_LENGTH = 12;
-const MAX_PASSWORD_LENGTH = 256;
 
 export const load: PageServerLoad = ({ locals }) => {
   if (locals.user) redirect(303, "/admin");
