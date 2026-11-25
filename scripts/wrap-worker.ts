@@ -19,7 +19,9 @@ export default {
     url.searchParams.set("cron", controller.cron);
     const request = new Request(url, {
       method: "POST",
-      headers: { "x-cron-secret": env.CRON_SECRET ?? "" },
+      // SvelteKit refuses a mutative request with no content type as cross-site.
+      headers: { "x-cron-secret": env.CRON_SECRET ?? "", "content-type": "application/json" },
+      body: "{}",
     });
     ctx.waitUntil(
       app.fetch(request, env, ctx).then(async (response) => {
