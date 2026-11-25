@@ -1,14 +1,10 @@
+import { env } from "cloudflare:workers";
 import { error, redirect } from "@sveltejs/kit";
-import { apiFetch } from "#lib/api.server.ts";
-import type { ApiSiteSettings } from "#lib/bindings/index.ts";
+import { getResumeKey } from "#lib/server/settings.ts";
 import type { RequestHandler } from "./$types";
 
-export const GET: RequestHandler = async ({ fetch }) => {
-  const result = await apiFetch<ApiSiteSettings>("/api/settings", { fetch });
-
-  if (result.isErr || !result.value.identity.resumeUrl) {
-    error(404, "Resume not available");
-  }
-
-  redirect(302, result.value.identity.resumeUrl);
+export const GET: RequestHandler = async ({ locals }) => {
+  const key = await getResumeKey(locals.db);
+  if (!key) error(404, "Resume not available");
+  redirect(302, `${env.MEDIA_BASE_URL}/${key}`, { external: true });
 };

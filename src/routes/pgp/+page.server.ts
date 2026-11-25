@@ -1,18 +1,18 @@
+import { redirect } from "@sveltejs/kit";
 import { PGP_KEY_METADATA } from "#lib/pgp/key-info.ts";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { prefersRawContent } from "#lib/server/negotiation.ts";
+import { publicKey } from "#lib/server/static-text.ts";
+import type { PageServerLoad } from "./$types";
 
-export const prerender = true;
-
-export const load = () => {
-  // Read the PGP key from static directory at build time
-  const keyPath = join(process.cwd(), "static", "publickey.asc");
-  const content = readFileSync(keyPath, "utf-8");
-
-  return {
-    key: {
-      ...PGP_KEY_METADATA,
-      content,
-    },
-  };
+export const load: PageServerLoad = ({ request }) => {
+  // curl and friends that explicitly ask for text/html still get the key, not the page.
+  if (
+    prefersRawContent(
+      request.headers.get("user-agent"),
+      request.headers.get("accept"),
+    )
+  ) {
+    redirect(303, "/publickey.asc");
+  }
+  return { key: { ...PGP_KEY_METADATA, content: publicKey } };
 };

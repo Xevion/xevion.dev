@@ -1,38 +1,63 @@
-import type { PageServerLoad } from "./$types";
-import { apiFetch } from "#lib/api.server.ts";
 import { error } from "@sveltejs/kit";
-import type { ApiProjectDetail } from "#lib/bindings/index.ts";
-import type { JSONContent } from "@tiptap/core";
-import { renderDetailContent } from "#lib/tiptap/render.server.ts";
+import { waitUntil } from "cloudflare:workers";
+import { getAppLogger } from "#lib/logger.ts";
 import { getOGImageUrl } from "#lib/og-types.ts";
+import { prepareContent } from "#lib/server/content.ts";
+import { toApiProjectDetail } from "#lib/server/project-mapping.ts";
+import { getProjectBundle } from "#lib/server/project-views.ts";
+import { storeRenderedContent } from "#lib/server/projects.ts";
+import type { TocItem } from "#lib/tiptap/toc.ts";
+import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ params, fetch, url }) => {
-  const result = await apiFetch<ApiProjectDetail>(
-    `/api/projects/${params.slug}`,
-    { fetch },
+const logger = getAppLogger("routes", "project");
+
+export const load: PageServerLoad = async ({ params, locals, url }) => {
+  const bundle = await getProjectBundle(
+    locals.db,
+    params.slug,
+    locals.user !== null,
+  );
+  if (!bundle) error(404, "Project not found");
+  const { row } = bundle;
+
+  let html = row.renderedHtml;
+  let toc: TocItem[] = row.toc ?? [];
+  if (row.detailContent != null && html == null) {
+    try {
+      const prepared = await prepareContent(row.detailContent);
+      html = prepared.renderedHtml;
+      toc = prepared.toc ?? [];
+      waitUntil(
+        storeRenderedContent(locals.db, row.id, prepared).catch(
+          (cause: unknown) => {
+            logger.warn("rendered content not stored", {
+              projectId: row.id,
+              cause: String(cause),
+            });
+          },
+        ),
+      );
+    } catch (cause) {
+      logger.error("stored content failed to render", {
+        projectId: row.id,
+        cause: String(cause),
+      });
+    }
+  }
+
+  // The prose is rendered server-side; the raw document never reaches the client.
+  const project = toApiProjectDetail(
+    { ...row, detailContent: null },
+    bundle.tags,
+    bundle.media,
+    bundle.related,
   );
 
-  const project = result.unwrapOrElse((apiErr) => {
-    throw error(apiErr.status || 404, apiErr.statusText);
-  });
-
-  // Every project has a detail page. Prose is optional — projects without
-  // authored content render the hero/meta/links/related shell with no body.
-  const rendered = project.detailContent
-    ? await renderDetailContent(project.detailContent as JSONContent)
-    : null;
-  const html = rendered?.html ?? null;
-  const toc = rendered?.toc ?? [];
-
   // The §NN section markers continue across the prose into the Gallery heading.
-  // The prose h2s are numbered via CSS counters; the Gallery heading needs to
-  // know how many preceded it, so count the h2s the renderer collected.
   const sectionCount = toc.filter((item) => item.level === 2).length;
 
-  // Cache-bust the per-project OG card on every edit: the R2 object is overwritten
-  // in place at og/project/{id}.png, so the URL must change for caches to refetch.
-  const version = Date.parse(project.updatedAt);
-
+  // The per-project OG card is overwritten in place in R2, so the URL carries the
+  // edit time to make caches refetch it.
   return {
     project,
     html,
@@ -43,7 +68,7 @@ export const load: PageServerLoad = async ({ params, fetch, url }) => {
       description: project.shortDescription,
       ogImage: getOGImageUrl(
         { type: "project", id: project.id },
-        Number.isNaN(version) ? undefined : version,
+        row.updatedAt.getTime(),
       ),
       imageAlt: `${project.name} preview`,
       url: `${url.origin}${url.pathname}`,

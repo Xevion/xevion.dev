@@ -1,16 +1,15 @@
 /**
  * Discriminated union of all OG image types.
- *
- * IMPORTANT: Keep in sync with Rust's OGImageSpec in src/og.rs
  */
 export type OGImageSpec =
   | { type: "index" }
   | { type: "projects" }
   | { type: "project"; id: string };
 
+const MEDIA_BASE_URL = "https://media.xevion.dev";
+
 /**
  * Generate the R2 public URL for an OG image.
- * Called at ISR/build time when generating page metadata.
  *
  * @param spec - The OG image specification
  * @param version - Optional cache-bust token (e.g. a project's `updatedAt`).
@@ -22,23 +21,16 @@ export function getOGImageUrl(
   spec: OGImageSpec,
   version?: string | number,
 ): string {
-  const R2_BASE = import.meta.env.VITE_OG_R2_BASE_URL;
-
-  if (!R2_BASE) {
-    // During prerendering or development, use a fallback placeholder
-    return "/og/placeholder.png";
-  }
-
   let url: string;
   switch (spec.type) {
     case "index":
-      url = `${R2_BASE}/og/index.png`;
+      url = `${MEDIA_BASE_URL}/og/index.png`;
       break;
     case "projects":
-      url = `${R2_BASE}/og/projects.png`;
+      url = `${MEDIA_BASE_URL}/og/projects.png`;
       break;
     case "project":
-      url = `${R2_BASE}/og/project/${spec.id}.png`;
+      url = `${MEDIA_BASE_URL}/og/project/${spec.id}.png`;
       break;
   }
 
