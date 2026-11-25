@@ -1,0 +1,88 @@
+<script lang="ts">
+  import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
+  import { page } from "$app/state";
+  import Sidebar from "#lib/components/admin/Sidebar.svelte";
+  import { authStore } from "#lib/stores/auth.svelte.ts";
+  import { getAdminStats } from "#lib/api.ts";
+  import { telemetry } from "#lib/telemetry/index.ts";
+  import { getLogger } from "@logtape/logtape";
+  import { Toaster } from "svelte-sonner";
+  import type { AdminStats } from "#lib/bindings/index.ts";
+
+  const logger = getLogger(["admin", "layout"]);
+  import { css } from "styled-system/css";
+
+  let { children, data } = $props();
+
+  let stats = $state<AdminStats | null>(null);
+
+  const pathname = $derived(page.url.pathname as string);
+  const isLoginPage = $derived(pathname === "/admin/login");
+
+  // Load stats for sidebar badges
+  async function loadStats() {
+    if (isLoginPage || !authStore.isAuthenticated) return;
+
+    const result = await getAdminStats();
+    if (result.isErr) {
+      logger.error("Failed to load stats", { error: result.error });
+    } else {
+      stats = result.value;
+    }
+  }
+
+  // Sync authStore with server session on mount
+  $effect(() => {
+    if (
+      data?.session?.authenticated &&
+      data.session.username &&
+      !authStore.isAuthenticated
+    ) {
+      authStore.setSession(data.session.username);
+      telemetry.identifyAdmin(data.session.username);
+    }
+  });
+
+  // Load stats when component mounts or when authentication changes
+  $effect(() => {
+    if (authStore.isAuthenticated && !isLoginPage) {
+      loadStats();
+    }
+  });
+
+  function handleLogout() {
+    authStore.logout();
+    goto(resolve("admin/login"));
+  }
+</script>
+
+<Toaster position="top-right" theme="dark" richColors closeButton />
+
+{#if isLoginPage}
+  <!-- Login page has no sidebar -->
+  {@render children()}
+{:else}
+  <!-- Admin layout with sidebar -->
+  <div
+    class={css({
+      pointerEvents: "none",
+      position: "fixed",
+      inset: "0",
+      zIndex: -20,
+      bg: "admin.bg",
+    })}
+  ></div>
+  <Sidebar
+    projectCount={stats?.totalProjects ?? 0}
+    tagCount={stats?.totalTags ?? 0}
+    onlogout={handleLogout}
+  />
+
+  <!-- Main content area -->
+  <main class={css({ lg: { pl: "64" }, minH: "100vh", color: "admin.text" })}>
+    <div class={css({ px: "4", py: "8", sm: { px: "6" }, lg: { px: "8" } })}>
+      {@render children()}
+    </div>
+  </main>
+{/if}

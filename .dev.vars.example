@@ -1,0 +1,3 @@
+# Worker secrets for local dev. Production values are set with `wrangler secret put`.
+GITHUB_TOKEN=
+CRON_SECRET=

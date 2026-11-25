@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "xevion-dev",
+  "compatibility_date": "2026-11-01",
+  // arktype probes for `new Function` while the module loads. Workers allow it during startup and
+  // refuse it mid-request, so the probe must see the refusal up front.
+  "compatibility_flags": ["nodejs_compat", "disallow_eval_during_startup"],
+  "workers_dev": false,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+  },
+  "routes": [{ "pattern": "xevion.dev", "custom_domain": true }],
+  "triggers": {
+    // Every five minutes: GitHub sync. Daily: session cleanup and OG/render backfill.
+    "crons": ["*/5 * * * *", "17 9 * * *"],
+  },
+  "vars": {
+    "SITE_ORIGIN": "https://xevion.dev",
+    "MEDIA_BASE_URL": "https://media.xevion.dev",
+    "PUBLIC_POSTHOG_KEY": "phc_VoZ4J5HsjK7RgShCDsNrgB6X2DAjTaVIyh4AalOeRXy",
+    "PUBLIC_POSTHOG_HOST": "https://observe.xevion.dev",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "xevion-dev",
+      "database_id": "b94c607d-dc60-4834-9981-fcb7d58c8fea",
+      "migrations_dir": "drizzle",
+      "migrations_table": "d1_migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "xevion-media",
+    },
+  ],
+  "images": {
+    "binding": "IMAGES",
+  },
+  "ratelimits": [
+    {
+      "name": "LOGIN_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+}

@@ -8,56 +8,49 @@ alias t := test
 default:
 	just --list
 
-# Validate all code (parallel checks via tempo)
-check *flags:
-	tempo check {{flags}}
+# Type check, lint and format check
+check:
+	bun run check
+	bun run lint
 
-# Auto-format all code
-format *flags:
-	tempo fmt {{flags}}
+# Apply formatting
+format:
+	bun run format
 
-# Generate TypeScript bindings from Rust API types
-bindings:
-	tempo bindings
-
-# Build and optionally serve. Flags: -s (serve), -d (debug), -n (no-build)
-build *flags:
-	tempo build {{flags}}
-
-# Install the `xevion` client CLI to ~/.cargo/bin (no frontend/server build)
-install *flags:
-	tempo install {{flags}}
-
-# Start dev servers with pretty log formatting
-dev:
-	script -q -c "tempo dev | hl --config .hl.config.toml -P --interrupt-ignore-count=0" /dev/null
-
-# Start dev servers with raw JSON output
-dev-json:
-	tempo dev
-
-# Manage local PostgreSQL container (default: start)
-db *flags:
-	tempo db {{flags}}
-
-# Run all tests (Rust + frontend Vitest)
+# Run the test suite
 test:
-	cargo nextest run
-	bun run --cwd web test
+	bun run test
 
-# Run database migrations (starts DB container first)
-migrate:
-	just db
-	sqlx migrate run
+# Local dev server (local D1, remote-free bindings)
+dev:
+	bun run dev
 
-# Start DB + run migrations + seed test data
-seed:
-	tempo seed
+# Generate a migration from schema changes
+migration:
+	bun run db:generate
 
-# Build Docker image
-docker-image:
-	tempo docker-image
+# Build, boot the built worker under wrangler, and require the homepage to answer 200
+smoke:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	bun run build
+	bunx wrangler d1 migrations apply xevion-dev --local
+	bunx wrangler dev --port 4173 --local &
+	pid=$!
+	trap 'kill $pid 2>/dev/null || true' EXIT
+	for _ in $(seq 1 45); do
+		status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4173/ || true)
+		if [ "$status" = "200" ]; then echo "smoke: / answered 200"; exit 0; fi
+		if [ "$status" != "000" ]; then echo "smoke: / answered $status"; exit 1; fi
+		sleep 1
+	done
+	echo "smoke: timed out"; exit 1
 
-# Run Docker container on specified port
-docker-run port="8080":
-	tempo docker-run --port {{port}}
+# Build, migrate the remote database, and deploy
+deploy:
+	bun run deploy
+
+# Build and install the `xevion` CLI
+install:
+	bun run cli:build
+	install -m 755 dist/xevion ~/.local/bin/xevion

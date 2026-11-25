@@ -1,17 +1,12 @@
+node_modules/
+.svelte-kit/
+.wrangler/
+styled-system/
+dist/
+worker-configuration.d.ts
 .env*
 !.env.example
-/*.txt
-web/node_modules/
-target/
-.vscode/
-web/build/
-web/.svelte-kit/
-
-# CLI session file
-.*-session
-
-# Added by cargo
-/target
-
-# Panda CSS generated output
-web/styled-system/
+.dev.vars
+!.dev.vars.example
+*-session
+*-session.txt

@@ -1,0 +1,26 @@
+{
+  "extends": "$app/tsconfig",
+  "compilerOptions": {
+    "sourceMap": true,
+    "strict": true,
+    "types": [
+      "$app/types",
+      "unplugin-icons/types/svelte",
+      "./worker-configuration.d.ts",
+      "@cloudflare/vitest-plugin/types"
+    ]
+  },
+  "exclude": [
+    "styled-system/**/*.mjs",
+    "node_modules",
+    ".svelte-kit/cloudflare"
+  ],
+  "include": [
+    "src",
+    "cli",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "drizzle.config.ts"
+  ]
+}

@@ -16,17 +16,17 @@ Run `just check` to verify all formatting and linting in one pass.
 
 Use these canonical names consistently across both stacks.
 
-| Concept | Rust | TypeScript | Database |
-|---|---|---|---|
-| A portfolio entry | `Project` | `Project` | `projects` |
-| A categorization label | `Tag` | `Tag` | `tags` |
-| Project-tag relationship | `ProjectTag` | (inline) | `project_tags` |
-| Tag relatedness metric | `TagCooccurrence` | `RelatedTag` | `tag_cooccurrence` |
-| A media attachment | `ProjectMedia` | `ProjectMedia` | `project_media` |
-| Site identity settings | `SiteIdentity` | `SiteIdentity` | `site_identity` |
-| An external link | `SocialLink` | `SocialLink` | `social_links` |
-| Current user session | `Session` | (cookie-based) | `sessions` |
-| Project lifecycle stage | `ProjectStatus` | `ProjectStatus` | `project_status` enum |
+| Concept                  | Rust              | TypeScript      | Database              |
+| ------------------------ | ----------------- | --------------- | --------------------- |
+| A portfolio entry        | `Project`         | `Project`       | `projects`            |
+| A categorization label   | `Tag`             | `Tag`           | `tags`                |
+| Project-tag relationship | `ProjectTag`      | (inline)        | `project_tags`        |
+| Tag relatedness metric   | `TagCooccurrence` | `RelatedTag`    | `tag_cooccurrence`    |
+| A media attachment       | `ProjectMedia`    | `ProjectMedia`  | `project_media`       |
+| Site identity settings   | `SiteIdentity`    | `SiteIdentity`  | `site_identity`       |
+| An external link         | `SocialLink`      | `SocialLink`    | `social_links`        |
+| Current user session     | `Session`         | (cookie-based)  | `sessions`            |
+| Project lifecycle stage  | `ProjectStatus`   | `ProjectStatus` | `project_status` enum |
 
 When in doubt, use the singular form of the domain noun.
 
@@ -71,31 +71,31 @@ logger.info(`Fetched ${projects.length} projects`);
 
 ### Log Levels
 
-| Level | Meaning | Example |
-|---|---|---|
-| `ERROR` | Requires attention, something is broken | DB connection lost, R2 upload failed |
-| `WARN` | Recoverable, but unexpected | Session expired mid-request, cache miss on expected key |
-| `INFO` | Lifecycle events, operational milestones | Server started, session created, OG image generated |
-| `DEBUG` | Routine operations, request details | API request/response, cache hit/miss |
-| `TRACE` | Verbose internals (rarely used) | Full request headers, SQL query text |
+| Level   | Meaning                                  | Example                                                 |
+| ------- | ---------------------------------------- | ------------------------------------------------------- |
+| `ERROR` | Requires attention, something is broken  | DB connection lost, R2 upload failed                    |
+| `WARN`  | Recoverable, but unexpected              | Session expired mid-request, cache miss on expected key |
+| `INFO`  | Lifecycle events, operational milestones | Server started, session created, OG image generated     |
+| `DEBUG` | Routine operations, request details      | API request/response, cache hit/miss                    |
+| `TRACE` | Verbose internals (rarely used)          | Full request headers, SQL query text                    |
 
 ### Standard Field Names
 
 Use these consistently across both stacks:
 
-| Field | Type | Meaning |
-|---|---|---|
-| `duration_ms` | number | Operation timing |
-| `count` | number | Item count |
-| `bytes` | number | Payload size |
-| `error` | string | Error message or display string |
-| `project_id` | string | Project UUID |
-| `tag_id` | string | Tag UUID |
-| `session_id` | string | Session ULID |
-| `request_id` | string | Request ULID |
-| `status` | number | HTTP status code |
-| `path` | string | URL path |
-| `method` | string | HTTP method |
+| Field         | Type   | Meaning                         |
+| ------------- | ------ | ------------------------------- |
+| `duration_ms` | number | Operation timing                |
+| `count`       | number | Item count                      |
+| `bytes`       | number | Payload size                    |
+| `error`       | string | Error message or display string |
+| `project_id`  | string | Project UUID                    |
+| `tag_id`      | string | Tag UUID                        |
+| `session_id`  | string | Session ULID                    |
+| `request_id`  | string | Request ULID                    |
+| `status`      | number | HTTP status code                |
+| `path`        | string | URL path                        |
+| `method`      | string | HTTP method                     |
 
 ## Error Philosophy
 
@@ -122,6 +122,7 @@ All API error responses follow this structure:
 Error codes are `UPPER_SNAKE_CASE` and stable (clients can match on them).
 
 HTTP status codes follow standard semantics:
+
 - `400` — Validation failure, malformed request
 - `401` — Not authenticated
 - `403` — Authenticated but not authorized
@@ -141,11 +142,13 @@ HTTP status codes follow standard semantics:
 ### Response Shapes
 
 **List endpoints** return arrays directly:
+
 ```json
 [{ "id": "...", "name": "..." }, ...]
 ```
 
 **Single resource endpoints** return the object directly:
+
 ```json
 { "id": "...", "name": "..." }
 ```
@@ -166,7 +169,7 @@ Rust API types are the source of truth. TypeScript types are generated from Rust
 - Generated bindings live in `web/src/lib/bindings/`.
 - Regenerate with `just bindings` (or `cargo test export_bindings`).
 - Never hand-edit generated files.
-- Import generated types as `import type { Project } from '$lib/bindings'`.
+- Import generated types as `import type { Project } from '#lib/bindings'`.
 
 ## Testing
 

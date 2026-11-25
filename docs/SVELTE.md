@@ -45,8 +45,8 @@ The architecture requires this: SvelteKit talks to Rust over Unix sockets during
 ```typescript
 // +page.server.ts
 import type { PageServerLoad } from "./$types";
-import { apiFetch } from "$lib/api.server";
-import type { Project } from "$lib/bindings";
+import { apiFetch } from "#lib/api.server.ts";
+import type { Project } from "#lib/bindings/index.ts";
 
 export const load: PageServerLoad = async ({ fetch }) => {
   const result = await apiFetch<Project[]>("/api/projects", { fetch });
@@ -77,7 +77,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 // Detail page: throw on not found
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const result = await apiFetch<Project>(`/api/projects/${params.slug}`, { fetch });
+  const result = await apiFetch<Project>(`/api/projects/${params.slug}`, {
+    fetch,
+  });
   const project = result.unwrapOrElse((err) => {
     throw error(err.status, err.message);
   });
@@ -91,10 +93,10 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 
 Two API client layers:
 
-| Module | Context | Transport |
-|---|---|---|
-| `$lib/api.server.ts` | SSR (load functions) | Unix socket or HTTP to Rust |
-| `$lib/api.ts` | Browser (client-side calls) | HTTP to Rust via same origin |
+| Module               | Context                     | Transport                    |
+| -------------------- | --------------------------- | ---------------------------- |
+| `#lib/api.server.ts` | SSR (load functions)        | Unix socket or HTTP to Rust  |
+| `#lib/api.ts`        | Browser (client-side calls) | HTTP to Rust via same origin |
 
 ### Result Pattern (true-myth)
 
@@ -103,7 +105,10 @@ The API client never throws. All methods return `Result<T, ApiError>`.
 ```typescript
 import { Result, ok, err } from "true-myth/result";
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<Result<T, ApiError>> {
+async function fetchJson<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<Result<T, ApiError>> {
   try {
     const response = await fetch(url, init);
     if (!response.ok) {
@@ -152,13 +157,18 @@ export class ApiError {
 
 ### Generated Bindings
 
-TypeScript types for API responses are generated from Rust via ts-rs. Import from `$lib/bindings`:
+TypeScript types for API responses are generated from Rust via ts-rs. Import from `#lib/bindings/index.ts`:
 
 ```typescript
-import type { Project, AdminProject, Tag, SiteSettings } from "$lib/bindings";
+import type {
+  Project,
+  AdminProject,
+  Tag,
+  SiteSettings,
+} from "#lib/bindings/index.ts";
 ```
 
-- Never hand-edit files in `$lib/bindings/`.
+- Never hand-edit files in `#lib/bindings//index.ts`.
 - Request/mutation types (e.g., `CreateProjectData`) are defined in TypeScript alongside the API client, since they represent client intent, not server responses.
 - Use `import type` for type-only imports (enforced by ESLint).
 
@@ -231,7 +241,7 @@ Use `$props()` with TypeScript interfaces:
 
 ```svelte
 <script lang="ts">
-  import type { AdminProject } from "$lib/bindings";
+  import type { AdminProject } from "#lib/bindings/index.ts";
 
   interface Props {
     project: AdminProject;
@@ -260,6 +270,7 @@ Use `svelte:boundary` to catch render errors in isolated component subtrees:
 ```
 
 Use boundaries around:
+
 - Third-party or complex components that might fail.
 - Dynamic content where data shape isn't fully guaranteed.
 - Non-critical UI sections where a failure shouldn't crash the page.
@@ -270,13 +281,13 @@ Use boundaries around:
 
 Use runes exclusively. No legacy `$:` reactive statements.
 
-| Rune | Use Case |
-|---|---|
-| `$state` | Mutable reactive value |
-| `$derived` | Computed value (single expression) |
-| `$derived.by` | Computed value (multi-statement) |
-| `$effect` | Side effects (DOM manipulation, subscriptions) |
-| `$props` | Component input declaration |
+| Rune          | Use Case                                       |
+| ------------- | ---------------------------------------------- |
+| `$state`      | Mutable reactive value                         |
+| `$derived`    | Computed value (single expression)             |
+| `$derived.by` | Computed value (multi-statement)               |
+| `$effect`     | Side effects (DOM manipulation, subscriptions) |
+| `$props`      | Component input declaration                    |
 
 ### Effect Discipline
 
@@ -286,7 +297,7 @@ Use runes exclusively. No legacy `$:` reactive statements.
 <script lang="ts">
   // Good: derived for data transformation
   const filteredProjects = $derived(
-    projects.filter(p => p.status !== "hidden")
+    projects.filter((p) => p.status !== "hidden"),
   );
 
   // Good: effect for DOM side effect
@@ -297,7 +308,7 @@ Use runes exclusively. No legacy `$:` reactive statements.
   // Bad: effect for data transformation
   let filtered = $state<Project[]>([]);
   $effect(() => {
-    filtered = projects.filter(p => p.status !== "hidden"); // Use $derived instead
+    filtered = projects.filter((p) => p.status !== "hidden"); // Use $derived instead
   });
 </script>
 ```
@@ -414,7 +425,7 @@ import ProjectCard from "./ProjectCard.svelte";
 test("displays project name and status", () => {
   render(ProjectCard, {
     props: {
-      project: { name: "My Project", status: "active", /* ... */ },
+      project: { name: "My Project", status: "active" /* ... */ },
     },
   });
 
