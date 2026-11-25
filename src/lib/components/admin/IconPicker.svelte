@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { SvelteURLSearchParams } from "svelte/reactivity";
   import { css, cx } from "styled-system/css";
   import { hstack, center, wrap, grid } from "styled-system/patterns";
-  import { SvelteMap } from "svelte/reactivity";
-  import type { IconCollection } from "#lib/types/icons.ts";
+  import type { IconCollection, IconSearchResult } from "#lib/types/icons.ts";
+  import { parseIconIdentifier } from "#lib/types/icons.ts";
+  import Icon from "#lib/components/Icon.svelte";
   import { getLogger } from "@logtape/logtape";
   import {
     labelClass,
@@ -12,6 +14,19 @@
   } from "#lib/styles/admin.ts";
 
   const logger = getLogger(["admin", "components", "IconPicker"]);
+
+  const ICONIFY = "https://api.iconify.design";
+  const RESULT_LIMIT = 100;
+  const COLLECTION_TABS = [
+    "lucide",
+    "simple-icons",
+    "devicon",
+    "logos",
+    "material-symbols",
+    "tabler",
+    "heroicons",
+    "feather",
+  ];
 
   interface Props {
     selectedIcon: string;
@@ -28,154 +43,116 @@
   }: Props = $props();
 
   let searchQuery = $state("");
-  let searchResults = $state<
-    Array<{ identifier: string; collection: string; name: string }>
-  >([]);
+  let searchResults = $state<IconSearchResult[]>([]);
   let collections = $state<IconCollection[]>([]);
   let selectedCollection = $state<string>("all");
   let isLoading = $state(false);
   let showDropdown = $state(false);
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let searchSeq = 0;
 
-  // Load SVG cache for preview
-  let iconSvgCache = new SvelteMap<string, string>();
-  let selectedIconSvg = $state<string | null>(null);
-
-  // IntersectionObserver for lazy loading icons
-  let observer: IntersectionObserver | null = null;
-
-  // Generate unique ID for accessibility
   const inputId = `iconpicker-${Math.random().toString(36).substring(2, 11)}`;
 
-  // Load collections on mount and setup observer
-  $effect(() => {
-    loadCollections();
-    setupIntersectionObserver();
+  // Results preview straight from Iconify so browsing never writes to our own bucket.
+  const previewStyle = (collection: string, name: string) => {
+    const url = `${ICONIFY}/${collection}/${name}.svg`;
+    return `background-color: currentColor; mask: url('${url}') center / contain no-repeat; -webkit-mask: url('${url}') center / contain no-repeat;`;
+  };
 
-    return () => {
-      if (observer) {
-        observer.disconnect();
-      }
-    };
+  $effect(() => {
+    void loadCollections();
   });
 
-  // Load selected icon SVG
   $effect(() => {
-    if (selectedIcon) {
-      loadIconSvg(selectedIcon);
-    }
-  });
-
-  function setupIntersectionObserver() {
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const identifier = entry.target.getAttribute("data-icon-id");
-            if (identifier && !iconSvgCache.has(identifier)) {
-              loadIconSvg(identifier);
-            }
-          }
-        }
-      },
-      {
-        root: null,
-        rootMargin: "50px",
-        threshold: 0.01,
-      },
-    );
-  }
-
-  // Debounced search
-  $effect(() => {
-    if (searchQuery) {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-
-      debounceTimer = setTimeout(() => {
-        performSearch();
-      }, 300);
-    } else {
+    const query = searchQuery;
+    const collection = selectedCollection;
+    if (!query) {
       searchResults = [];
       showDropdown = false;
+      return undefined;
     }
+    const timer = setTimeout(() => void performSearch(query, collection), 300);
+    return () => clearTimeout(timer);
   });
 
   async function loadCollections() {
     try {
-      const response = await fetch("/api/icons/collections");
-      if (response.ok) {
-        const data = await response.json();
-        collections = data.collections;
-      }
+      const response = await fetch(
+        `${ICONIFY}/collections?prefixes=${COLLECTION_TABS.join(",")}`,
+      );
+      if (!response.ok) return;
+      const data = (await response.json()) as Record<
+        string,
+        { name: string; total: number; category?: string }
+      >;
+      collections = COLLECTION_TABS.flatMap((id) =>
+        data[id] ? [{ id, ...data[id] }] : [],
+      );
     } catch (error) {
       logger.error("Failed to load collections", { error });
     }
   }
 
-  async function performSearch() {
+  function toResult(identifier: string): IconSearchResult[] {
+    const parsed = parseIconIdentifier(identifier);
+    return parsed
+      ? [
+          {
+            identifier: identifier as IconSearchResult["identifier"],
+            ...parsed,
+          },
+        ]
+      : [];
+  }
+
+  async function fetchIcons(prefix: string | null, term: string) {
+    if (prefix && !term) {
+      const response = await fetch(`${ICONIFY}/collection?prefix=${prefix}`);
+      if (!response.ok) return [];
+      const data = (await response.json()) as {
+        uncategorized?: string[];
+        categories?: Record<string, string[]>;
+      };
+      const names = new Set([
+        ...(data.uncategorized ?? []),
+        ...Object.values(data.categories ?? {}).flat(),
+      ]);
+      return [...names]
+        .slice(0, RESULT_LIMIT)
+        .flatMap((name) => toResult(`${prefix}:${name}`));
+    }
+    const params = new SvelteURLSearchParams({
+      query: term,
+      limit: String(RESULT_LIMIT),
+    });
+    if (prefix) params.set("prefix", prefix);
+    const response = await fetch(`${ICONIFY}/search?${params}`);
+    if (!response.ok) return [];
+    const data = (await response.json()) as { icons?: string[] };
+    return (data.icons ?? []).flatMap(toResult);
+  }
+
+  async function performSearch(query: string, collection: string) {
+    const seq = ++searchSeq;
     isLoading = true;
     showDropdown = true;
 
+    // "lucide:home" narrows to one collection regardless of the active tab.
+    const colon = query.indexOf(":");
+    const prefix =
+      colon === -1
+        ? collection === "all"
+          ? null
+          : collection
+        : query.slice(0, colon);
+    const term = (colon === -1 ? query : query.slice(colon + 1)).trim();
+
     try {
-      // Build query with collection filter if not "all"
-      let query = searchQuery;
-      if (selectedCollection !== "all" && !query.includes(":")) {
-        query = `${selectedCollection}:${query}`;
-      }
-
-      const response = await fetch(
-        `/api/icons/search?q=${encodeURIComponent(query)}&limit=100`,
-      );
-      if (response.ok) {
-        const data = await response.json();
-        searchResults = data.icons;
-
-        // Wait for DOM to update, then observe icon elements
-        setTimeout(() => observeIconElements(), 100);
-      }
+      const results = await fetchIcons(prefix, term);
+      if (seq === searchSeq) searchResults = results;
     } catch (error) {
       logger.error("Failed to search icons", { error });
     } finally {
-      isLoading = false;
-    }
-  }
-
-  function observeIconElements() {
-    if (!observer) return;
-
-    // Find all icon button elements and observe them
-    const iconButtons = document.querySelectorAll(`[data-icon-id]`);
-    for (const button of iconButtons) {
-      observer.observe(button);
-    }
-  }
-
-  async function loadIconSvg(identifier: string) {
-    // Check cache first
-    if (iconSvgCache.has(identifier)) {
-      if (identifier === selectedIcon) {
-        selectedIconSvg = iconSvgCache.get(identifier)!;
-      }
-      return;
-    }
-
-    try {
-      const [collection, name] = identifier.split(":");
-      const response = await fetch(`/api/icons/${collection}/${name}`);
-      if (response.ok) {
-        const data = await response.json();
-        iconSvgCache.set(identifier, data.svg);
-        if (identifier === selectedIcon) {
-          selectedIconSvg = data.svg;
-        }
-      }
-    } catch (error) {
-      logger.error("Failed to load icon SVG", { error, identifier });
-      if (identifier === selectedIcon) {
-        selectedIconSvg = null;
-      }
+      if (seq === searchSeq) isLoading = false;
     }
   }
 
@@ -183,7 +160,6 @@
     selectedIcon = identifier;
     searchQuery = "";
     showDropdown = false;
-    loadIconSvg(identifier);
   }
 
   function handleInputFocus() {
@@ -200,7 +176,6 @@
 
   function clearSelection() {
     selectedIcon = "";
-    selectedIconSvg = null;
   }
 </script>
 
@@ -223,24 +198,8 @@
         p: "3",
       })}
     >
-      <div
-        class={center({ w: "10", h: "10", rounded: "sm", bg: "admin.bg" })}
-        data-icon-container
-      >
-        {#if selectedIconSvg}
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-          {@html selectedIconSvg}
-        {:else}
-          <div
-            class={css({
-              w: "6",
-              h: "6",
-              animation: "pulse",
-              rounded: "sm",
-              bg: "admin.surfaceHover",
-            })}
-          ></div>
-        {/if}
+      <div class={center({ w: "10", h: "10", rounded: "sm", bg: "admin.bg" })}>
+        <Icon icon={selectedIcon} sizeClass={css({ w: "6", h: "6" })} />
       </div>
       <div class={css({ flex: "1" })}>
         <p
@@ -343,10 +302,8 @@
         <!-- Grid layout for icons -->
         <div class={grid({ columns: 8, gap: "1", p: "2" })}>
           {#each searchResults as result (result.identifier)}
-            {@const cachedSvg = iconSvgCache.get(result.identifier)}
             <button
               type="button"
-              data-icon-id={result.identifier}
               class={cx(
                 "group",
                 center({
@@ -360,26 +317,12 @@
               onclick={() => selectIcon(result.identifier)}
               title={result.identifier}
             >
-              <!-- Lazy load icon SVG via IntersectionObserver -->
-              <div
+              <span
                 class={css({ w: "9", h: "9", color: "admin.text" })}
-                data-icon-container
-              >
-                {#if cachedSvg}
-                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                  {@html cachedSvg}
-                {:else}
-                  <div
-                    class={css({
-                      w: "full",
-                      h: "full",
-                      animation: "pulse",
-                      rounded: "sm",
-                      bg: "admin.surfaceHover",
-                    })}
-                  ></div>
-                {/if}
-              </div>
+                style={previewStyle(result.collection, result.name)}
+                role="img"
+                aria-label={result.identifier}
+              ></span>
 
               <!-- Tooltip on hover -->
               <div
@@ -446,15 +389,3 @@
     "simple-icons:react")
   </p>
 </div>
-
-<!-- TODO: Future enhancement - Recent/favorite icons -->
-<!-- Store recently used icons in localStorage for quick access -->
-<!-- Could add "star" button to favorite frequently used icons -->
-
-<style>
-  /* Ensure dynamically-injected SVG icons fill their container */
-  [data-icon-container] :global(svg) {
-    width: 100%;
-    height: 100%;
-  }
-</style>

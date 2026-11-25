@@ -1,5 +1,6 @@
 <script lang="ts">
   import { css, cx } from "styled-system/css";
+  import { iconSvgPath, parseIconIdentifier } from "#lib/types/icons.ts";
 
   interface Props {
     icon: string; // "collection:name" format, e.g., "lucide:home"
@@ -10,22 +11,15 @@
 
   let { icon, class: className = "", size = "4", sizeClass }: Props = $props();
 
-  // Validate and parse icon identifier into collection and name
   const iconUrl = $derived.by(() => {
-    const colonIndex = icon.indexOf(":");
-    if (
-      colonIndex === -1 ||
-      colonIndex === 0 ||
-      colonIndex === icon.length - 1
-    ) {
+    const parsed = parseIconIdentifier(icon);
+    if (!parsed) {
       console.warn(
         `Invalid icon identifier: "${icon}" (expected "collection:name" format)`,
       );
       return null;
     }
-    const collection = icon.slice(0, colonIndex);
-    const name = icon.slice(colonIndex + 1);
-    return `/api/icons/${collection}/${name}.svg`;
+    return iconSvgPath(parsed.collection, parsed.name);
   });
 </script>
 

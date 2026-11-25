@@ -9,6 +9,7 @@
     deleteProjectMedia,
     reorderProjectMedia,
   } from "#lib/api.ts";
+  import { blurhashForImage } from "#lib/blurhash-client.ts";
   import MediaItem from "./MediaItem.svelte";
   import Modal from "./Modal.svelte";
   import { getLogger } from "@logtape/logtape";
@@ -90,7 +91,7 @@
         projectId,
         mediaItems.map((m) => m.id),
       );
-      if (result.isErr) {
+      if (result.isErr()) {
         logger.error("Failed to reorder media", { error: result.error });
         showError(result.error.message);
       } else {
@@ -177,13 +178,22 @@
 
     uploadQueue = [...uploadQueue, task];
 
-    const result = await uploadProjectMedia(projectId, file, (progress) => {
-      uploadQueue = uploadQueue.map((t) =>
-        t.id === taskId ? { ...t, progress } : t,
-      );
-    });
+    const blurhash = file.type.startsWith("image/")
+      ? await blurhashForImage(file)
+      : undefined;
 
-    if (result.isErr) {
+    const result = await uploadProjectMedia(
+      projectId,
+      file,
+      (progress) => {
+        uploadQueue = uploadQueue.map((t) =>
+          t.id === taskId ? { ...t, progress } : t,
+        );
+      },
+      blurhash,
+    );
+
+    if (result.isErr()) {
       logger.error("Upload failed", {
         error: result.error,
         filename: file.name,
@@ -222,7 +232,7 @@
     if (!projectId || !deletingMedia) return;
 
     const result = await deleteProjectMedia(projectId, deletingMedia.id);
-    if (result.isErr) {
+    if (result.isErr()) {
       logger.error("Failed to delete media", { error: result.error });
       showError(result.error.message);
     } else {
