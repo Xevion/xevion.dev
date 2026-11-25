@@ -47,14 +47,14 @@ if (missingLoaders.length > 0) {
 /**
  * Server-side syntax highlighter for rendered detail content. Built on Shiki's
  * fine-grained core with a fixed theme set (not the full ~6 MB bundle) and the
- * WASM-free JavaScript regex engine, which suits the Bun SSR runtime. The
+ * WASM-free JavaScript regex engine, which runs in workerd. The
  * language set is derived from {@link codeLanguages}, so it tracks the editor's
  * picker automatically.
  *
  * `createHighlighterCore` is async (it loads grammars), but the resolved
  * instance's `codeToHtml` is synchronous — which is what lets us call it inside
  * the static renderer's synchronous `nodeMapping`. We memoize the promise so the
- * grammars load once per process.
+ * grammars load once per isolate.
  */
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 

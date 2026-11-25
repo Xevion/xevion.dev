@@ -1,9 +1,8 @@
 /**
- * Author-declared inline-code token kinds — the `{:.kind}` authoring suffix and
- * the `code` mark's `token` attr. A closed vocabulary mirrored from Rust's
- * `CODE_TOKEN_KINDS` (src/pm.rs): the SSR renderer paints each via a `.tk-<id>`
- * class and the editor offers them in its inline-code picker. Keep in sync with
- * pm.rs — the model rejects a `token` outside this set on the write path.
+ * Author-declared inline-code token kinds: the `{:.kind}` authoring suffix and
+ * the `code` mark's `token` attr. A closed vocabulary: the renderer paints each
+ * via a `.tk-<id>` class, the editor offers them in its inline-code picker, and
+ * the write-path validator (validate.ts) rejects a `token` outside this set.
  */
 export interface CodeToken {
   id: string;
