@@ -109,7 +109,6 @@ CREATE TABLE `social_links` (
 	`label` text NOT NULL,
 	`value` text NOT NULL,
 	`icon` text NOT NULL,
-	`icon_svg` text,
 	`visible` integer DEFAULT true NOT NULL,
 	`display_order` integer DEFAULT 0 NOT NULL
 );
@@ -120,7 +119,6 @@ CREATE TABLE `tags` (
 	`slug` text NOT NULL,
 	`name` text NOT NULL,
 	`icon` text,
-	`icon_svg` text,
 	`color` text,
 	`created_at` integer NOT NULL
 );

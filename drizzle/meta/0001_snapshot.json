@@ -1,6 +1,6 @@
 {
-  "id": "6fc12155-f3b8-416c-9fe4-5aa73a5c57ae",
-  "prevId": "eccf6109-d524-4e0f-888b-36941db59035",
+  "id": "3f856378-644f-4161-854f-6e7ef66fcdbc",
+  "prevId": "59e3e5a6-ba55-48b0-9338-6202e0e5c9db",
   "version": "6",
   "dialect": "sqlite",
   "tables": {
@@ -741,13 +741,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "icon_svg": {
-          "name": "icon_svg",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "visible": {
           "name": "visible",
           "type": "integer",
@@ -805,13 +798,6 @@
         },
         "icon": {
           "name": "icon",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "icon_svg": {
-          "name": "icon_svg",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
