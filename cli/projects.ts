@@ -217,18 +217,17 @@ async function update(
       f.related.trim() === "" ? [] : await resolveRelated(client, f.related);
   }
 
-  // PUT is a full replace, so unchanged fields are echoed back, including the
-  // detail body (which has its own `content` commands).
+  // PUT replaces every field it is sent, so unchanged ones are echoed back. The
+  // body is left out: the server keeps it, and `content` commands own it.
   const request = {
     name: f.name ?? current.name,
-    slug: f.slug ?? null,
+    slug: f.slug ?? current.slug,
     shortDescription: f.shortDesc ?? current.shortDescription,
     status: status ?? current.status,
     hidden: hidden ?? current.hidden,
     githubRepo: merge(f.githubRepo, current.githubRepo),
     demoUrl: merge(f.demoUrl, current.demoUrl),
     tagIds,
-    detailContent: current.detailContent ?? null,
     projectType: merge(f.projectType, current.projectType),
     private: isPrivate ?? current.private,
     terminalCast:

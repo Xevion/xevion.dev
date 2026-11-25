@@ -172,10 +172,13 @@ export async function insertProject(
 }
 
 /** Replaces every editorial field, the tags and the relations in one atomic batch. */
+type ContentField = "detailContent" | "renderedHtml" | "toc";
+
 export async function replaceProject(
   db: Db,
   id: string,
-  write: ProjectWrite,
+  write: Omit<ProjectWrite, ContentField> &
+    Partial<Pick<ProjectWrite, ContentField>>,
   tagIds: string[],
   relatedIds: string[],
   repoChanged: boolean,

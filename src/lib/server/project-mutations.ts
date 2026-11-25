@@ -231,12 +231,16 @@ export async function updateProject(
       : { repo: null, id: null };
   }
   const write = await buildWrite(v, input, github);
+  // An omitted body keeps the stored one, so a metadata edit cannot clobber a concurrent content save.
+  const { detailContent, renderedHtml, toc, ...metadata } = write;
 
   try {
     await replaceProject(
       db,
       existing.id,
-      write,
+      input.detailContent === undefined
+        ? metadata
+        : { ...metadata, detailContent, renderedHtml, toc },
       v.tagIds,
       v.relatedIds,
       repoChanged,
