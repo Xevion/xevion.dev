@@ -70,12 +70,17 @@ const jsonOrNull = (value: unknown) =>
       ? JSON.parse(value)
       : value;
 
-insert("users", {
-  id: 1,
-  username: args["admin-user"],
-  password_hash: await hashPassword(password),
-  created_at: new Date(),
-});
+// The production database already has its admin; this only matters for a fresh database.
+insert(
+  "users",
+  {
+    id: 1,
+    username: args["admin-user"],
+    password_hash: await hashPassword(password),
+    created_at: new Date(),
+  },
+  "INSERT OR IGNORE",
+);
 
 const [identity] = await pg`SELECT * FROM site_identity WHERE id = 1`;
 if (identity) {
