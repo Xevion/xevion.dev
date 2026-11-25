@@ -1,5 +1,4 @@
-// Auto-generated barrel file -- do not edit manually.
-// Regenerate with: tempo bindings
+// Wire types shared by the API, the admin client and the CLI. Maintained by hand.
 export type { AdminStats } from "./AdminStats";
 export type { ApiAdminProject } from "./ApiAdminProject";
 export type { ApiMediaVariant } from "./ApiMediaVariant";

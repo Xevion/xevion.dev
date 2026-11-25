@@ -1,437 +1,218 @@
 # SvelteKit Style Guide
 
-Conventions for the SvelteKit frontend (`web/src/`).
+Conventions for the SvelteKit 3 app (`src/`), which runs as a single Cloudflare Worker. Cross-cutting rules (imports, logging, errors, API shape) live in `STYLE.md`.
 
 ## Route Organization
 
-Follow SvelteKit's file-based routing conventions:
+Follow SvelteKit's file-based routing.
 
 ```
-routes/
-├── +page.svelte              Homepage
-├── +page.server.ts           Homepage data loader
-├── +layout.svelte            Root layout
-├── +layout.server.ts         Root layout data (session, settings)
-├── +error.svelte             Error page template
-│
-├── admin/
-│   ├── +layout.server.ts     Auth guard
-│   ├── +layout.svelte        Admin shell
-│   ├── projects/             Project management
-│   ├── tags/                 Tag management
-│   └── settings/[[tab]]/     Settings with optional tab param
-│
-├── internal/
-│   └── ogp/generate/         OG image generation (blocked externally)
-│
-└── errors/[code]/            Prerendered error pages
+src/routes/
+  +page.svelte, +page.server.ts     Homepage
+  +layout.svelte, +layout.server.ts Root layout (session, settings)
+  +error.svelte                     Error page
+  projects/[slug]/                  Public project detail page
+  admin/
+    +layout.svelte                  Admin shell
+    projects/, tags/, sessions/     Management pages
+    settings/[[tab]]/               Settings with an optional tab param
+    authorize/[id]/                 CLI device-flow approval
+  api/                              +server.ts JSON endpoints
+  internal/cron/                    Cron tick receiver (secret-gated)
+  pgp/, keys/, resume/, sitemap.xml/, robots.txt/   Content and SEO endpoints
 ```
 
-### Routing Rules
-
-- One concern per route segment.
-- `+page.server.ts` for all data loading (server loads only — see Data Loading below).
-- `+layout.server.ts` for shared data (settings, session state).
-- Group related routes under a directory (e.g., `admin/projects/`).
+- One concern per route segment; group related routes under a directory.
+- Access control is decided centrally in `src/lib/server/access.ts` (enforced by `src/hooks.server.ts`). Do not add auth guards in layouts or loads.
+- Form submissions that are not JSON API calls (login setup, session revoke, CLI authorize) use SvelteKit form `actions` with `fail()` and `redirect()`.
 
 ## Data Loading
 
 ### Server Loads Only
 
-All data loading uses `+page.server.ts`, never `+page.ts` (universal loads).
+Data loading uses `+page.server.ts` and `+layout.server.ts`, never universal `+page.ts`. Server loads are the only place that may touch D1 and `cloudflare:workers` bindings.
 
-The architecture requires this: SvelteKit talks to Rust over Unix sockets during SSR. The browser cannot reach that socket. Server loads ensure data always flows through the Bun process.
+**Public pages** query D1 directly through `src/lib/server/*` functions, using `locals.db` and `locals.user`:
 
 ```typescript
-// +page.server.ts
-import type { PageServerLoad } from "./$types";
-import { apiFetch } from "#lib/api.server.ts";
-import type { Project } from "#lib/bindings/index.ts";
-
-export const load: PageServerLoad = async ({ fetch }) => {
-  const result = await apiFetch<Project[]>("/api/projects", { fetch });
-
-  // Unwrap Result in the load function — components receive clean data
-  const projects = result.unwrapOrElse((err) => {
-    throw error(err.status, err.message);
-  });
-
-  return { projects };
+export const load: PageServerLoad = async ({ locals, parent }) => {
+  const [{ settings }, projects] = await Promise.all([
+    parent(),
+    listProjects(locals.db, locals.user !== null),
+  ]);
+  return { projects, socialLinks: settings.socialLinks };
 };
 ```
 
-### Result Handling in Loads
-
-`apiFetch` returns `Result<T, ApiError>` (true-myth). Unwrap in the load function so components receive plain typed data, not Results.
-
-- **List pages:** Return an empty fallback on error (degrade gracefully).
-- **Detail pages:** Throw `error()` to trigger SvelteKit's error page.
-- **Admin pages:** Throw on any error (admin should see explicit failures).
+**Admin pages** call the same-origin API through `loadApi` (`src/lib/server/admin-load.ts`), which unwraps the `{ data }` envelope or throws the API's error:
 
 ```typescript
-// List page: fallback to empty
-export const load: PageServerLoad = async ({ fetch }) => {
-  const result = await apiFetch<Project[]>("/api/projects", { fetch });
-  return { projects: result.unwrapOr([]) };
-};
-
-// Detail page: throw on not found
-export const load: PageServerLoad = async ({ fetch, params }) => {
-  const result = await apiFetch<Project>(`/api/projects/${params.slug}`, {
-    fetch,
-  });
-  const project = result.unwrapOrElse((err) => {
-    throw error(err.status, err.message);
-  });
-  return { project };
-};
+export const load: PageServerLoad = async ({ fetch }) => ({
+  projects: await loadApi<ApiAdminProject[]>(fetch, "/api/projects"),
+});
 ```
 
-## API Client
+### Errors in Loads
 
-### Architecture
+Loads return plain typed data; components never receive Results.
 
-Two API client layers:
+- **Detail pages:** throw `error(404, "Project not found")` when the record is missing.
+- **Admin pages:** let `loadApi` throw on any failure, so admins see explicit errors.
+- **Optional extras:** catch, log with `getAppLogger`, and degrade (see `src/routes/projects/[slug]/+page.server.ts`).
 
-| Module               | Context                     | Transport                    |
-| -------------------- | --------------------------- | ---------------------------- |
-| `#lib/api.server.ts` | SSR (load functions)        | Unix socket or HTTP to Rust  |
-| `#lib/api.ts`        | Browser (client-side calls) | HTTP to Rust via same origin |
+Use `refreshAll` instead of `invalidateAll` after mutations. External redirects need `{ external: true }`. Read page state through `$app/state` (`page`), never `$app/stores`.
 
-### Result Pattern (true-myth)
+## Browser API Client
 
-The API client never throws. All methods return `Result<T, ApiError>`.
+Admin components call the API from the browser through two layers:
+
+| Module                  | Role                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `src/lib/api-client.ts` | `apiRequest<T>(url, method, body?, options?)`: fetch, unwrap `{ data }`, log, handle expired sessions |
+| `src/lib/api.ts`        | One function per endpoint, grouped by resource (projects, tags, settings, sessions, media)            |
+
+All functions return neverthrow `ResultAsync<T, ApiError>` and never throw. Callers branch on the result:
 
 ```typescript
-import { Result, ok, err } from "true-myth/result";
-
-async function fetchJson<T>(
-  url: string,
-  init?: RequestInit,
-): Promise<Result<T, ApiError>> {
-  try {
-    const response = await fetch(url, init);
-    if (!response.ok) {
-      return err(ApiError.fromResponse(response));
-    }
-    return ok(await response.json());
-  } catch (e) {
-    return err(ApiError.network(e));
-  }
+const result = await updateAdminTag(data);
+if (result.isErr()) {
+  logger.error("Failed to update tag", { error: result.error });
+  toast.error(result.error.message);
+  return;
 }
 ```
 
-### Endpoint Organization
-
-Group API functions by resource. Each function returns `Promise<Result<T, ApiError>>`.
-
-```typescript
-// Projects API
-export async function getProjects(): Promise<Result<Project[], ApiError>> { ... }
-export async function getProject(ref: string): Promise<Result<AdminProject, ApiError>> { ... }
-export async function createProject(data: CreateProjectData): Promise<Result<AdminProject, ApiError>> { ... }
-export async function updateProject(data: UpdateProjectData): Promise<Result<AdminProject, ApiError>> { ... }
-export async function deleteProject(id: string): Promise<Result<AdminProject, ApiError>> { ... }
-```
-
-### ApiError
-
-```typescript
-export class ApiError {
-  constructor(
-    public readonly status: number,
-    public readonly message: string,
-    public readonly code?: string,
-  ) {}
-
-  static fromResponse(res: Response): ApiError { ... }
-  static network(cause: unknown): ApiError { ... }
-
-  get isNotFound(): boolean { return this.status === 404; }
-  get isAuthError(): boolean { return this.status === 401 || this.status === 403; }
-  get isServerError(): boolean { return this.status >= 500; }
-}
-```
+`ApiError` (`src/lib/errors.ts`) is a plain object `{ status, code, message, fieldErrors? }` with `isNotFound` and `isAuthError` helper functions. A 401 from any call navigates to `/admin/login` once, unless the call passes `redirectOnUnauthorized: false`.
 
 ## Type System
 
-### Generated Bindings
-
-TypeScript types for API responses are generated from Rust via ts-rs. Import from `#lib/bindings/index.ts`:
-
-```typescript
-import type {
-  Project,
-  AdminProject,
-  Tag,
-  SiteSettings,
-} from "#lib/bindings/index.ts";
-```
-
-- Never hand-edit files in `#lib/bindings//index.ts`.
-- Request/mutation types (e.g., `CreateProjectData`) are defined in TypeScript alongside the API client, since they represent client intent, not server responses.
-- Use `import type` for type-only imports (enforced by ESLint).
-
-### Local Types
-
-Types that exist only on the frontend (form state, UI state, component props) are defined alongside their consumers:
-
-```typescript
-// In the component or a co-located types.ts
-interface ProjectFormState {
-  name: string;
-  slug: string;
-  isDirty: boolean;
-  errors: Map<string, string>;
-}
-```
+- API response types come from `#lib/bindings/index.ts` (hand-maintained; see `STYLE.md`).
+- Request types for the admin client are in `src/lib/admin-types.ts`.
+- Frontend-only types (form state, UI state, props) are defined next to their consumer.
+- Route types come from `./$types`.
 
 ## State Management
 
-### Escalation Ladder
+Start with the simplest option and escalate only when needed.
 
-Start with the simplest option. Escalate only when needed.
-
-1. **Component `$state`** — Local to one component. Default choice.
-2. **Module runes (`.svelte.ts`)** — Shared across a few related components. Singleton class with `$state` properties.
-3. **Context** — Subtree-scoped state via `setContext`/`getContext`. For layout-level concerns.
-4. **Global stores** — App-wide singletons. Use sparingly (theme, auth).
-
-### Class-Based Stores
-
-For global/shared state, use the singleton class pattern with Svelte 5 runes:
+1. **Component `$state`**: local to one component. The default.
+2. **Module runes (`.svelte.ts`)**: shared across a few related components, such as `src/lib/components/project/toc-spy.svelte.ts`.
+3. **Singleton class stores**: app-wide state in `src/lib/stores/` (`theme`, `auth`, `morph`).
 
 ```typescript
-// lib/stores/theme.svelte.ts
+// src/lib/stores/theme.svelte.ts
 class ThemeStore {
   isDark = $state<boolean>(true);
 
   toggle() {
     this.isDark = !this.isDark;
-    this.persist();
-  }
-
-  private persist() {
     localStorage.setItem("theme", this.isDark ? "dark" : "light");
+    this.updateDOMClass();
   }
 }
 
 export const themeStore = new ThemeStore();
 ```
 
-- One class per concern.
-- Exported as a singleton instance.
-- Methods for mutations, `$state` for reactive fields.
-- Persistence logic (localStorage, cookies) encapsulated in the class.
+- One class per concern, exported as a singleton instance.
+- Methods for mutations, `$state` fields for reactive data.
+- Persistence (localStorage, sessionStorage) is encapsulated in the class and guarded with `typeof window` checks, since stores are also imported during SSR.
 
 ## Components
 
 ### When to Extract
 
-Extract a component when any of these are true:
+Extract a component when it is reused, exceeds roughly 100 lines, has a stable describable interface, or is a distinct UI concern (modal, form field, table).
 
-- It's reused in two or more places.
-- It exceeds ~100 lines.
-- It has a stable, describable interface.
-- It represents a distinct UI concern (modal, form field, data table).
+### Layout
+
+- Shared components: `src/lib/components/`
+- Admin-only primitives (`Button`, `Input`, `Modal`, `Table`, ...): `src/lib/components/admin/`
+- Project-detail pieces: `src/lib/components/project/`
 
 ### Props
 
-Use `$props()` with TypeScript interfaces:
+Use `$props()` with a `Props` interface. Callbacks are function props; render slots are `Snippet`s.
 
 ```svelte
 <script lang="ts">
-  import type { AdminProject } from "#lib/bindings/index.ts";
+  import type { Snippet } from "svelte";
+  import type { ApiAdminProject } from "#lib/bindings/index.ts";
 
   interface Props {
-    project: AdminProject;
+    project: ApiAdminProject;
+    class?: string;
     onDelete?: (id: string) => void;
+    children?: Snippet;
   }
 
-  let { project, onDelete }: Props = $props();
+  let { project, class: className, onDelete, children }: Props = $props();
 </script>
 ```
 
-- Define a `Props` interface for non-trivial components.
-- Use function props for callbacks (`onDelete`, `onSave`).
-- Use `Snippet` for render-prop patterns (slot replacement in Svelte 5).
-
-### Error Boundaries
-
-Use `svelte:boundary` to catch render errors in isolated component subtrees:
-
-```svelte
-<svelte:boundary onerror={(error) => console.error("Render failed", error)}>
-  <ProjectCard {project} />
-  {#snippet failed(error)}
-    <div class="text-red-500">Failed to render project card</div>
-  {/snippet}
-</svelte:boundary>
-```
-
-Use boundaries around:
-
-- Third-party or complex components that might fail.
-- Dynamic content where data shape isn't fully guaranteed.
-- Non-critical UI sections where a failure shouldn't crash the page.
+Accept a `class` prop and merge it last with `cx` so callers can adjust layout. Use `$bindable()` only for true two-way inputs (`Input`, `ColorPicker`).
 
 ## Reactivity
 
-### Svelte 5 Runes
+Use runes exclusively. No legacy `$:` statements, `export let`, or `$$props`.
 
-Use runes exclusively. No legacy `$:` reactive statements.
-
-| Rune          | Use Case                                       |
-| ------------- | ---------------------------------------------- |
-| `$state`      | Mutable reactive value                         |
-| `$derived`    | Computed value (single expression)             |
-| `$derived.by` | Computed value (multi-statement)               |
-| `$effect`     | Side effects (DOM manipulation, subscriptions) |
-| `$props`      | Component input declaration                    |
+| Rune          | Use Case                              |
+| ------------- | ------------------------------------- |
+| `$state`      | Mutable reactive value                |
+| `$derived`    | Computed value (single expression)    |
+| `$derived.by` | Computed value (multi-statement)      |
+| `$effect`     | Side effects (DOM, listeners, timers) |
+| `$props`      | Component input declaration           |
+| `$bindable`   | Two-way bound prop                    |
 
 ### Effect Discipline
 
-`$effect` is for **side effects only** — DOM manipulation, event listeners, timers. Never use it for data transformation (use `$derived` instead).
+`$effect` is for side effects only: DOM manipulation, event listeners, timers, loading data after mount. Never use it to transform data; use `$derived`.
 
 ```svelte
 <script lang="ts">
-  // Good: derived for data transformation
-  const filteredProjects = $derived(
-    projects.filter((p) => p.status !== "hidden"),
-  );
+  // Good
+  const visible = $derived(projects.filter((p) => !p.hidden));
 
-  // Good: effect for DOM side effect
+  // Good
   $effect(() => {
-    document.title = `${project.name} | xevion.dev`;
+    document.title = `${project.name} | Xevion`;
   });
 
-  // Bad: effect for data transformation
-  let filtered = $state<Project[]>([]);
+  // Bad: derive instead
+  let filtered = $state<ApiAdminProject[]>([]);
   $effect(() => {
-    filtered = projects.filter((p) => p.status !== "hidden"); // Use $derived instead
+    filtered = projects.filter((p) => !p.hidden);
   });
 </script>
 ```
 
+Values that depend on the clock (relative ages) take an injectable `now` seeded by the server load, so SSR and hydration agree (`timeAgo` in `src/lib/time.ts`).
+
 ## Styling
 
-### Tailwind v4
+Styling is PandaCSS. Never use Tailwind classes.
 
-Tailwind is configured in `web/src/app.css` using the `@theme` directive. There is no `tailwind.config.js`.
-
-```css
-/* web/src/app.css */
-@import "tailwindcss";
-
-@theme {
-  --color-bg-primary: var(--bg-primary);
-  --font-sans: "Inter Variable", sans-serif;
-  /* ... */
-}
-```
-
-### Conventions
-
-- Use Tailwind utility classes for styling. Avoid `<style>` blocks except for truly dynamic or complex CSS.
-- Use the `cn()` helper (clsx + tailwind-merge) for conditional and composed class names.
-- Use `dark:` prefix for dark mode variants.
-- Keep color tokens semantic (`bg-primary`, `text-muted`) rather than literal (`bg-gray-900`).
-
-```svelte
-<div class={cn(
-  "rounded-lg border p-4",
-  isActive && "border-admin-accent",
-  className,
-)}>
-```
+- Write styles with `css()` from `styled-system/css`; compose and merge with `cx()`. Layout helpers come from `styled-system/patterns` (`center`, `stack`, ...).
+- Variant components use recipes from `styled-system/recipes` (see `src/lib/components/admin/Button.svelte`). Recipes used through wrapper components must declare `staticCss` for their variants, or only the defaults are emitted.
+- Tokens and recipes are configured in `panda.config.ts`. Run `panda codegen` after changing it; `styled-system/` is generated.
+- Dark mode uses the `_dark` condition: `css({ borderColor: "zinc.200", _dark: { borderColor: "zinc.800" } })`.
+- Use semantic tokens (`surface`, `text.secondary`) over literal colors where one exists.
+- Never put `:global()` inside `css()`; it is emitted literally and the browser drops the rule.
+- Interactive elements need `cursor: pointer` in their base styles.
+- A `<style>` block is acceptable only for what Panda cannot express: pseudo-element and state selectors on native elements, keyframes, and styles for third-party or `{@html}` content (see `src/lib/components/project/Lightbox.svelte`).
 
 ## Logging
 
-Use LogTape with category arrays:
+Use `getAppLogger(...)` in server code and `getLogger(["admin", ...])` from `@logtape/logtape` in browser code, with a category array that mirrors the module path:
 
 ```typescript
-import { getLogger } from "@logtape/logtape";
-
-const logger = getLogger(["ssr", "routes", "projects"]);
-logger.info("Projects loaded", { count: projects.length });
+const logger = getLogger(["admin", "components", "ProjectForm"]);
+logger.error("Failed to save project", { error: result.error });
 ```
 
-- Category arrays enable hierarchical filtering (`ssr:routes:*`).
-- Follow the same structured logging conventions as STYLE.md.
-- `console.warn` / `console.error` acceptable for quick client-side diagnostics, but prefer LogTape for anything that runs on the server.
+Messages are static; data goes in the properties object. See `STYLE.md` for levels and field names.
 
 ## Testing
 
-### Vitest Setup
-
-Unit and integration tests use Vitest. Test files are co-located with source:
-
-```
-lib/
-├── api.ts
-├── api.test.ts          ← API client tests
-├── utils.ts
-├── utils.test.ts        ← Utility function tests
-└── components/
-    ├── Button.svelte
-    └── Button.test.ts   ← Component test
-```
-
-### API Client Tests
-
-Test the Result-returning API functions with mocked fetch:
-
-```typescript
-import { describe, test, expect, vi } from "vitest";
-import { getProjects } from "./api";
-
-describe("getProjects", () => {
-  test("returns Ok with project list on success", async () => {
-    const mockProjects = [{ id: "1", name: "Test" }];
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockProjects),
-    });
-
-    const result = await getProjects();
-    expect(result.isOk).toBe(true);
-    result.match({
-      Ok: (projects) => expect(projects).toEqual(mockProjects),
-      Err: () => expect.unreachable("Should not be an error"),
-    });
-  });
-
-  test("returns Err with ApiError on 404", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: "Not Found",
-    });
-
-    const result = await getProjects();
-    expect(result.isErr).toBe(true);
-  });
-});
-```
-
-### Component Tests
-
-Use `@testing-library/svelte` for behavior-focused component tests:
-
-```typescript
-import { render, screen } from "@testing-library/svelte";
-import ProjectCard from "./ProjectCard.svelte";
-
-test("displays project name and status", () => {
-  render(ProjectCard, {
-    props: {
-      project: { name: "My Project", status: "active" /* ... */ },
-    },
-  });
-
-  expect(screen.getByText("My Project")).toBeInTheDocument();
-  expect(screen.getByText("active")).toBeInTheDocument();
-});
-```
-
-Test what users see and interact with, not implementation details.
+Component tests are not set up. Keep logic worth testing in plain `.ts` modules (mappers, formatters, validators) and test those with the Vitest `unit` project. Database-backed logic is covered by `*.db.test.ts` files. See `STYLE.md` for the project layout.
